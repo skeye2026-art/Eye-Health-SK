@@ -2056,7 +2056,7 @@ function renderTable(rows) {
          '<td>'+e_(r.diagnosis)+'</td>' +
          '<td><span class="badge '+SC_CLS[r.status]+'" onclick="toggleStatFilter(\''+r.status+'\'); event.stopPropagation();" title="คลิกเพื่อกรองสถานะ">'+(SL[r.status]||r.status)+'</span></td>' +
          '<td style="text-align:center;">'+bRisk+'</td><td style="text-align:center;">'+fStat+'</td>' +
-         '<td>'+e_(r.screen_date)+'</td><td>'+(r.sat!==null?r.sat.toFixed(2):'—')+'</td>' +
+         '<td>'+e_(r.screen_date)+'</td><td>'+(r.sat!==null?(typeof r.sat === 'number' ? r.sat.toFixed(2) : '-'):'—')+'</td>' +
          '<td>'+(r.pre!==null?r.pre:'—')+'</td><td>'+(r.post!==null?r.post:'—')+'</td>' +
          '<td style="'+gc+'">'+gain+'</td><td style="text-align:center;">'+actBtns+'</td></tr>';
   }); 
