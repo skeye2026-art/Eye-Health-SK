@@ -882,14 +882,93 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
 <script>
 // ==============================================================
-// 🚀 GITHUB PAGES MAGIC POLYFILL: แปลงคำสั่งเก่าให้เป็น API อัตโนมัติ
+// 🚀 GITHUB PAGES POLYFILL v6.2 
+// ✨ Features: Auto-Retry + Double-Click Guard + Loading Indicator
 // ==============================================================
 const CONFIG = {
-  // นำ URL ที่ได้จากการ Deploy GAS แบบใหม่มาวางที่นี่
-  GAS_API_URL: "https://script.google.com/macros/s/AKfycbwllnhLYUsyLvA7mutkPBP1XTmYFAwSnv6TToqRWPC6M3qf1xLzs7Ho0HUDCo46q4OUCQ/exec" 
+  GAS_API_URL: "https://script.google.com/macros/s/AKfycbwllnhLYUsyLvA7mutkPBP1XTmYFAwSnv6TToqRWPC6M3qf1xLzs7Ho0HUDCo46q4OUCQ/exec",
+  MAX_RETRY: 3,           // จำนวนครั้งสูงสุดที่จะลองใหม่
+  RETRY_BASE_MS: 2000     // หน่วงเวลาฐาน: 2s → 4s → 6s + jitter
 };
 
-// ดักจับและสร้าง google.script.run แบบจำลอง
+// 📝 รายการ action ที่เป็น "การเขียนข้อมูล" — ต้อง Retry + ป้องกันกดซ้ำ
+const WRITE_ACTIONS = new Set([
+  'saveScreeningData', 'updateScreeningData', 'importScreeningData',
+  'saveSatisfactionData', 'savePreTest', 'savePostTest',
+  'saveFollowupData', 'saveBehaviorData',
+  'deleteRecord', 'deleteBehaviorRecord', 'deleteFollowupRecord',
+  'deleteLinkData', 'deleteVideoItem', 'deleteHospFileLink',
+  'updateHospLocation', 'saveLinkData', 'saveVideoItem',
+  'saveLineSettings', 'changePassword'
+]);
+
+// 🛡 Map เก็บ request ที่กำลังทำงาน (key = action + payload hash)
+const _inFlight = new Map();
+
+// ─── Helper: แสดง toast (ถ้าฟังก์ชัน toast พร้อมใช้งาน) ───
+function _polyfillToast(msg, type) {
+  if (typeof toast === 'function') {
+    try { toast(msg, type || 'inf'); } catch(e) {}
+  }
+}
+
+// ─── Helper: หน่วงเวลาแบบ Exponential Backoff + jitter ───
+function _sleep(ms) {
+  const jitter = Math.random() * 500;
+  return new Promise(r => setTimeout(r, ms + jitter));
+}
+
+// ─── Core: ยิง API พร้อมระบบ Retry อัตโนมัติ ───
+async function _callApiWithRetry(action, payloadData) {
+  let lastError = null;
+  
+  for (let attempt = 1; attempt <= CONFIG.MAX_RETRY; attempt++) {
+    try {
+      const response = await fetch(CONFIG.GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: action, data: payloadData })
+      });
+      
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      
+      const result = await response.json();
+      
+      // 🔍 ตรวจว่า Backend คืน Lock Error หรือไม่
+      const isBusy = result && result.ok === false && result.msg && 
+                     (result.msg.indexOf('ระบบกำลังประมวลผล') > -1 || 
+                      result.msg.indexOf('ระบบกำลังยุ่ง') > -1 ||
+                      result.msg.indexOf('ระบบประมวลผลอยู่') > -1);
+      
+      // ถ้าระบบยุ่ง + เป็น write action + ยังไม่ครบ retry → ลองใหม่
+      if (isBusy && WRITE_ACTIONS.has(action) && attempt < CONFIG.MAX_RETRY) {
+        const waitMs = CONFIG.RETRY_BASE_MS * attempt;
+        _polyfillToast('⏳ ระบบกำลังยุ่ง กำลังลองใหม่ (' + (attempt + 1) + '/' + CONFIG.MAX_RETRY + ')...', 'inf');
+        await _sleep(waitMs);
+        continue;
+      }
+      
+      // ✅ สำเร็จ หรือเป็น error อื่นที่ไม่ใช่ Lock → คืนผลลัพธ์
+      return result;
+      
+    } catch (err) {
+      lastError = err;
+      // Network error → retry เฉพาะ write action เท่านั้น
+      if (WRITE_ACTIONS.has(action) && attempt < CONFIG.MAX_RETRY) {
+        const waitMs = CONFIG.RETRY_BASE_MS * attempt;
+        _polyfillToast('📡 การเชื่อมต่อขัดข้อง กำลังลองใหม่ (' + (attempt + 1) + '/' + CONFIG.MAX_RETRY + ')...', 'inf');
+        await _sleep(waitMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+  
+  if (lastError) throw lastError;
+  return { ok: false, msg: 'ระบบไม่ว่าง กรุณาลองใหม่ภายหลัง (ครบ ' + CONFIG.MAX_RETRY + ' ครั้งแล้ว)' };
+}
+
+// ─── สร้าง google.script.run แบบจำลอง ───
 window.google = window.google || {};
 window.google.script = window.google.script || {};
 
@@ -900,47 +979,58 @@ window.google.script.run = (function() {
         if (prop === 'withSuccessHandler') return function(cb) { return createRunner(cb, failureHandler); };
         if (prop === 'withFailureHandler') return function(cb) { return createRunner(successHandler, cb); };
         
-        // เมื่อระบบเดิมเรียกใช้ฟังก์ชัน (เช่น google.script.run.getInitData())
         return async function(...args) {
+          // จัดเรียงพารามิเตอร์ตามชนิดของฟังก์ชัน
+          let payloadData = args[0] !== undefined ? args[0] : {};
+          
+          if (prop === 'login') payloadData = { user: args[0], pass: args[1] };
+          if (prop === 'changePassword') payloadData = { oldPwd: args[0], newPwd: args[1] };
+          if (prop === 'deleteHospFileLink') payloadData = { hospcode: args[0], urlToRemove: args[1] };
+          if (prop === 'deleteRecord') payloadData = { sheetName: args[0], cid: args[1] };
+          if (prop === 'saveLineSettings') payloadData = { token: args[0], target: args[1] };
+          if (['getScreeningRecord', 'checkTestEligibility', 'checkFollowupEligibility', 
+               'getBehaviorRecord', 'getFollowupRecord', 
+               'deleteBehaviorRecord', 'deleteFollowupRecord'].includes(prop)) {
+            payloadData = { cid: args[0] };
+          }
+          if (prop === 'deleteLinkData' || prop === 'deleteVideoItem') payloadData = { id: args[0] };
+          
+          // 🛡 Double-Click Guard: ป้องกันการกดปุ่มซ้ำ (เฉพาะ Write Action)
+          let inFlightKey = null;
+          if (WRITE_ACTIONS.has(prop)) {
+            try {
+              inFlightKey = prop + ':' + JSON.stringify(payloadData);
+            } catch(e) { 
+              inFlightKey = prop + ':' + Date.now(); 
+            }
+            
+            if (_inFlight.has(inFlightKey)) {
+              _polyfillToast('⚠️ กำลังบันทึกข้อมูลชุดนี้อยู่แล้ว กรุณารอผลลัพธ์...', 'inf');
+              if (failureHandler) failureHandler(new Error('Duplicate request blocked'));
+              return;
+            }
+          }
+          
+          // สร้าง Promise แล้วเก็บใน in-flight Map
+          const apiPromise = _callApiWithRetry(prop, payloadData);
+          if (inFlightKey) _inFlight.set(inFlightKey, apiPromise);
+          
           try {
-            // จัดเรียงพารามิเตอร์ให้ตรงกับที่ Backend Router ต้องการ
-            let payloadData = args[0] !== undefined ? args[0] : {};
-            
-            // กรณีฟังก์ชันรับหลายพารามิเตอร์แบบแยกตัวแปร
-            if (prop === 'login') payloadData = { user: args[0], pass: args[1] };
-            if (prop === 'changePassword') payloadData = { oldPwd: args[0], newPwd: args[1] };
-            if (prop === 'deleteHospFileLink') payloadData = { hospcode: args[0], urlToRemove: args[1] };
-            if (prop === 'deleteRecord') payloadData = { sheetName: args[0], cid: args[1] };
-            if (prop === 'saveLineSettings') payloadData = { token: args[0], target: args[1] };
-            if (['getScreeningRecord', 'checkTestEligibility', 'checkFollowupEligibility', 'getBehaviorRecord', 'getFollowupRecord', 'deleteBehaviorRecord', 'deleteFollowupRecord'].includes(prop)) payloadData = { cid: args[0] };
-            if (prop === 'deleteLinkData' || prop === 'deleteVideoItem') payloadData = { id: args[0] };
-
-            // ยิง HTTP POST ไปหา Backend
-            const response = await fetch(CONFIG.GAS_API_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({ action: prop, data: payloadData })
-            });
-            
-            const result = await response.json();
-            
-            // โค้ดเก่าคุณรับค่ามาแล้วเอาไป JSON.parse() เราจึงต้องแปลงกลับเป็น String ก่อนส่งคืนให้ Success Handler โค้ดเก่าจะได้ไม่ Error
+            const result = await apiPromise;
             if (successHandler) {
-               const stringifiedResult = typeof result === 'object' ? JSON.stringify(result) : result;
-               successHandler(stringifiedResult);
+              const stringifiedResult = typeof result === 'object' ? JSON.stringify(result) : result;
+              successHandler(stringifiedResult);
             }
           } catch (err) {
-            console.error("API Fetch Error:", err);
-            if (failureHandler) failureHandler(err);
-            else {
-               // Fallback alert ถ้าไม่มี Error Handler
-               const errWrap = document.getElementById('toastWrap');
-               if(errWrap) {
-                  const t = document.createElement('div');
-                  t.className = 'toast t-err'; t.innerHTML = '❌ เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว';
-                  errWrap.appendChild(t); setTimeout(()=>t.remove(), 3000);
-               }
+            console.error('API Error [' + prop + ']:', err);
+            if (failureHandler) {
+              failureHandler(err);
+            } else {
+              _polyfillToast('❌ เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว: ' + (err.message || 'Unknown'), 'err');
             }
+          } finally {
+            // ล้าง in-flight Map เมื่อเสร็จสิ้น (สำเร็จ/ล้มเหลว ก็ต้องล้าง)
+            if (inFlightKey) _inFlight.delete(inFlightKey);
           }
         };
       }
@@ -950,7 +1040,7 @@ window.google.script.run = (function() {
   return createRunner(null, null);
 })();
 // ==============================================================
-// ⬇️ โค้ดเดิมของคุณทั้งหมด (var G_extraClickIdx = ... ลงไป) ปล่อยไว้เหมือนเดิม 100% เลยครับ ไม่ต้องแก้อะไรแล้ว ⬇️
+// ⬇️ โค้ดเดิมของคุณทั้งหมด (var G_extraClickIdx = ... ลงไป) ปล่อยไว้เหมือนเดิม ⬇️
 // ==============================================================
 
 var G_extraClickIdx = { diag: null, treat: null, behRisk: null, fupWear: null };
