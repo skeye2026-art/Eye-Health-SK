@@ -887,8 +887,8 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 // ==============================================================
 const CONFIG = {
   GAS_API_URL: "https://script.google.com/macros/s/AKfycbwllnhLYUsyLvA7mutkPBP1XTmYFAwSnv6TToqRWPC6M3qf1xLzs7Ho0HUDCo46q4OUCQ/exec",
-  MAX_RETRY: 3,           // จำนวนครั้งสูงสุดที่จะลองใหม่
-  RETRY_BASE_MS: 2000     // หน่วงเวลาฐาน: 2s → 4s → 6s + jitter
+  MAX_RETRY: 5,           // จำนวนครั้งสูงสุดที่จะลองใหม่
+  RETRY_BASE_MS: 3000     // หน่วงเวลาฐาน: 2s → 4s → 6s + jitter
 };
 
 // 📝 รายการ action ที่เป็น "การเขียนข้อมูล" — ต้อง Retry + ป้องกันกดซ้ำ
