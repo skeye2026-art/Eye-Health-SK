@@ -1,895 +1,164 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>เด็กไทยสายตาดี</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<style>
-:root {
-  --primary:#1E3A5F; --primary-light:#264d7e; --accent:#3B82F6; --accent-d:#1d4ed8;
-  --green:#16A34A; --green-bg:#dcfce7; --green-t:#14532d; --yellow:#ca8a04; --yellow-bg:#fef9c3; --yellow-t:#713f12;
-  --orange:#ea580c; --orange-bg:#ffedd5; --orange-t:#7c2d12; --red:#dc2626; --red-bg:#fee2e2; --red-t:#7f1d1d;
-  --purple:#7c3aed; --teal:#0d9488; --blue:#2563eb; --bg:#eef2ff; --card:#ffffff; --border:#e2e8f0;
-  --text:#0f172a; --muted:#64748b; --muted2:#94a3b8;
-  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
-  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);
-  --r:8px; --rl:12px;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:'Sarabun',sans-serif;font-size:14px;color:var(--text);background:var(--bg);overflow:hidden}
-button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inherit}
-::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px} ::-webkit-scrollbar-thumb:hover{background:#94a3b8}
-
-#app{display:flex;flex-direction:column;height:100vh}
-.hdr{background:var(--primary);padding:7px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;position:relative;z-index:10}
-.hdr::after{content:'';position:absolute;bottom:-3px;left:0;right:0;height:3px;background:linear-gradient(90deg,#3B82F6,#7c3aed,#0d9488,#16A34A)}
-.hdr-logo{width:38px;height:38px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;overflow:hidden;position:relative;}
-.hdr-logo img{width:100%;height:100%;object-fit:cover;border-radius:8px}
-.hdr-text{flex:1;min-width:0} .sys-name{color:#e8f0fe;font-size:15px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.org-name{color:#93bbf9;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0} .date-txt{color:#93bbf9;font-size:11px}
-.btn-hdr{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;transition:.15s}
-.btn-hdr-login{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#e8f0fe} .btn-hdr-login:hover{background:rgba(255,255,255,.22)}
-.btn-hdr-manual{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#e8f0fe;} .btn-hdr-manual:hover{background:rgba(255,255,255,.22)}
-.btn-hdr-refresh{background:#10b981; border:1px solid #059669; color:#fff;} .btn-hdr-refresh:hover{background:#059669;}
-.chip-user{background:#3B82F6;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600}
-.btn-hdr-out{background:rgba(220,38,38,.28);border:1px solid rgba(220,38,38,.4);color:#fca5a5} .btn-hdr-out:hover{background:rgba(220,38,38,.4)}
-
-.kpi-row{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;padding:7px 10px;background:#dce7ff;border-bottom:1px solid #c7d4f0;flex-shrink:0}
-.kpi{background:var(--card);border-radius:var(--r);padding:7px 5px;text-align:center;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;overflow:hidden;cursor:default;transition:.15s}
-.kpi:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)} .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
-.kpi-t .kpi-v{color:var(--blue)} .kpi-t::before{background:var(--blue)} .kpi-n .kpi-v{color:var(--green)} .kpi-n::before{background:var(--green)}
-.kpi-ab .kpi-v{color:var(--yellow)} .kpi-ab::before{background:var(--yellow)} .kpi-rf .kpi-v{color:var(--orange)} .kpi-rf::before{background:var(--orange)}
-.kpi-gl .kpi-v{color:var(--red)} .kpi-gl::before{background:var(--red)} .kpi-s .kpi-v{color:var(--purple)} .kpi-s::before{background:var(--purple)}
-.kpi-pr .kpi-v,.kpi-po .kpi-v{color:var(--teal)} .kpi-pr::before,.kpi-po::before{background:var(--teal)}
-.kpi-g .kpi-v{color:var(--green)} .kpi-g::before{background:var(--green)} .kpi-tr .kpi-v{color:var(--primary)} .kpi-tr::before{background:var(--primary)}
-.kpi-lbl{font-size:9.5px;font-weight:600;color:var(--muted);white-space:nowrap} .kpi-v{font-size:21px;font-weight:700;line-height:1.15;margin:1px 0} .kpi-sub{font-size:9.5px;color:var(--muted2)}
-
-.link-grid { display:flex; flex-wrap:wrap; gap:10px; padding:10px; background:#fff; border-radius:12px; margin:0 8px 10px; border:1px solid var(--border); }
-.custom-btn { display:flex; align-items:center; gap:8px; padding:8px 15px; background:#f8faff; border:1px solid #dbeafe; border-radius:8px; text-decoration:none; color:var(--primary); font-weight:600; font-size:13px; transition:0.2s; position:relative; }
-.custom-btn:hover { background:#eef2ff; transform:translateY(-2px); box-shadow:var(--shadow); } .custom-btn img { width:22px; height:22px; object-fit:contain; }
-.link-mgr-item { display:grid; grid-template-columns:50px 1fr 1fr 100px; gap:10px; align-items:center; padding:10px; border-bottom:1px solid #eee; } .link-mgr-item img { width:40px; height:40px; border-radius:4px; border:1px solid #ddd; object-fit:contain; }
-
-.main{display:flex;flex:1;overflow:hidden}
-.sidebar{width:148px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);padding:10px 8px;overflow-y:auto;display:flex;flex-direction:column}
-.sb-title{font-size:11.5px;font-weight:700;color:var(--accent);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:4px}
-.fl{font-size:10px;color:var(--muted);font-weight:600;margin:5px 0 2px} .fsel{width:100%;border:1px solid var(--border);border-radius:5px;padding:4px 5px;font-size:11px;background:#f8faff;color:var(--text);outline:none;transition:.15s} .fsel:focus{border-color:var(--accent);background:#fff}
-.btn-clr{width:100%;margin-top:10px;padding:5px;background:none;color:var(--muted);border:1px solid var(--border);border-radius:5px;font-size:11px;transition:.15s} .btn-clr:hover{background:#f1f5f9}
-.add-sec{margin-top:10px;padding-top:8px;border-top:1px solid var(--border)} .add-sec .sb-title{color:var(--purple)}
-.btn-form{width:100%;margin-top:4px;padding:6px 6px;border:none;border-radius:6px;font-size:11px;font-weight:600;color:#fff;text-align:left;display:flex;align-items:center;gap:5px;transition:.12s;opacity:.92;cursor:pointer;} .btn-form:hover{opacity:1;transform:translateX(1px)}
-.bf-scr{background:var(--accent)} .bf-beh{background:#f59e0b} .bf-sat{background:var(--purple)} .bf-pre{background:var(--teal)} .bf-post{background:#0891b2} .bf-fup{background:#ec4899} .bf-loc{background:#ea580c; margin-top:10px;} .bf-conv{background:#475569; margin-top:4px;}
-
-.content{flex:1;display:flex;flex-direction:column;overflow:hidden;overflow-y:auto;}
-.sum-tbl-wrap{margin:7px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow);display:block;max-height:220px;overflow-y:auto; flex-shrink: 0;}
-.sum-tbl{width:100%;border-collapse:collapse;font-size:11px;} .sum-tbl th{background:#eef2ff;padding:6px 8px;text-align:center;font-weight:700;color:var(--primary);border-bottom:1px solid #c7d4f0;position:sticky;top:0;z-index:2;} .sum-tbl td{padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center;} .sum-tbl td:first-child{text-align:left;} .sum-tbl tr:hover td{background:#f5f8ff;} .tr-active td{background:#eef2ff!important;font-weight:700;color:var(--primary);}
-
-.charts-row{display:grid;gap:7px;padding:7px 8px;border-bottom:1px solid var(--border);flex-shrink:0}
-.chart-card{background:var(--card);border-radius:var(--rl);padding:9px 10px;border:1px solid var(--border);box-shadow:var(--shadow); flex-shrink:0; display:flex; flex-direction:column;}
-.chart-ttl{font-size:10.5px;font-weight:700;color:var(--primary);margin-bottom:5px;display:flex;align-items:center;}
-.chart-wrap{position:relative;flex:1;}
-#mainMap{height:250px;width:100%;border-radius:6px;z-index:1;}
-
-.tbl-sec{flex:1;padding:7px 8px;display:flex;flex-direction:column;overflow:hidden;min-height:200px; flex-shrink:0;}
-.tbl-ctrl{display:flex;align-items:center;gap:5px;margin-bottom:6px;flex-shrink:0} .srch{flex:1;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;outline:none;background:#f8faff;transition:.15s} .srch:focus{border-color:var(--accent);background:#fff}
-.btn-exp{padding:5px 10px;border:1px solid var(--border);border-radius:5px;background:var(--card);font-size:11px;font-weight:600;color:var(--primary);transition:.15s;cursor:pointer;} .btn-exp:hover{background:#f0f4ff;border-color:var(--accent)} .btn-print-doc{background:#10b981; color:#fff; border-color:#059669;} .btn-print-doc:hover{background:#059669; border-color:#047857;}
-.tbl-wrap{flex:1;overflow:auto;border:1px solid var(--border);border-radius:var(--r)}
-.dtbl{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap} .dtbl th{background:#eef2ff;padding:5px 8px;text-align:left;font-weight:700;color:var(--primary);border-bottom:1px solid #c7d4f0;position:sticky;top:0;z-index:2;font-size:10.5px} .dtbl td{padding:4px 8px;border-bottom:1px solid #f1f5f9;color:#334155} .dtbl tr:hover td{background:#f5f8ff}
-.badge{padding:1px 7px;border-radius:4px;font-size:9.5px;font-weight:700;display:inline-block;cursor:pointer;transition:.15s} .badge:hover{opacity:0.8;transform:scale(1.05)}
-.bn{background:var(--green-bg);color:var(--green-t)} .bab{background:var(--yellow-bg);color:var(--yellow-t)} .brf{background:var(--orange-bg);color:var(--orange-t)} .bgl{background:var(--red-bg);color:var(--red-t)}
-.btn-act{padding:1px 6px;border:1px solid var(--border);border-radius:3px;background:#fff;font-size:10px;cursor:pointer;transition:.1s} .btn-act:hover{background:#f1f5f9}
-.tbl-info{font-size:10px;color:var(--muted2);margin-top:3px;flex-shrink:0}
-
-.ov{position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s} .ov.open{opacity:1;pointer-events:all}
-.panel{position:fixed;top:0;right:-520px;width:510px;bottom:0;background:#fff;z-index:201;box-shadow:-6px 0 32px rgba(0,0,0,.14);display:flex;flex-direction:column;transition:right .28s cubic-bezier(.4,0,.2,1)} .panel.open{right:0}
-.ph{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0} .ph-t{color:#fff;font-size:14px;font-weight:700} .ph-x{background:none;border:none;color:rgba(255,255,255,.7);font-size:22px;line-height:1;padding:0 4px;transition:.15s} .ph-x:hover{color:#fff;transform:scale(1.1)}
-.pb{flex:1;overflow-y:auto;padding:14px 16px} .pf{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:7px;flex-shrink:0}
-.fs{margin-bottom:14px} .fs-t{font-size:11px;font-weight:700;color:var(--accent);padding:5px 0 6px;margin-bottom:8px;border-bottom:1px solid #dbeafe;letter-spacing:.2px}
-.fr{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px} .fr1{grid-template-columns:1fr} .fr3{grid-template-columns:1fr 1fr 1fr} .fr4{grid-template-columns:1fr 1fr 1fr 1fr}
-.fg{display:flex;flex-direction:column;gap:2px} .fg label{font-size:10.5px;font-weight:600;color:var(--muted)} .fg input,.fg select,.fg textarea{border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:12px;outline:none;width:100%;transition:.15s;background:#fafcff} .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 2px rgba(59,130,246,.1)} .fg input[readonly]{background:#f1f5f9;color:var(--muted)} .fg input[type="file"]{padding:2px;background:#fff;font-size:11px;} .fg textarea{resize:vertical;min-height:48px}
-.cb-group{display:flex;flex-wrap:wrap;gap:7px} .cbi{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;user-select:none} .cbi input{width:13px;height:13px;accent-color:var(--accent)}
-.rg{display:flex;gap:6px;flex-wrap:wrap} .ri{display:flex;align-items:center;gap:3px;font-size:11.5px;cursor:pointer} .ri input{accent-color:var(--accent)}
-.va-tbl{width:100%;border-collapse:collapse;font-size:11px} .va-tbl th{background:#eef2ff;padding:4px 7px;text-align:center;font-weight:600;color:var(--primary);border:1px solid #c7d4f0} .va-tbl td{padding:3px 5px;border:1px solid var(--border)} .va-tbl td:first-child{font-size:11px;font-weight:500;color:var(--muted)} .va-tbl select{width:100%;font-size:11px;border:1px solid var(--border);border-radius:4px;padding:3px 4px;background:#fafcff}
-.ex-tbl{width:100%;border-collapse:collapse;font-size:11px} .ex-tbl th{background:#eef2ff;padding:4px 7px;text-align:center;font-weight:600;color:var(--primary);border:1px solid #c7d4f0;width:70px} .ex-tbl th:first-child{text-align:left;width:auto} .ex-tbl td{padding:4px 7px;border:1px solid var(--border);text-align:center} .ex-tbl td:first-child{text-align:left} .ex-tbl input[type=radio]{accent-color:var(--accent);width:14px;height:14px}
-.sat-tbl{width:100%;border-collapse:collapse;font-size:11px} .sat-tbl th{background:#eef2ff;padding:4px 6px;text-align:center;font-weight:600;color:var(--primary);border:1px solid #c7d4f0;width:36px} .sat-tbl th:first-child{text-align:left;width:auto} .sat-tbl td{padding:3px 5px;border-bottom:1px solid #f1f5f9;font-size:11px} .sat-tbl td:not(:first-child){text-align:center} .sat-tbl tr:hover td{background:#f8faff} .sat-tbl input[type=radio]{accent-color:var(--purple);width:13px;height:13px}
-.beh-tbl{width:100%;border-collapse:collapse;font-size:11px;text-align:center;margin-bottom:10px} .beh-tbl th{background:#fef3c7;padding:4px 6px;font-weight:600;color:#92400e;border:1px solid #fde68a} .beh-tbl td{padding:3px 5px;border:1px solid #fde68a} .beh-tbl th:first-child,.beh-tbl td:first-child{text-align:left} .beh-tbl input[type=radio]{accent-color:#d97706;width:13px;height:13px}
-
-.q-block{margin-bottom:10px;padding:8px 10px;background:#f8faff;border-radius:6px;border:1px solid var(--border)} .q-num{font-size:11.5px;font-weight:700;color:var(--primary);margin-bottom:5px} .q-choices{display:flex;flex-direction:column;gap:3px} .q-choices label{display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;padding:2px 0} .q-choices label:hover{color:var(--accent)} .q-choices input{accent-color:var(--teal);width:13px;height:13px;flex-shrink:0}
-.score-card{background:linear-gradient(135deg,#dbeafe,#ede9fe);border-radius:10px;padding:16px;text-align:center;margin-top:10px} .score-big{font-size:42px;font-weight:800;color:var(--accent);line-height:1} .score-label{font-size:13px;color:var(--muted);margin-top:4px}
-.btn-p{padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-weight:700;font-size:13px;transition:.15s;display:flex;align-items:center;gap:5px;cursor:pointer;} .btn-p:hover{background:var(--accent-d)} .btn-p:disabled{background:#93bbf9;cursor:not-allowed}
-.btn-sec{padding:8px 14px;background:#f1f5f9;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:12px;transition:.15s;cursor:pointer;} .btn-sec:hover{background:#e2e8f0}
-.btn-print{padding:8px 14px;background:var(--teal);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;transition:.15s;display:flex;align-items:center;gap:4px;cursor:pointer;} .btn-print:hover{background:#0f766e} .btn-geo{padding:5px 10px;background:#0d9488;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;}
-.btn-del2{padding:3px 8px;border:1px solid #fca5a5;border-radius:4px;background:#fff;color:var(--red);font-size:10px;font-weight:600;cursor:pointer;} .btn-del2:hover{background:var(--red-bg)}
-.mov{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s} .mov.open{opacity:1;pointer-events:all} .mbox{background:#fff;border-radius:18px;padding:30px 28px;width:360px;box-shadow:0 25px 60px rgba(0,0,0,.2);position:relative} .m-ico{text-align:center;font-size:44px;margin-bottom:6px} .m-ttl{font-size:20px;font-weight:800;color:var(--primary);text-align:center;margin-bottom:2px} .m-sub{font-size:11.5px;color:var(--muted2);text-align:center;margin-bottom:22px} .lf{margin-bottom:13px} .lf label{font-size:11.5px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px} .lf input{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;outline:none;transition:.15s;background:#f8faff} .lf input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.12)} .btn-lgn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;margin-top:6px;transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px} .btn-lgn:hover{background:var(--accent-d)} .btn-lgn:disabled{background:#93bbf9;cursor:not-allowed} .btn-guest{width:100%;padding:9px;background:none;color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:12px;margin-top:7px;transition:.15s} .btn-guest:hover{background:#f1f5f9} .lerr{color:var(--red);font-size:12px;text-align:center;margin-top:8px;min-height:16px}
-.del-box{background:#fff;border-radius:14px;padding:26px 24px;width:310px;box-shadow:0 20px 50px rgba(0,0,0,.2)} .del-ttl{font-size:17px;font-weight:700;color:var(--red);text-align:center;margin-bottom:12px} .del-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px} .del-warn{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:6px;padding:6px 10px;text-align:center;margin-bottom:12px}
-.toast-wrap{position:fixed;bottom:18px;right:18px;z-index:500;display:flex;flex-direction:column;gap:6px} .toast{padding:10px 14px;border-radius:9px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-md);min-width:200px;max-width:340px;animation:slIn .28s ease;display:flex;align-items:center;gap:7px} .t-ok{background:#dcfce7;color:#14532d;border:1px solid #86efac} .t-err{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5} .t-inf{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd} @keyframes slIn{from{transform:translateX(110%);opacity:0}to{transform:none;opacity:1}} .sp{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0} @keyframes spin{to{transform:rotate(360deg)}}
-
-/* === Image Modal Popup (v6.3) === */
-#imgModal { 
-  position: fixed; inset: 0;
-  background: rgba(15,23,42,0.78); backdrop-filter: blur(4px);
-  z-index: 1000;
-  display: none;
-  align-items: center; justify-content: center;
-  padding: 30px;
-  animation: imgFadeIn 0.25s cubic-bezier(.4,0,.2,1);
-}
-#imgModal.open { display: flex; }
-#imgModal img {
-  max-width: 80vw; max-height: 80vh;
-  border-radius: 12px;
-  box-shadow: 0 25px 60px rgba(0,0,0,0.5);
-  background: #fff;
-  object-fit: contain;
-  animation: imgZoomIn 0.28s cubic-bezier(.4,0,.2,1);
-  cursor: zoom-out;
-}
-#imgModal .close-btn {
-  position: absolute; top: 20px; right: 25px;
-  font-size: 22px; color: #fff;
-  cursor: pointer; line-height: 1;
-  background: rgba(0,0,0,0.45);
-  width: 46px; height: 46px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  transition: 0.18s;
-  border: 2px solid rgba(255,255,255,0.25);
-  user-select: none; font-weight: bold;
-}
-#imgModal .close-btn:hover { 
-  background: var(--red); 
-  border-color: var(--red); 
-  transform: scale(1.08) rotate(90deg); 
-}
-@keyframes imgFadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes imgZoomIn { from { opacity:0; transform: scale(0.85); } to { opacity:1; transform: scale(1); } }
-@media (max-width: 768px) {
-  #imgModal img { max-width: 95vw; max-height: 80vh; }
-  #imgModal .close-btn { top: 12px; right: 14px; width: 40px; height: 40px; font-size: 18px; }
-}
-
-/* การตั้งค่าระบบการ Print หน้ากระดาษ A4 แบบ 100% (v6.2 - ปรับปรุง) */
-#printArea { display: none; } 
-@media print { 
-  body * { visibility: hidden; } 
-  #printArea, #printArea * { visibility: visible; } 
-  #printArea { 
-    display: block !important; 
-    position: absolute; 
-    left: 0; top: 0; width: 100%; 
-    background: #fff; padding:0; margin:0; 
-    font-family: 'Sarabun', 'TH Sarabun PSK', sans-serif;
-  } 
-  @page { size: A4; margin: 12mm 15mm; } 
-  .pb-always { page-break-after: always; break-after: page; }
-  .hdr, .sidebar, .sum-tbl-wrap, .charts-row, .chart-card, .tbl-sec, .ov, .panel, .mov, .btn-exp { display: none !important; } 
-  /* Checkbox styling for print */
-  .p-chk { display:inline-block; width:14px; height:14px; border:1.2px solid #000; text-align:center; line-height:12px; font-size:13pt; margin-right:3px; vertical-align:middle; font-weight:bold; }
-  .print-title { text-align:center; font-weight:bold; font-size:18pt; line-height:1.3; margin-bottom:3px;}
-  .print-subtitle { text-align:center; font-weight:bold; font-size:15pt; line-height:1.3;}
-  .print-desc { text-align:center; font-size:13pt; line-height:1.3; margin-bottom:8px;}
-  .print-section-h { font-weight:bold; font-size:14pt; margin-top:8px; background:#f0f0f0; padding:3px 6px; }
-  .print-logo-wrap { text-align:center; margin-bottom:6px; }
-  .print-logo-wrap img { height:55px; object-fit:contain; }
-}
-@media (max-width: 768px) {
-  .main { flex-direction: column; overflow-y: auto; }
-  .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 250px; flex-shrink: 0; }
-  .kpi-row { grid-template-columns: repeat(3, 1fr); overflow-x: auto; flex-wrap: wrap; }
-  .charts-row { grid-template-columns: 1fr !important; display: flex; flex-direction: column; }
-  .chart-card { width: 100%; min-width: 100% !important; margin: 0 0 10px 0 !important; }
-  .panel { width: 100%; right: -100%; }
-  .panel.open { right: 0; }
-  .mbox, .del-box { width: 95% !important; padding: 20px 15px; }
-  .sys-name { font-size: 13px; }
-  .date-txt, .btn-hdr { font-size: 10px; padding: 4px 8px; }
-}
-
-/* === Behavior Dashboard === */
-.beh-panel { width: 95vw !important; max-width: 1400px !important; right: -100% !important; }
-.beh-panel.open { right: 2.5vw !important; }
-.beh-filter { display:grid; grid-template-columns: repeat(5,1fr); gap:8px; padding:10px; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; margin-bottom:12px; }
-.beh-filter select { padding:6px 8px; border:1px solid #fdba74; border-radius:6px; font-size:12px; background:#fff; }
-.beh-kpi { display:grid; grid-template-columns: repeat(6,1fr); gap:8px; margin-bottom:12px; }
-.beh-k { background:#fff; border:1px solid #fed7aa; border-top:4px solid #f59e0b; border-radius:8px; padding:10px; text-align:center; cursor:pointer; transition:.15s; }
-.beh-k:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
-.beh-k.active { background:#fef3c7; border-top-color:#dc2626; }
-.beh-k-l { font-size:10.5px; font-weight:600; color:#92400e; }
-.beh-k-v { font-size:24px; font-weight:800; color:#d97706; line-height:1.1; margin:3px 0; }
-.beh-k-s { font-size:10px; color:#a16207; }
-.beh-grid { display:grid; gap:10px; }
-.beh-row-2 { grid-template-columns: 1fr 1fr; }
-.beh-row-3 { grid-template-columns: 1fr 1fr 1fr; }
-.beh-row-2-1 { grid-template-columns: 2fr 1fr; }
-.beh-card { background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px; }
-.beh-card-t { font-size:11.5px; font-weight:700; color:#d97706; margin-bottom:8px; padding-bottom:5px; border-bottom:1px solid #fed7aa; display:flex; justify-content:space-between; }
-.beh-tbl { width:100%; border-collapse:collapse; font-size:11px; }
-.beh-tbl th { background:#fff7ed; padding:6px 8px; border:1px solid #fed7aa; font-weight:700; color:#92400e; position:sticky; top:0; }
-.beh-tbl td { padding:5px 8px; border:1px solid #f1f5f9; }
-.beh-risk-l { background:#dcfce7; color:#14532d; padding:1px 7px; border-radius:4px; font-size:10px; font-weight:700; }
-.beh-risk-m { background:#fef9c3; color:#713f12; padding:1px 7px; border-radius:4px; font-size:10px; font-weight:700; }
-.beh-risk-h { background:#fee2e2; color:#7f1d1d; padding:1px 7px; border-radius:4px; font-size:10px; font-weight:700; }
-@media (max-width: 900px) {
-  .beh-kpi { grid-template-columns: repeat(3,1fr); }
-  .beh-row-2, .beh-row-3, .beh-row-2-1 { grid-template-columns: 1fr; }
-}
-
-/* Radio Group styling for part 3 */
-.radio-box-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.radio-box { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; display: flex; align-items: flex-start; gap: 8px; cursor: pointer; transition: 0.15s; background: #fafcff; }
-.radio-box:hover { border-color: var(--accent); background: #f0f4ff; }
-.radio-box input[type="radio"] { margin-top: 3px; accent-color: var(--accent); }
-.radio-box span { font-size: 11.5px; line-height: 1.3; }
-</style>
-</head>
-<body>
-<div id="app">
-<header class="hdr">
-  <div class="hdr-logo" id="logoWrap">👁</div>
-  <div class="hdr-text"><div class="sys-name" id="sysName">โครงการเด็กไทยสายตาดี</div><div class="org-name" id="orgName">องค์การบริหารส่วนจังหวัดสมุทรสาคร</div></div>
-  <div class="hdr-right">
-    <div class="date-txt" id="dateTxt"></div>
-    <button class="btn-hdr btn-hdr-manual" onclick="openPanel('manual')">📖 คู่มือ</button>
-    <button class="btn-hdr btn-hdr-refresh" onclick="hardReload()" title="ล้างแคชและโหลดระบบใหม่ทั้งหมด">🔄 โหลดใหม่ (Clear Cache)</button>
-    <div id="authArea"><button class="btn-hdr btn-hdr-login" onclick="openLogin()">🔐 เข้าสู่ระบบ</button></div>
-  </div>
-</header>
-
-<div id="linkArea" class="link-grid" style="display:none;"></div>
-
-<div class="kpi-row">
-  <div class="kpi kpi-t"><div class="kpi-lbl">📋 ทั้งหมด</div><div class="kpi-v" id="k-total">—</div><div class="kpi-sub">รายคน</div></div>
-  <div class="kpi kpi-n"><div class="kpi-lbl">🟢 ปกติ</div><div class="kpi-v" id="k-normal">—</div><div class="kpi-sub" id="k-npct">—</div></div>
-  <div class="kpi kpi-ab"><div class="kpi-lbl">🟡 ผิดปกติ</div><div class="kpi-v" id="k-abnormal">—</div><div class="kpi-sub" id="k-abpct">—</div></div>
-  <div class="kpi kpi-rf"><div class="kpi-lbl">🟠 ส่งต่อ</div><div class="kpi-v" id="k-referred">—</div><div class="kpi-sub" id="k-rfpct">—</div></div>
-  <div class="kpi kpi-gl"><div class="kpi-lbl">🔴 ตัดแว่น</div><div class="kpi-v" id="k-glasses">—</div><div class="kpi-sub" id="k-glpct">—</div></div>
-  <div class="kpi kpi-s"><div class="kpi-lbl">⭐ พึงพอใจ</div><div class="kpi-v" id="k-sat">—</div><div class="kpi-sub">/5.00</div></div>
-  <div class="kpi kpi-pr"><div class="kpi-lbl">📝 Pre-test</div><div class="kpi-v" id="k-pre">—</div><div class="kpi-sub">/10 คะแนน</div></div>
-  <div class="kpi kpi-po"><div class="kpi-lbl">📝 Post-test</div><div class="kpi-v" id="k-post">—</div><div class="kpi-sub">/10 คะแนน</div></div>
-  <div class="kpi kpi-g"><div class="kpi-lbl">📈 Learning Gain</div><div class="kpi-v" id="k-gain">—</div><div class="kpi-sub">เฉลี่ย</div></div>
-  <div class="kpi kpi-tr"><div class="kpi-lbl">🎓 ผู้เข้าอบรม</div><div class="kpi-v" id="k-trainee">—</div><div class="kpi-sub">รายคน (Pre-test)</div></div>
-</div>
-
-<div class="main">
-  <aside class="sidebar">
-    <div class="sb-title">🔍 กรองข้อมูล</div>
-    <div class="fl">อำเภอ</div><select class="fsel" id="fAmp" onchange="onAmpChange()"><option value="">ทั้งหมด</option></select>
-    <div class="fl">รพ.สต.</div><select class="fsel" id="fHosp" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
-    <div class="fl">โรงเรียน</div><select class="fsel" id="fSch" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
-    <div class="fl">สถานะ</div><select class="fsel" id="fStat" onchange="applyFilters()"><option value="">ทั้งหมด</option><option value="normal">ปกติ</option><option value="abnormal">ผิดปกติ</option><option value="referred">ส่งต่อ</option><option value="glasses">ตัดแว่น</option></select>
-    <div class="fl">เพศ</div><select class="fsel" id="fSex" onchange="applyFilters()"><option value="">ทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
-    <button class="btn-clr" onclick="clearFilters()">✕ ล้างตัวกรอง</button>
-    <div class="add-sec" id="addSec" style="display:none">
-  <div class="sb-title">➕ บันทึกข้อมูล</div>
-  <button class="btn-form bf-scr" id="btnScr" onclick="openPanel('scr')">📋 คัดกรองสายตา</button>
-  <button class="btn-form bf-beh" id="btnBeh" onclick="openPanel('beh')">📱 พฤติกรรมหน้าจอ</button>
-  <button class="btn-form bf-fup" id="btnFup" onclick="openPanel('fup')">👓 ติดตามผลแว่นตา</button>
-  <button class="btn-form" id="btnBehDash" style="background:#d97706; margin-top:4px;" onclick="openBehDashboard()">📊 Dashboard พฤติกรรมฯ</button>
-  <button class="btn-form" id="btnFupDash" style="background:#ec4899; margin-top:4px;" onclick="openFupDashboard()">📊 Dashboard ติดตามแว่นตา</button>
-  <button class="btn-form bf-sat" id="btnSat" onclick="openPanel('sat')">😊 ความพึงพอใจ</button>
-  <button class="btn-form bf-pre" id="btnPre" onclick="openPanel('pre')">📝 Pre-test</button>
-  <button class="btn-form bf-post" id="btnPost" onclick="openPanel('post')">📝 Post-test</button>
-  <button class="btn-form bf-loc" id="btnLoc" onclick="openEditHosp('')" style="display:none">📍พิกัด/ภาพผลงาน</button>
-  <button class="btn-form bf-conv" id="btnConv" onclick="openPanel('conv')" style="display:none">🛠 แปลง & นำเข้าไฟล์</button>
-  <button class="btn-form bf-loc" style="background:#dc2626; margin-top:10px;" id="btnVidMgr" onclick="openVideoMgrPanel()" style="display:none">📺จัดการลิสต์วิดีโอ</button>
-  <button class="btn-form bf-loc" style="background:#6366f1; margin-top:4px;" id="btnLinkMgr" onclick="openLinkMgr()" style="display:none">🔗 จัดการปุ่มลิ้งก์</button>
-  <button class="btn-form bf-loc" style="background:#059669; margin-top:4px;" id="btnLineMgr" onclick="openLineMgr()" style="display:none">💬 ตั้งค่า LINE API</button>
-</div>
-
-<div class="add-sec" id="addSecGuest" style="display:none">
-  <div class="sb-title">➕ ทำแบบประเมิน / ดูข้อมูล</div>
-  <button class="btn-form bf-beh" onclick="openPanel('beh')">📱 พฤติกรรมหน้าจอ</button>
-  <button class="btn-form bf-fup" onclick="openPanel('fup')">👓 ติดตามผลแว่นตา</button>
-  <button class="btn-form" style="background:#d97706; margin-top:4px;" onclick="openBehDashboard()">📊 Dashboard พฤติกรรมฯ</button>
-  <button class="btn-form" style="background:#ec4899; margin-top:4px;" onclick="openFupDashboard()">📊 Dashboard ติดตามแว่นตา</button>
-  <button class="btn-form bf-sat" onclick="openPanel('sat')" style="margin-top:10px;">😊 ความพึงพอใจ</button>
-  <button class="btn-form bf-pre" onclick="openPanel('pre')">📝 Pre-test</button>
-  <button class="btn-form bf-post" onclick="openPanel('post')">📝 Post-test</button>
-</div>
-  </aside>
-
-  <div class="content">
-    <div class="sum-tbl-wrap">
-      <table class="sum-tbl">
-        <thead>
-          <tr>
-            <th style="text-align:left;">ตารางข้อมูลสรุป รพ.สต.</th>
-            <th>ปกติ</th><th>ผิดปกติ</th><th>ส่งต่อ</th><th>ตัดแว่น</th><th>รวม</th>
-            <th>พึงพอใจ</th><th>Pre</th><th>Post</th><th>Gain</th>
-            <th style="text-align:center;">ภาพผลงาน</th><th style="text-align:center; width:50px;" id="thManageHosp">จัดการ</th>
-          </tr>
-        </thead>
-        <tbody id="hospSumBody"></tbody>
-      </table>
-    </div>
-
-    <div class="charts-row" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 7px; padding-bottom: 0; border: none;">
-      <div class="chart-card" id="mapCard" style="margin: 0; display: flex; flex-direction: column; height: 420px; min-width: 0;">
-          <div class="chart-ttl">🗺️ แผนที่แสดงพิกัด รพ.สต. (สีเขียว) และโรงเรียน (สีน้ำเงิน)</div>
-          <div id="mainMap" style="flex: 1; width: 100%; border-radius: 6px; z-index: 1;"></div>
-      </div>
-      <div class="chart-card" id="videoCard" style="margin: 0; display: flex; flex-direction: column; height: 420px; min-width: 0;">
-          <div class="chart-ttl">📺 วิดีโอสื่อให้ความรู้โครงการ <span style="font-weight:400;color:var(--muted2);font-size:9.5px;margin-left:auto;">— เลือกวิดีโอด้านล่างเพื่อเล่น</span></div>
-          <div class="chart-wrap" id="videoWrap" style="flex: 1; display: flex; align-items: center; justify-content: center; background: #f8faff; border-radius: 6px; overflow: hidden; min-height: 0;">
-              <span style="color:var(--muted2)">กำลังโหลดวิดีโอ...</span>
-          </div>
-          <div id="videoPlaylist" style="display: flex; flex-direction: column; gap: 8px; padding-right: 8px; padding-top: 12px; height: 130px; overflow-y: auto; overflow-x: hidden; border-top: 1px solid var(--border); margin-top: 10px;">
-              </div>
-      </div>
-    </div>
-
-    <div class="charts-row" style="grid-template-columns: 1.8fr 1fr 1fr;">
-      <div class="chart-card">
-        <div class="chart-ttl" style="justify-content:space-between;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px;">
-          <select id="chartType" onchange="renderBarChart()" style="border:none;font-weight:700;color:var(--primary);outline:none;cursor:pointer;background:transparent;font-family:inherit;font-size:11px;"><option value="amphoe">📊 กราฟสรุปรายอำเภอ</option><option value="total">📊 กราฟผลรวมจังหวัด</option></select>
-          <span style="font-weight:400;color:var(--muted2);font-size:9.5px;">— กดแท่งกราฟเพื่อกรอง</span>
-        </div>
-        <div class="chart-wrap" style="height:126px;"><canvas id="barChart"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-ttl">🥧 สัดส่วนผลคัดกรอง <span style="font-weight:400;color:var(--muted2);font-size:9.5px;margin-left:auto;">— กดกรองได้</span></div>
-        <div class="chart-wrap" style="height:126px;"><canvas id="pieChart"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-ttl">📊 ความพึงพอใจ & ผลทดสอบ <span style="font-weight:400;color:var(--muted2);font-size:9.5px;margin-left:auto;">— กดคืนค่า</span></div>
-        <div class="chart-wrap" style="height:126px;"><canvas id="lineChart"></canvas></div>
-      </div>
-    </div>
-
-    <div class="charts-row" style="grid-template-columns: 2.2fr 1fr; padding-top:0;">
-        <div class="chart-card" style="display:flex; flex-direction:column;">
-            <div class="chart-ttl" style="justify-content:space-between;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px;">
-              <select id="satBreakdownType" onchange="renderSatBreakdownChart(); renderSatTypePieChart();" style="border:none;font-weight:700;color:var(--purple);outline:none;cursor:pointer;background:transparent;font-family:inherit;font-size:11px;">
-                <option value="amphoe">📊 สรุประดับความพึงพอใจ: แยกรายอำเภอ</option>
-                <option value="hosp">📊 สรุประดับความพึงพอใจ: แยกราย รพ.สต.</option>
-                <option value="school">📊 สรุประดับความพึงพอใจ: แยกรายโรงเรียน</option>
-                <option value="type">📊 สรุประดับความพึงพอใจ: แยกประเภทผู้ตอบ</option>
-              </select>
-              <span style="font-weight:400;color:var(--muted2);font-size:9.5px;">— ระดับคะแนน 5=มากที่สุด, 4=มาก, 3=ปานกลาง, 2=น้อย, 1=น้อยที่สุด</span>
-            </div>
-            <div class="chart-wrap" style="flex:1; overflow-x: auto;">
-                <div style="min-width: 600px; height: 180px;"><canvas id="satBreakdownChart"></canvas></div>
-            </div>
-        </div>
-        <div class="chart-card" style="display:flex; flex-direction:column;">
-            <div class="chart-ttl" style="border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px;">
-                <span style="color:var(--purple);">🥧 สัดส่วนผู้ประเมิน</span> <span style="font-weight:400;color:var(--muted2);font-size:9.5px;margin-left:auto;">— แยกตามประเภท</span>
-            </div>
-            <div class="chart-wrap" style="flex:1; height: 180px;"><canvas id="satTypePieChart"></canvas></div>
-        </div>
-    </div>
-
-    <div class="chart-card" style="margin: 0 8px 7px 8px;">
-        <div class="chart-ttl">🏥 กราฟสรุปผลราย รพ.สต. <span style="font-weight:400;color:var(--muted2);font-size:9.5px;margin-left:auto;">— กดแท่งกราฟเพื่อกรอง</span></div>
-        <div class="chart-wrap" style="height: 280px; overflow-x: auto; overflow-y: hidden;">
-            <div id="hospChartContainer" style="height: 100%; width: 100%;"><canvas id="hospChart"></canvas></div>
-        </div>
-    </div>
-    
-    <div class="chart-card" style="margin: 0 8px 7px 8px;">
-        <div class="chart-ttl">
-            🌡️ Heatmap ผลการคัดกรองราย รพ.สต.
-            <span style="font-weight:400;color:var(--muted2);font-size:9.5px;margin-left:auto;">
-                — ความเข้มสีแสดงสัดส่วน (%) ของแต่ละสถานะ
-            </span>
-        </div>
-        <div id="heatmapWrap" style="overflow-x:auto;max-height:320px;overflow-y:auto;"></div>
-    </div>
-
-    <div class="chart-card" style="margin: 0 8px 7px 8px;">
-        <div class="chart-ttl">🏫 กราฟสรุปผลรายโรงเรียน <span style="font-weight:400;color:var(--muted2);font-size:9.5px;margin-left:auto;">— กดแท่งกราฟเพื่อกรอง / กดซ้ำคืนค่าเดิม</span></div>
-        <div class="chart-wrap" style="height: 280px; overflow-x: auto; overflow-y: hidden;">
-            <div id="schoolChartContainer" style="height: 100%; width: 100%;"><canvas id="schoolChart"></canvas></div>
-        </div>
-    </div>
-    <div class="charts-row" style="grid-template-columns: repeat(4, 1fr);" id="extraDashCharts">
-  <div class="chart-card">
-    <div class="chart-ttl">👁️ ระดับความรุนแรง (Severity)</div>
-    <div class="chart-wrap" style="height:200px;"><canvas id="diagSeverityDashChart"></canvas></div>
-  </div>
-      <div class="chart-card">
-        <div class="chart-ttl">💳 สัดส่วนสิทธิการรักษา <span style="font-weight:400;color:var(--muted2);font-size:9.5px;margin-left:auto;">— กดเพื่อดูรายละเอียด</span></div>
-        <div class="chart-wrap" style="height:200px;"><canvas id="treatDashChart"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-ttl">📱 ความเสี่ยงพฤติกรรมหน้าจอ</div>
-        <div class="chart-wrap" style="height:200px;"><canvas id="behRiskDashChart"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-ttl">👓 การติดตามแว่นตา (ความถี่การใส่)</div>
-        <div class="chart-wrap" style="height:200px;"><canvas id="fupStatusDashChart"></canvas></div>
-      </div>
-    </div>
-      <div class="chart-card">
-        <div class="chart-ttl">🌏 สัดส่วนสัญชาติ</div>
-        <div class="chart-wrap" style="height:200px;"><canvas id="natDashChart"></canvas></div>
-    </div>
-
-    <div class="tbl-sec" id="indvTableSec" style="display:none">
-      <div class="tbl-ctrl"><input class="srch" id="srchBox" placeholder="🔍 ค้นหาชื่อ / เลขบัตร / รพ.สต. / โรงเรียน ..." oninput="applyFilters()"><button class="btn-exp btn-print-doc" onclick="openPrintModal()">🖨 พิมพ์แบบฟอร์ม</button><button class="btn-exp" onclick="doExportCSV()">📥 Export CSV</button></div>
-      <div class="tbl-wrap">
-        <table class="dtbl" id="dtbl">
-          <thead><tr>
-             <th style="width:30px; text-align:center;"><input type="checkbox" id="chkAll" onchange="toggleAllChk(this)"></th>
-             <th>#</th>
-             <th id="th-cid" style="display:none;">เลขบัตร ปชช.</th>
-             <th>ชื่อ-สกุล</th>
-             <th>ชั้น</th>
-             <th>โรงเรียน</th>
-             <th>รพ.สต.</th>
-             <th>สิทธิรักษา</th>
-             <th style="background:#e0f2fe; color:#0369a1;">VAขวา(ตาเปล่า)</th>
-             <th style="background:#e0f2fe; color:#0369a1;">VAซ้าย(ตาเปล่า)</th>
-             <th style="background:#e0f2fe; color:#0369a1;">VAสองตา(ตาเปล่า)</th>
-             <th style="background:#e0f2fe; color:#0369a1;">VAขวา(ใส่แว่น)</th>
-             <th style="background:#e0f2fe; color:#0369a1;">VAซ้าย(ใส่แว่น)</th>
-             <th style="background:#e0f2fe; color:#0369a1;">VAสองตา(ใส่แว่น)</th>
-             <th style="background:#ffedd5; color:#c2410c;">PHขวา</th>
-             <th style="background:#ffedd5; color:#c2410c;">PHซ้าย</th>
-             <th>วินิจฉัย</th>
-             <th>สถานะ</th>
-             <th>พฤติกรรมฯ</th>
-             <th>ติดตามแว่น</th>
-             <th>วันตรวจ</th>
-             <th>พึงพอใจ</th>
-             <th>Pre</th>
-             <th>Post</th>
-             <th>Gain</th>
-             <th style="text-align:center;">⚙</th>
-          </tr></thead>
-          <tbody id="tBody"><tr><td colspan="26" style="text-align:center;padding:24px;color:var(--muted2)">⏳ กำลังโหลดข้อมูล...</td></tr></tbody>
-        </table>
-      </div><div class="tbl-info" id="tInfo"></div>
-    </div>
-    <div id="guestMsg" style="text-align:center;padding:30px;color:var(--muted);display:none;"><p>🔒 กรุณาเข้าสู่ระบบ เพื่อดูรายละเอียดข้อมูลรายบุคคลและการแก้ไข</p></div>
-    
-    <div style="text-align: center; padding: 20px 10px; font-size: 11.5px; color: var(--muted2); font-weight: 500; flex-shrink: 0; letter-spacing: 0.3px;">
-        developer by NR_SH
-    </div>
-
-  </div>
-</div>
-<div class="ov" id="ov-fullview" onclick="closePanel('fullview')"></div>
-<div class="panel" id="panel-fullview">
+<div class="ov" id="ov-scr" onclick="closePanel('scr')"></div>
+<div class="panel" id="panel-scr">
   <div class="ph" style="background:var(--primary)">
-    <span class="ph-t">🔍 ข้อมูลการคัดกรองสายตาฉบับเต็ม</span>
-    <button class="ph-x" onclick="closePanel('fullview')">✕</button>
+    <span class="ph-t" id="scrPanelTitle">📋 แบบตรวจ/ประเมินสายตา — Vision Screening</span>
+    <button class="ph-x" onclick="closePanel('scr')">✕</button>
   </div>
-  <div class="pb" id="fullviewContent" style="font-size:12.5px; line-height:1.6; color:#1e293b; overflow-x:hidden; word-break:break-word;">
-    </div>
-  <div class="pf">
-    <button class="btn-sec" style="width:100%; text-align:center;" onclick="closePanel('fullview')">ปิดหน้าต่าง</button>
-  </div>
-</div>
-
-<div id="printArea"></div>
-<div id="imgModal" onclick="closeImg()"><span class="close-btn" onclick="event.stopPropagation(); closeImg()">✕</span><img id="imgFull" src="" onclick="event.stopPropagation()"></div>
-
-<div class="mov" id="printMov"><div class="mbox" style="width:450px; padding:25px;"><div class="m-ttl">🖨 พิมพ์แบบฟอร์ม / ส่งออก</div><div class="m-sub">เลือกข้อมูลจากตาราง แล้วเลือกประเภทแบบฟอร์ม</div><select id="printDocType" style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid var(--border); font-size:14px; outline:none; background:#f8faff; font-family:inherit;">
-  <option value="scr">1. แบบตรวจ/ประเมินสายตา (Screening)</option>
-  <option value="beh">2. แบบสอบถามพฤติกรรมการใช้หน้าจออิเล็กทรอนิกส์</option>
-  <option value="sat">3. แบบประเมินความพึงพอใจ</option>
-  <option value="pre">4. แบบทดสอบก่อนอบรม (Pre-Test)</option>
-  <option value="post">5. แบบทดสอบหลังอบรม (Post-Test)</option>
-  <option value="fup">6. แบบติดตามผลการใช้แว่นตา (Follow-up)</option>
-</select><div style="display:flex; gap:10px; margin-bottom:10px;"><button class="btn-p" style="flex:1; justify-content:center; background:var(--teal);" onclick="doPrintDocs('pdf')">📄 ปริ้นเป็น PDF</button><button class="btn-p" style="flex:1; justify-content:center; background:#2563eb;" onclick="doPrintDocs('word')">📝 ส่งออก Word</button></div><button class="btn-guest" style="width:100%;" onclick="closePrintModal()">ยกเลิก</button></div></div>
-
-<div class="mov" id="flowMov">
-  <div class="mbox" style="width:400px; padding:25px; border-top: 5px solid var(--accent);">
-    <div class="m-ttl" style="color:var(--accent); font-size:22px; text-align:left; margin-bottom:10px;" id="flowTitle">แจ้งเตือนลำดับถัดไป</div>
-    <div class="m-sub" id="flowMsg" style="font-size:14px; line-height:1.6; color:#334155; text-align:left; margin-bottom:20px; padding:10px; background:#f8faff; border-radius:8px; border:1px solid #dbeafe;"></div>
-    <div style="display:flex;gap:10px;">
-      <button class="btn-p" style="flex:1;justify-content:center; font-size:14px;" id="btnFlowNext" onclick="closeFlow()">เริ่มทำลำดับถัดไป</button>
-      <button class="btn-sec" style="flex:0.5; font-size:14px;" onclick="closeFlow()">ปิด</button>
-    </div>
-  </div>
-</div>
-
-<div class="ov" id="ov-fup" onclick="closePanel('fup')"></div>
-<div class="panel" id="panel-fup">
-  <div class="ph" style="background:#ec4899"><span class="ph-t">👓 แบบติดตามผลการใช้แว่นตา</span><button class="ph-x" onclick="closePanel('fup')">✕</button></div>
-  <div class="pb">
+  
+  <div class="pb" id="scrBody">
+    
     <div class="fs">
-      <div class="fs-t" style="color:#be185d;border-color:#fbcfe8;">ส่วนที่ 1 : ข้อมูลทั่วไป</div>
-      <p style="font-size:11px; color:var(--muted); margin-bottom:8px; padding:6px 10px; background:#fdf2f8; border-radius:6px;">⚠️ <b>เงื่อนไขสิทธิ์:</b> ผู้รับการตรวจต้องผ่าน Post-test + วินิจฉัย <b>ตัดแว่น</b> หรือ <b>ส่งต่อ</b></p>
+      <div class="fs-t">ส่วนที่ 1 — ข้อมูลผู้รับการตรวจ</div>
+      
       <div class="fr">
-        <div class="fg"><label>เลขบัตรประชาชน 13 หลัก *</label><input type="text" id="fup-cid" maxlength="13" placeholder="กรอกเพื่อตรวจสอบสิทธิ์" oninput="checkFupEligible(this.value)"></div>
-        <div class="fg"><label>ชื่อ-สกุล (พบอัตโนมัติ)</label><input type="text" id="fup-name" readonly style="background:#f1f5f9"></div>
+        <div class="fg"><label>เลขบัตรประชาชน 13 หลัก *</label><input type="text" id="s-cid" maxlength="13" placeholder="13 หลัก" oninput="onCidInput(this.value)"></div>
+        <div class="fg"><label>คำนำหน้า</label><select id="s-pname" onchange="autoSelectSex(this.value)"><option>เด็กชาย</option><option>เด็กหญิง</option><option>นาย</option><option>นางสาว</option><option>นาง</option></select></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>ชื่อจริง *</label><input type="text" id="s-fname" placeholder="ไม่ต้องมีคำนำหน้า"></div>
+        <div class="fg"><label>นามสกุล *</label><input type="text" id="s-lname" placeholder="นามสกุล"></div>
       </div>
       <div class="fr fr3">
-        <div class="fg"><label>อายุ (ปี)</label><input type="text" id="fup-age" readonly style="background:#f1f5f9"></div>
-        <div class="fg"><label>ระดับชั้น</label><input type="text" id="fup-cls" readonly style="background:#f1f5f9"></div>
-        <div class="fg"><label>โรงเรียน</label><input type="text" id="fup-sch" readonly style="background:#f1f5f9"></div>
+        <div class="fg"><label>วันเกิด</label><input type="text" class="datepicker" id="s-bd" placeholder="วว/ดด/ปปปป" onchange="calcAge()"></div>
+        <div class="fg"><label>อายุ (ปี)</label><input type="number" id="s-age" readonly></div>
+        <div class="fg"><label>เพศ</label><select id="s-sex"><option value="1">ชาย</option><option value="2">หญิง</option></select></div>
       </div>
       <div class="fr">
-        <div class="fg"><label>เบอร์โทรศัพท์ (ถ้ามี)</label><input type="text" id="fup-tel"></div>
-        <div class="fg"><label>ระยะเวลาที่ได้รับแว่น</label><select id="fup-dur"><option value="น้อยกว่า 1 เดือน">น้อยกว่า 1 เดือน</option><option value="2 เดือน">2 เดือน</option><option value="มากกว่า 3 เดือน">มากกว่า 3 เดือน</option></select></div>
-      </div>
-      <div id="fup-err" style="color:var(--red);font-size:11.5px;margin-top:6px;font-weight:600;"></div>
-    </div>
-    
-    <div class="fs" id="fup-form-sec" style="opacity:0.5;pointer-events:none;">
-      <div class="fs-t" style="color:#be185d;border-color:#fbcfe8;">ส่วนที่ 2 : ความถี่และพฤติกรรมการใช้แว่นตา</div>
-      <p style="font-size:10.5px; color:var(--muted); margin-bottom:5px;">วัตถุประสงค์: เพื่อวัดอัตราการครอบคลุมการใช้งานจริง</p>
-      <table class="sat-tbl" style="margin-bottom:10px;">
-        <thead><tr><th>ข้อคำถาม</th><th>ทุกครั้ง/<br>เป็นประจำ</th><th>บ่อยครั้ง</th><th>บางครั้ง</th><th>ไม่เคยเลย</th></tr></thead>
-        <tbody>
-          <tr><td style="text-align:left;">1. ขณะดูกระดานในห้องเรียน</td><td><input type="radio" name="f1" value="ทุกครั้ง" checked></td><td><input type="radio" name="f1" value="บ่อยครั้ง"></td><td><input type="radio" name="f1" value="บางครั้ง"></td><td><input type="radio" name="f1" value="ไม่เคยเลย"></td></tr>
-          <tr><td style="text-align:left;">2. ขณะอ่านหนังสือหรือทำการบ้าน</td><td><input type="radio" name="f2" value="ทุกครั้ง" checked></td><td><input type="radio" name="f2" value="บ่อยครั้ง"></td><td><input type="radio" name="f2" value="บางครั้ง"></td><td><input type="radio" name="f2" value="ไม่เคยเลย"></td></tr>
-          <tr><td style="text-align:left;">3. ขณะดูโทรทัศน์ หรือใช้สมาร์ทโฟน/แท็บเล็ต</td><td><input type="radio" name="f3" value="ทุกครั้ง" checked></td><td><input type="radio" name="f3" value="บ่อยครั้ง"></td><td><input type="radio" name="f3" value="บางครั้ง"></td><td><input type="radio" name="f3" value="ไม่เคยเลย"></td></tr>
-          <tr><td style="text-align:left;">4. ขณะเล่นกีฬาหรือทำกิจกรรมกลางแจ้ง</td><td><input type="radio" name="f4" value="ทุกครั้ง"></td><td><input type="radio" name="f4" value="บ่อยครั้ง"></td><td><input type="radio" name="f4" value="บางครั้ง"></td><td><input type="radio" name="f4" value="ไม่เคยเลย" checked></td></tr>
-        </tbody>
-      </table>
-      <div class="fg" style="margin-bottom:12px;">
-        <label>5. โดยรวมแล้ว ใน 1 สัปดาห์ คุณใส่แว่นกี่วัน?</label>
-        <div class="rg"><label class="ri"><input type="radio" name="f_days" value="6-7 วัน" checked> 6-7 วัน</label><label class="ri"><input type="radio" name="f_days" value="3-5 วัน"> 3-5 วัน</label><label class="ri"><input type="radio" name="f_days" value="1-2 วัน"> 1-2 วัน</label><label class="ri"><input type="radio" name="f_days" value="ไม่ได้ใส่เลย"> ไม่ได้ใส่เลย</label></div>
-      </div>
-
-      <div class="fs-t" style="color:#be185d;border-color:#fbcfe8;">ส่วนที่ 3 : คุณภาพและสภาพของแว่นตา</div>
-      <p style="font-size:10.5px; color:var(--muted); margin-bottom:5px;">(เพื่อประเมินความทนทานและการดูแลรักษา)</p>
-      
-      <div class="fg" style="margin-bottom:10px;">
-        <label>1. สภาพแว่นตาในปัจจุบัน</label>
-        <div class="radio-box-container">
-          <label class="radio-box">
-            <input type="radio" name="c_status" value="ดีมาก เหมือนใหม่" checked>
-            <span><b>ดีมาก</b><br>เหมือนใหม่</span>
-          </label>
-          <label class="radio-box">
-            <input type="radio" name="c_status" value="ดี แต่มีรอยขีดข่วนเล็กน้อยที่เลนส์">
-            <span><b>ดี</b><br>แต่มีรอยขีดข่วนเล็กน้อย</span>
-          </label>
-          <label class="radio-box">
-            <input type="radio" name="c_status" value="พอใช้ แว่นบิด/หย่อน/สกรูหลวม">
-            <span><b>พอใช้</b><br>แว่นบิด/หย่อน/สกรูหลวม</span>
-          </label>
-          <label class="radio-box">
-            <input type="radio" name="c_status" value="เสียหาย (ขาหัก/เลนส์แตก) รอการซ่อมแซม">
-            <span><b>เสียหาย</b><br>หัก/แตก รอซ่อม</span>
-          </label>
+        <div class="fg"><label>ระดับชั้น</label>
+          <select id="s-lev">
+            <option>อ.1</option><option>อ.2</option><option>อ.3</option>
+            <option>ป.1</option><option>ป.2</option><option selected>ป.3</option><option>ป.4</option><option>ป.5</option><option>ป.6</option>
+            <option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option>
+          </select>
         </div>
+        <div class="fg"><label>ห้อง</label><input type="text" id="s-cls" placeholder="เช่น /1"></div>
       </div>
-
-      <div class="fg" style="margin-bottom:15px;">
-        <label>2. ความชัดเจนของเลนส์</label>
-        <div class="radio-box-container">
-          <label class="radio-box">
-            <input type="radio" name="c_clarity" value="ชัดเจนดีเหมือนเดิม" checked>
-            <span><b>ชัดเจน</b><br>ดีเหมือนเดิม</span>
-          </label>
-          <label class="radio-box">
-            <input type="radio" name="c_clarity" value="ชัดเจนน้อยลง มีรอยขีดข่วนรบกวนการมอง">
-            <span><b>ชัดเจนน้อยลง</b><br>มีรอยขีดข่วนรบกวน</span>
-          </label>
-          <label class="radio-box" style="grid-column: span 2;">
-            <input type="radio" name="c_clarity" value="มองไม่ชัดเหมือนช่วงแรกที่ได้แว่น">
-            <span><b>มองไม่ชัด</b>เหมือนช่วงแรกที่ได้แว่น</span>
-          </label>
-        </div>
+      <div class="fr fr4">
+        <div class="fg" style="grid-column:span 2;"><label>ที่อยู่บ้านเลขที่</label><input type="text" id="s-addr"></div>
+        <div class="fg"><label>หมู่ที่ (moo)</label><input type="text" id="s-moo"></div>
+        <div class="fg"><label>รหัสปกครอง(aid)</label><input type="text" id="s-aid"></div>
       </div>
-
-      <div class="fs-t" style="color:#be185d;border-color:#fbcfe8;">ส่วนที่ 4 : คุณภาพชีวิตและประสิทธิภาพด้านสายตา</div>
-      <p style="font-size:10.5px; color:var(--muted); margin-bottom:5px;">(เพื่อวัดผลลัพธ์ทางคลินิกและสังคมที่แท้จริงจากการใช้แว่น)</p>
-      <table class="sat-tbl" style="margin-bottom:10px;">
-        <thead><tr><th>ข้อคำถาม</th><th>ดีขึ้นมาก</th><th>ดีขึ้น</th><th>เหมือนเดิม</th><th>แย่ลง</th></tr></thead>
-        <tbody>
-          <tr><td style="text-align:left;">1. ความสามารถในการมองเห็นตัวอักษรบนกระดาน</td><td><input type="radio" name="q_board" value="ดีขึ้นมาก" checked></td><td><input type="radio" name="q_board" value="ดีขึ้น"></td><td><input type="radio" name="q_board" value="เหมือนเดิม"></td><td><input type="radio" name="q_board" value="แย่ลง"></td></tr>
-          <tr><td style="text-align:left;">2. สมาธิในการเรียนในห้องเรียน</td><td><input type="radio" name="q_focus" value="ดีขึ้นมาก" checked></td><td><input type="radio" name="q_focus" value="ดีขึ้น"></td><td><input type="radio" name="q_focus" value="เหมือนเดิม"></td><td><input type="radio" name="q_focus" value="แย่ลง"></td></tr>
-          <tr><td style="text-align:left;">3. ความมั่นใจในการทำกิจกรรมกับเพื่อนๆ</td><td><input type="radio" name="q_confidence" value="ดีขึ้นมาก" checked></td><td><input type="radio" name="q_confidence" value="ดีขึ้น"></td><td><input type="radio" name="q_confidence" value="เหมือนเดิม"></td><td><input type="radio" name="q_confidence" value="แย่ลง"></td></tr>
-        </tbody>
-      </table>
-      <table class="sat-tbl" style="margin-bottom:12px;">
-        <thead><tr><th>ข้อคำถาม</th><th>ลดลงมาก</th><th>ลดลง</th><th>เท่าเดิม</th><th>เพิ่มขึ้น</th></tr></thead>
-        <tbody>
-          <tr><td style="text-align:left;">4. ความถี่ของการปวดหัว หรือปวดเมื่อยตา</td><td><input type="radio" name="q_headache" value="ลดลงมาก" checked></td><td><input type="radio" name="q_headache" value="ลดลง"></td><td><input type="radio" name="q_headache" value="เท่าเดิม"></td><td><input type="radio" name="q_headache" value="เพิ่มขึ้น"></td></tr>
-        </tbody>
-      </table>
-
-      <div class="fs-t" style="color:#be185d;border-color:#fbcfe8;">ส่วนที่ 5 : ปัจจัยเสริมและอุปสรรค</div>
-      <p style="font-size:10.5px; color:var(--muted); margin-bottom:5px;">(สำหรับผู้ปกครองหรือครู - เพื่อค้นหาปัจจัยที่ทำให้เด็กไม่ใส่แว่น)</p>
-      <div class="fg" style="margin-bottom:10px;">
-        <label>1. สาเหตุที่เด็กไม่ใส่แว่นเป็นประจำ (เลือกได้มากกว่า 1 ข้อ)</label>
-        <div class="cb-group" id="fup-reasons" style="flex-direction:column; gap:3px;">
-          <label class="cbi"><input type="checkbox" value="ใส่แล้วไม่ชัดเจน/ปวดหัว"> ใส่แล้วไม่ชัดเจน/ปวดหัว</label>
-          <label class="cbi"><input type="checkbox" value="ลืมใส่"> ลืมใส่</label>
-          <label class="cbi"><input type="checkbox" value="อายเพื่อน / กลัวถูกแซว"> อายเพื่อน / กลัวถูกแซว</label>
-          <label class="cbi"><input type="checkbox" value="แว่นไม่พอดีกับใบหน้า (คับ/หลวม/กดหู)"> แว่นไม่พอดีกับใบหน้า (คับ/หลวม/กดหู)</label>
-          <label class="cbi"><input type="checkbox" value="ประกอบกิจกรรม (เล่น/นอน) ไม่สะดวก"> ประกอบกิจกรรม (เล่น/นอน) ไม่สะดวก</label>
-          <label class="cbi"><input type="checkbox" value="อื่นๆ"> อื่นๆ</label>
-        </div>
-      </div>
-      <div class="fg" style="margin-bottom:10px;">
-        <label>2. ความพึงพอใจโดยรวมต่อการใช้แว่นตา</label>
-        <div class="rg"><label class="ri"><input type="radio" name="overall_sat" value="มากที่สุด" checked> มากที่สุด</label><label class="ri"><input type="radio" name="overall_sat" value="มาก"> มาก</label><label class="ri"><input type="radio" name="overall_sat" value="ปานกลาง"> ปานกลาง</label><label class="ri"><input type="radio" name="overall_sat" value="น้อย"> น้อย</label><label class="ri"><input type="radio" name="overall_sat" value="น้อยที่สุด"> น้อยที่สุด</label></div>
-      </div>
-      <div class="fg"><label>ความคิดเห็นเพิ่มเติม (ถ้ามี)</label><textarea id="fup-comment" rows="2"></textarea></div>
-    </div>
-  </div>
-  <div class="pf">
-    <button class="btn-p" id="btnSFup" style="background:#ec4899;" onclick="saveFup()" disabled>💾 บันทึกการติดตามผล</button>
-    <button class="btn-sec" onclick="closePanel('fup')">ยกเลิก</button>
-  </div>
-</div>
-
-<div class="ov" id="ov-beh" onclick="closePanel('beh')"></div>
-<div class="panel" id="panel-beh">
-  <div class="ph" style="background:#f59e0b"><span class="ph-t">📱 แบบสอบถามพฤติกรรมการใช้หน้าจอ</span><button class="ph-x" onclick="closePanel('beh')">✕</button></div>
-  <div class="pb">
-    <div class="fs">
-      <div class="fs-t" style="color:#d97706;border-color:#fde68a;">ส่วนที่ 1 : ข้อมูลทั่วไป</div>
       <div class="fr">
-        <div class="fg"><label>เลขบัตรประชาชน 13 หลัก *</label><input type="text" id="beh-cid" maxlength="13" placeholder="ตรวจสอบสิทธิ์" oninput="checkBehEligible(this.value)"></div>
-        <div class="fg"><label>ชื่อ-สกุล (พบอัตโนมัติ)</label><input type="text" id="beh-name" readonly style="background:#f1f5f9"></div>
+        <div class="fg"><label>รพ.สต. ที่ตรวจ *</label><select id="s-hc" onchange="onHcChange()"><option value="">— เลือก รพ.สต. —</option></select></div>
+        <div class="fg"><label>วันที่ตรวจ *</label><input type="text" class="datepicker" id="s-dt" placeholder="วว/ดด/ปปปป"></div>
+      </div>
+      <div class="fr">
+        <div class="fg" style="grid-column:span 2;"><label>สิทธิในการรักษา</label>
+          <select id="s-treat">
+            <option value="">— ระบุสิทธิ์ —</option>
+            <option>สิทธิบัตรทอง (30 บาท)</option>
+            <option>สิทธิประกันสังคม</option>
+            <option>สิทธิข้าราชการ(กรมบัญชีกลาง)</option>
+            <option>สิทธิข้าราชการ(ท้องถิ่น)</option>
+            <option>สิทธิข้าราชการ(กทม.)</option>
+            <option>สวัสดิการรักษาพยาบาลข้าราชการ สำหรับบุคคลในครอบครัว</option>
+            <option>สิทธิประกันสุขภาพเอกชน</option>
+            <option>สิทธิรักษาของรัฐวิสาหกิจ</option>
+            <option>กองทุนทดแทนกรณีอุบัติเหตุจากการทำงาน</option>
+            <option>สิทธิ์สำหรับทหาร ตำรวจ หรือองค์กรเฉพาะ</option>
+            <option>ไม่มีสิทธิการรักษา(ต่างด้าว)</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:span 1;"><label>สัญชาติ</label>
+          <select id="s-nat"><option value="ไทย">ไทย</option></select>
+        </div>
       </div>
       <div class="fr fr3">
-        <div class="fg"><label>อายุ (ปี)</label><input type="text" id="beh-age" readonly style="background:#f1f5f9"></div>
-        <div class="fg"><label>ระดับชั้น</label><input type="text" id="beh-cls" readonly style="background:#f1f5f9"></div>
-        <div class="fg"><label>โรงเรียน</label><input type="text" id="beh-sch" readonly style="background:#f1f5f9"></div>
+        <div class="fg"><label>ตำบล</label><input type="text" id="s-tambon"></div>
+        <div class="fg"><label>อำเภอ</label><input type="text" id="s-amphoe"></div>
+        <div class="fg"><label>จังหวัด</label><input type="text" id="s-prov" value="สมุทรสาคร"></div>
       </div>
-      <div id="beh-err" style="color:var(--red);font-size:11px;margin-top:4px;font-weight:600;"></div>
+      <div class="fr fr1">
+        <div class="fg"><label>โรงเรียน (ค้นหาหรือพิมพ์ใหม่)</label><input type="text" list="dl-school" id="s-sch" placeholder="เลือกหรือพิมพ์ชื่อโรงเรียน" onchange="fillSchoolCoords()"><datalist id="dl-school"></datalist></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>พิกัดโรงเรียน (Lat)</label><input type="text" id="s-schl-lat"></div>
+        <div class="fg"><label>พิกัดโรงเรียน (Lon)</label><div style="display:flex;gap:4px"><input type="text" id="s-schl-lon" style="flex:1"><button class="btn-geo" onclick="getGeo('s-schl-lat','s-schl-lon')">📍</button></div></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>ชื่อผู้ตรวจ / ผู้บันทึก</label><input type="text" id="s-exam"></div>
+        <div class="fg"><label>ตำแหน่งผู้ตรวจ</label><input type="text" id="s-pos"></div>
+      </div>
+    </div> <div class="fs">
+      <div class="fs-t">ส่วนที่ 2 — ประวัติสุขภาพตา</div>
+      <div class="cb-group">
+        <label class="cbi"><input type="checkbox" id="hx-g"> เคยสวมแว่น/เลนส์</label>
+        <label class="cbi"><input type="checkbox" id="hx-i"> เคยผ่าตัดตา/บาดเจ็บ</label>
+        <label class="cbi"><input type="checkbox" id="hx-r"> อาการตาแดงเรื้อรัง</label>
+        <label class="cbi"><input type="checkbox" id="hx-h"> ปวดศีรษะบ่อยครั้ง</label>
+        <label class="cbi"><input type="checkbox" id="hx-a"> ตาขี้เกียจ/ตาเหล่</label>
+        <label class="cbi"><input type="checkbox" id="hx-f"> ครอบครัวสวมแว่น</label>
+      </div>
     </div>
-    
-    <div class="fs" id="beh-form-sec" style="opacity:0.5;pointer-events:none;">
-      <div class="fs-t" style="color:#d97706;border-color:#fde68a;">ส่วนที่ 2 พฤติกรรมการใช้หน้าจออิเล็กทรอนิกส์</div>
-      <div class="fg" style="margin-bottom:8px">
-        <label>2.1 ประเภทของอุปกรณ์ที่ใช้ (เลือกได้มากกว่า 1 ข้อ)</label>
-        <div class="cb-group" id="beh-device">
-          <label class="cbi"><input type="checkbox" value="โทรศัพท์มือถือ"> โทรศัพท์มือถือ</label>
-          <label class="cbi"><input type="checkbox" value="แท็บเล็ต"> แท็บเล็ต</label>
-          <label class="cbi"><input type="checkbox" value="คอมพิวเตอร์"> คอมพิวเตอร์</label>
-          <label class="cbi"><input type="checkbox" value="โทรทัศน์"> โทรทัศน์</label>
-          <label class="cbi"><input type="checkbox" value="เครื่องเล่นเกม"> เครื่องเล่นเกม</label>
+
+    <div class="fs">
+      <div class="fs-t">ส่วนที่ 3 — ผลการตรวจสายตา (VA Snellen)</div>
+      <div class="fr fr1" style="margin-bottom:8px">
+        <div class="fg"><label>หน่วยวัดสายตา (Unit)</label><select id="s-unit"><option value="F">F (ฟุต)</option><option value="M">M (เมตร)</option></select></div>
+      </div>
+      <table class="va-tbl">
+        <thead><tr><th style="text-align:left">การทดสอบ</th><th>ตาขวา (OD)</th><th>ตาซ้าย (OS)</th><th>สองตา (OU)</th></tr></thead>
+        <tbody>
+          <tr><td>ไม่ใส่แว่น / เลนส์</td><td><select id="vr-n"></select></td><td><select id="vl-n"></select></td><td><select id="vou-naked" title="ผลรวมสองตา (ไม่ใส่แว่น)"></select></td></tr>
+          <tr><td>ใส่แว่น / คอนแทคเลนส์</td><td><select id="vr-g"></select></td><td><select id="vl-g"></select></td><td><select id="vou-glasses" title="ผลรวมสองตา (ใส่แว่น)"></select></td></tr>
+          <tr><td>Pin Hole Test</td><td><select id="vr-p"></select></td><td><select id="vl-p"></select></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="fs">
+      <div class="fs-t">ส่วนที่ 4 — ตรวจภาวะตาเหล่ / ตาขี้เกียจ</div>
+      <table class="ex-tbl">
+        <thead><tr><th>รายการตรวจ</th><th>ปกติ</th><th>ผิดปกติ</th></tr></thead>
+        <tbody>
+          <tr><td>Cover Test</td><td><input type="radio" name="ex-cov" value="ปกติ" checked></td><td><input type="radio" name="ex-cov" value="ผิดปกติ"></td></tr>
+          <tr><td>Hirschberg</td><td><input type="radio" name="ex-hir" value="ปกติ" checked></td><td><input type="radio" name="ex-hir" value="ผิดปกติ"></td></tr>
+          <tr><td>Color Vision</td><td><input type="radio" name="ex-col" value="ปกติ" checked></td><td><input type="radio" name="ex-col" value="ผิดปกติ"></td></tr>
+          <tr><td>Stereopsis</td><td><input type="radio" name="ex-ste" value="ปกติ" checked></td><td><input type="radio" name="ex-ste" value="ผิดปกติ"></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="fs">
+      <div class="fs-t">ส่วนที่ 5 — สรุปผลและข้อแนะนำ</div>
+      <div class="fr fr1" style="margin-bottom:7px">
+        <div class="fg">
+          <label>วินิจฉัย (Diagnosis)</label>
+          <select id="s-diag">
+            <option>สายตาปกติ</option>
+            <option>เริ่มเฝ้าระวังสายตาผิดปกติ</option>
+            <option>สงสัยสายตาผิดปกติ</option>
+            <option>สงสัยตาขี้เกียจ/สายตาผิดปกติรุนแรง</option>
+            <option>ความผิดปกติรุนแรงของการมองเห็น</option>
+            <option>อื่นๆ</option>
+          </select>
         </div>
       </div>
-      <div class="fg" style="margin-bottom:12px">
-        <label>2.2 ใช้หน้าจออิเล็กทรอนิกส์เพื่อทำอะไร (เลือกได้มากกว่า 1 ข้อ)</label>
-        <div class="cb-group" id="beh-purpose">
-          <label class="cbi"><input type="checkbox" value="เรียนออนไลน์ / ทำการบ้าน"> เรียนออนไลน์ / ทำการบ้าน</label>
-          <label class="cbi"><input type="checkbox" value="ดูการ์ตูน / คลิปวิดีโอ"> ดูการ์ตูน / คลิปวิดีโอ</label>
-          <label class="cbi"><input type="checkbox" value="เล่นเกมส์"> เล่นเกมส์</label>
-          <label class="cbi"><input type="checkbox" value="ฟังเพลง"> ฟังเพลง</label>
-          <label class="cbi"><input type="checkbox" value="คุยกับเพื่อน /ใช้โซเชียล"> คุยกับเพื่อน /ใช้โซเชียล</label>
-          <label class="cbi"><input type="checkbox" value="อื่นๆ"> อื่นๆ</label>
+      <div class="fr fr1">
+        <div class="fg">
+          <label>การส่งต่อ (Referral)</label>
+          <select id="s-ref">
+            <option>ไม่จำเป็นต้องส่งต่อ</option>
+            <option>ควรพบจักษุแพทย์ภายใน 3 เดือน</option>
+            <option>ควรพบจักษุแพทย์ภายใน 1 เดือน</option>
+            <option>ส่งต่อด่วน (ภายใน 1 สัปดาห์)</option>
+            <option>อื่นๆ</option>
+          </select>
         </div>
       </div>
-      
-      <div class="fg" style="margin-bottom:12px">
-        <label>2.3 ระยะเวลาการใช้หน้าจออิเล็กทรอนิกส์ในแต่ละช่วงเวลา</label>
-        <table class="beh-tbl">
-          <thead><tr><th>ช่วงเวลา</th><th>วันธรรมดา (จ.-ศ.)</th><th>วันหยุด/ปิดเทอม</th></tr></thead>
-          <tbody>
-            <tr>
-              <td>ตอนเช้า<br><span style="font-size:9px;color:#92400e">(ก่อนไปโรงเรียน)</span></td>
-              <td><select id="beh-t-wk-m" style="width:100%;font-size:10px;"><option value="ไม่ใช้">ไม่ใช้</option><option value="ไม่ถึง 1 ชม.">ไม่ถึง 1 ชม.</option><option value="1-2 ชม.">1-2 ชม.</option><option value="2-3 ชม.">2-3 ชม.</option><option value="3-4 ชม.">3-4 ชม.</option><option value="มากกว่า 4 ชม.">มากกว่า 4 ชม.</option></select></td>
-              <td><select id="beh-t-we-m" style="width:100%;font-size:10px;"><option value="ไม่ใช้">ไม่ใช้</option><option value="ไม่ถึง 1 ชม.">ไม่ถึง 1 ชม.</option><option value="1-2 ชม.">1-2 ชม.</option><option value="2-3 ชม.">2-3 ชม.</option><option value="3-4 ชม.">3-4 ชม.</option><option value="มากกว่า 4 ชม.">มากกว่า 4 ชม.</option></select></td>
-            </tr>
-            <tr>
-              <td>ตอนกลางวัน/<br><span style="font-size:9px;color:#92400e">หลังเลิกเรียน</span></td>
-              <td><select id="beh-t-wk-n" style="width:100%;font-size:10px;"><option value="ไม่ใช้">ไม่ใช้</option><option value="ไม่ถึง 1 ชม.">ไม่ถึง 1 ชม.</option><option value="1-2 ชม.">1-2 ชม.</option><option value="2-3 ชม.">2-3 ชม.</option><option value="3-4 ชม.">3-4 ชม.</option><option value="มากกว่า 4 ชม.">มากกว่า 4 ชม.</option></select></td>
-              <td><select id="beh-t-we-n" style="width:100%;font-size:10px;"><option value="ไม่ใช้">ไม่ใช้</option><option value="ไม่ถึง 1 ชม.">ไม่ถึง 1 ชม.</option><option value="1-2 ชม.">1-2 ชม.</option><option value="2-3 ชม.">2-3 ชม.</option><option value="3-4 ชม.">3-4 ชม.</option><option value="มากกว่า 4 ชม.">มากกว่า 4 ชม.</option></select></td>
-            </tr>
-            <tr>
-              <td>ตอนเย็น/<br><span style="font-size:9px;color:#92400e">ก่อนนอน</span></td>
-              <td><select id="beh-t-wk-e" style="width:100%;font-size:10px;"><option value="ไม่ใช้">ไม่ใช้</option><option value="ไม่ถึง 1 ชม.">ไม่ถึง 1 ชม.</option><option value="1-2 ชม.">1-2 ชม.</option><option value="2-3 ชม.">2-3 ชม.</option><option value="3-4 ชม.">3-4 ชม.</option><option value="มากกว่า 4 ชม.">มากกว่า 4 ชม.</option></select></td>
-              <td><select id="beh-t-we-e" style="width:100%;font-size:10px;"><option value="ไม่ใช้">ไม่ใช้</option><option value="ไม่ถึง 1 ชม.">ไม่ถึง 1 ชม.</option><option value="1-2 ชม.">1-2 ชม.</option><option value="2-3 ชม.">2-3 ชม.</option><option value="3-4 ชม.">3-4 ชม.</option><option value="มากกว่า 4 ชม.">มากกว่า 4 ชม.</option></select></td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="fr fr1" style="margin-top:7px">
+        <div class="fg"><label>หมายเหตุ</label><input type="text" id="s-remark" placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)"></div>
       </div>
-
-      <div class="fg" style="margin-bottom:8px">
-        <label>2.4 ระยะห่างระหว่างตากับหน้าจอโดยประมาณ</label>
-        <select id="beh-dist"><option value="ใกล้กว่า 1 ฟุต">ใกล้กว่า 1 ฟุต (น้อยกว่า 30 ซม.)</option><option value="ประมาณ 1 ฟุต">ประมาณ 1 ฟุต</option><option value="มากกว่า 1 ฟุต">มากกว่า 1 ฟุต</option></select>
-      </div>
-      <div class="fg" style="margin-bottom:8px">
-        <label>2.5 การพักสายตา</label>
-        <select id="beh-rest"><option value="พักทุก 20 นาที">พักทุก 20 นาที</option><option value="พักบ้างบางครั้ง">พักบ้างบางครั้ง</option><option value="ไม่ค่อยพัก">ไม่ค่อยพัก</option></select>
-      </div>
-      <div class="fg" style="margin-bottom:15px">
-        <label>2.6 มีการใช้แว่นกรองแสงสีฟ้าหรือไม่</label>
-        <select id="beh-blue"><option value="ไม่มีการใช้">ไม่มีการใช้แว่นกรองแสงสีฟ้า</option><option value="มีการใช้">มีการใช้แว่นกรองแสงสีฟ้า</option></select>
-      </div>
-
-      <div class="fs-t" style="color:#d97706;border-color:#fde68a;">ส่วนที่ 3 : อาการทางสายตาที่พบ</div>
-      <div class="fg" style="margin-bottom:12px">
-        <label>เลือกได้มากกว่า 1 ข้อ</label>
-        <div class="cb-group" id="beh-symptom">
-          <label class="cbi"><input type="checkbox" value="แสบตา"> แสบตา</label>
-          <label class="cbi"><input type="checkbox" value="ตาพร่ามัว"> ตาพร่ามัว</label>
-          <label class="cbi"><input type="checkbox" value="ปวดหัว"> ปวดหัว</label>
-          <label class="cbi"><input type="checkbox" value="น้ำตาไหล"> น้ำตาไหล</label>
-          <label class="cbi"><input type="checkbox" value="ตาแดง"> ตาแดง</label>
-          <label class="cbi"><input type="checkbox" value="มองไกลไม่ชัด"> มองไกลไม่ชัด</label>
-          <label class="cbi"><input type="checkbox" value="ไม่มีอาการ"> ไม่มีอาการ</label>
-        </div>
-      </div>
-
-      <div class="fs-t" style="color:#d97706;border-color:#fde68a;">ส่วนที่ 4 : ความคิดเห็นเพิ่มเติม</div>
-      <div class="fg"><textarea id="beh-comment" rows="2"></textarea></div>
     </div>
-  </div>
-  <div class="pf">
-    <button class="btn-p" id="btnSBeh" style="background:#d97706;" onclick="saveBeh()" disabled>💾 บันทึกแบบสอบถาม</button>
-    <button class="btn-sec" onclick="closePanel('beh')">ยกเลิก</button>
+
+  </div> <div class="pf" style="justify-content:space-between">
+    <div style="display:flex;gap:6px">
+      <button class="btn-p" id="btnSScr" onclick="saveScr()">💾 บันทึก</button>
+      <button class="btn-sec" onclick="closePanel('scr')">ยกเลิก</button>
+    </div>
+    <button class="btn-sec" onclick="dlTemplate()" style="color:var(--accent);font-weight:600;">📥 โหลด Template Excel</button>
   </div>
 </div>
-
-<div class="ov" id="ov-fupdash" onclick="closePanel('fupdash')"></div>
-<div class="panel beh-panel" id="panel-fupdash">
-  <div class="ph" style="background:#ec4899">
-    <span class="ph-t">📊 Dashboard ติดตามผลการใช้แว่นตา</span>
-    <button class="ph-x" onclick="closePanel('fupdash')">✕</button>
-  </div>
-  <div class="pb">
-    <div class="beh-filter" style="background:#fdf2f8; border-color:#fbcfe8; grid-template-columns: repeat(4, 1fr);">
-      <select id="fdf-amphoe" onchange="onFupAmpChange()" style="border-color:#f9a8d4;"><option value="">อำเภอ ทั้งหมด</option></select>
-      <select id="fdf-hosp" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
-      <select id="fdf-school" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">โรงเรียนทั้งหมด</option></select>
-      <select id="fdf-sex" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
-    </div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <select id="fdf-class" onchange="loadFupDashboard()" style="padding:6px 8px; border:1px solid #f9a8d4; border-radius:6px; font-size:12px; background:#fff; width:24%;"><option value="">ชั้นทั้งหมด</option></select>
-      <button class="btn-clr" style="margin:0; padding:4px 15px; border-color:#fbcfe8; color:#be185d;" onclick="clearFupFilters()">✕ ล้างตัวกรองติดตามแว่น</button>
-    </div>
-
-    <div class="beh-kpi" style="grid-template-columns: repeat(4,1fr);">
-      <div class="beh-k" style="border-color:#fbcfe8; border-top-color:#ec4899;"><div class="beh-k-l" style="color:#be185d;">👥 ผู้ตอบ</div><div class="beh-k-v" id="fk-total" style="color:#db2777;">—</div><div class="beh-k-s">รายคน</div></div>
-      <div class="beh-k" style="border-color:#fbcfe8; border-top-color:#16A34A;"><div class="beh-k-l" style="color:#be185d;">👓 ใส่แว่นทุกวัน</div><div class="beh-k-v" id="fk-daily" style="color:#16A34A;">—</div><div class="beh-k-s">% (6-7 วัน/สัปดาห์)</div></div>
-      <div class="beh-k" style="border-color:#fbcfe8; border-top-color:#0d9488;"><div class="beh-k-l" style="color:#be185d;">✨ สภาพแว่นดี</div><div class="beh-k-v" id="fk-cond" style="color:#0d9488;">—</div><div class="beh-k-s">%</div></div>
-      <div class="beh-k" style="border-color:#fbcfe8; border-top-color:#7c3aed;"><div class="beh-k-l" style="color:#be185d;">⭐ ความพึงพอใจ</div><div class="beh-k-v" id="fk-sat" style="color:#7c3aed;">—</div><div class="beh-k-s">/5.00</div></div>
-    </div>
-
-    <div class="beh-grid beh-row-2" style="margin-bottom:10px;">
-      <div class="beh-card"><div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">📊 อัตราการใส่แว่นแต่ละสถานการณ์</div><div style="height:240px;"><canvas id="fupFreqChart"></canvas></div></div>
-      <div class="beh-card"><div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">📈 การมองเห็น/สมาธิ/ปวดหัว ดีขึ้น</div><div style="height:240px;"><canvas id="fupQolChart"></canvas></div></div>
-    </div>
-
-    <div class="beh-grid beh-row-2" style="margin-bottom:10px;">
-      <div class="beh-card"><div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">📅 ความถี่การใส่แว่น/สัปดาห์</div><div style="height:200px;"><canvas id="fupDaysChart"></canvas></div></div>
-      <div class="beh-card"><div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">🚫 สาเหตุที่ไม่ใส่แว่น (Top 5)</div><div style="height:200px;"><canvas id="fupReasonChart"></canvas></div></div>
-    </div>
-
-    <div class="beh-card" style="margin-bottom:10px;">
-      <div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">🌡️ เปรียบเทียบเทียบราย รพ.สต. (Heatmap)</div>
-      <div id="fupHeatmapWrap" style="overflow-x:auto; max-height:320px; overflow-y:auto;"></div>
-    </div>
-
-    <div class="beh-card" id="fupTblWrapper" style="display:none;">
-      <div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">📋 รายละเอียดผู้ตอบ <button class="btn-exp" style="margin-left:auto;" onclick="exportFupCSV()">📥 Export CSV</button></div>
-      <div style="max-height:300px; overflow:auto;">
-        <table class="beh-tbl" id="fupTbl" style="border-color:#fbcfe8;">
-          <thead style="background:#fdf2f8;"><tr><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">#</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">เลขบัตร</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">ชื่อ-สกุล</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">ชั้น</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">รพ.สต.</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">ระยะใส่</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">สภาพแว่น</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">มอง</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">สมาธิ</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">มั่นใจ</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">ปวดหัว</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">พึงพอใจ</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">⚙</th></tr></thead>
-          <tbody id="fupTblBody"></tbody>
-        </table>
-      </div>
-    </div>
-    <div id="fupGuestMsg" style="text-align:center; padding:30px; color:var(--muted); display:none;">
-      <p>🔒 กรุณาเข้าสู่ระบบ เพื่อดูตารางรายละเอียดผู้ตอบแบบสอบถามรายบุคคล</p>
-    </div>
-  </div>  <!-- ⬅️ ปิด .pb -->
-</div>  <!-- ⬅️ ปิด .panel -->
-
-<div class="ov" id="ov-behdash" onclick="closePanel('behdash')"></div>
-<div class="panel beh-panel" id="panel-behdash">
-  <div class="ph" style="background:#d97706">
-    <span class="ph-t">📊 Dashboard พฤติกรรมการใช้หน้าจออิเล็กทรอนิกส์</span>
-    <button class="ph-x" onclick="closePanel('behdash')">✕</button>
-  </div>
-  <div class="pb">
-    <div class="beh-filter" style="grid-template-columns: repeat(5, 1fr);">
-      <select id="bf-amphoe" onchange="onBehAmpChange()"><option value="">อำเภอ ทั้งหมด</option></select>
-      <select id="bf-hosp" onchange="loadBehDashboard()"><option value="">รพ.สต. ทั้งหมด</option></select>
-      <select id="bf-school" onchange="loadBehDashboard()"><option value="">โรงเรียนทั้งหมด</option></select>
-      <select id="bf-sex" onchange="loadBehDashboard()"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
-      <select id="bf-class" onchange="loadBehDashboard()"><option value="">ชั้นทั้งหมด</option></select>
-    </div>
-    <div style="text-align:right; margin-bottom:12px;"><button class="btn-clr" style="display:inline-block; width:auto; margin:0; padding:4px 15px;" onclick="clearBehFilters()">✕ ล้างตัวกรองพฤติกรรม</button></div>
-
-    <div class="beh-kpi">
-      <div class="beh-k"><div class="beh-k-l">👥 ผู้ตอบ</div><div class="beh-k-v" id="bk-total">—</div><div class="beh-k-s">รายคน</div></div>
-      <div class="beh-k"><div class="beh-k-l">📅 ชม. วันธรรมดา</div><div class="beh-k-v" id="bk-wk">—</div><div class="beh-k-s">ชม./วัน เฉลี่ย</div></div>
-      <div class="beh-k"><div class="beh-k-l">🏖️ ชม. วันหยุด</div><div class="beh-k-v" id="bk-we">—</div><div class="beh-k-s">ชม./วัน เฉลี่ย</div></div>
-      <div class="beh-k"><div class="beh-k-l">👁️ มีอาการตา</div><div class="beh-k-v" id="bk-sym">—</div><div class="beh-k-s">%</div></div>
-      <div class="beh-k"><div class="beh-k-l">📏 ระยะถูกต้อง</div><div class="beh-k-v" id="bk-dist">—</div><div class="beh-k-s">% มากกว่า 1 ฟุต</div></div>
-      <div class="beh-k" onclick="toggleBehRisk('high')"><div class="beh-k-l">⚠️ กลุ่มเสี่ยงสูง</div><div class="beh-k-v" id="bk-risk" style="color:#dc2626">—</div><div class="beh-k-s">รายคน (คลิกกรอง)</div></div>
-    </div>
-
-    <div class="beh-grid beh-row-3" style="margin-bottom:10px;">
-      <div class="beh-card"><div class="beh-card-t">🚨 ระดับความเสี่ยง <span style="font-size:9.5px;color:var(--muted2)">— กดกรอง</span></div><div style="height:200px;"><canvas id="behRiskChart"></canvas></div></div>
-      <div class="beh-card"><div class="beh-card-t">📱 อุปกรณ์ที่ใช้</div><div style="height:200px;"><canvas id="behDevChart"></canvas></div></div>
-      <div class="beh-card"><div class="beh-card-t">🎯 วัตถุประสงค์การใช้</div><div style="height:200px;"><canvas id="behPurChart"></canvas></div></div>
-    </div>
-
-    <div class="beh-card" style="margin-bottom:10px;">
-      <div class="beh-card-t">⏰ ระยะเวลาการใช้งานในแต่ละช่วง — เปรียบเทียบวันธรรมดา vs วันหยุด</div>
-      <div style="height:280px;"><canvas id="behTimeChart"></canvas></div>
-    </div>
-
-    <div class="beh-grid beh-row-3" style="margin-bottom:10px;">
-      <div class="beh-card"><div class="beh-card-t">📏 ระยะห่างจากจอ</div><div style="height:180px;"><canvas id="behDistChart"></canvas></div></div>
-      <div class="beh-card"><div class="beh-card-t">😌 การพักสายตา</div><div style="height:180px;"><canvas id="behRestChart"></canvas></div></div>
-      <div class="beh-card"><div class="beh-card-t">🕶️ แว่นกรองแสงสีฟ้า</div><div style="height:180px;"><canvas id="behBlueChart"></canvas></div></div>
-    </div>
-
-    <div class="beh-grid beh-row-2" style="margin-bottom:10px;">
-      <div class="beh-card"><div class="beh-card-t">👁️ อาการทางสายตาที่พบ</div><div style="height:240px;"><canvas id="behSymChart"></canvas></div></div>
-      <div class="beh-card"><div class="beh-card-t">🏥 เปรียบเทียบความเสี่ยง — ราย รพ.สต. <span style="font-size:9.5px;color:var(--muted2);margin-left:auto;">— คลิกกรอง</span></div><div style="height:240px; overflow-x:auto;"><div style="min-width:500px;height:100%;"><canvas id="behHospChart"></canvas></div></div></div>
-    </div>
-
-    <div class="beh-card" id="behTblWrapper" style="display:none;">
-      <div class="beh-card-t">📋 รายละเอียดผู้ตอบ <button class="btn-exp" style="margin-left:auto;" onclick="exportBehCSV()">📥 Export CSV</button></div>
-      <div style="max-height:300px; overflow:auto;">
-        <table class="beh-tbl" id="behTbl">
-          <thead><tr><th>#</th><th>เลขบัตร</th><th>ชื่อ-สกุล</th><th>ชั้น</th><th>รพ.สต.</th><th>ชม.วันธรรมดา</th><th>ชม.วันหยุด</th><th>ระยะ</th><th>พัก</th><th>อาการ</th><th>ความเสี่ยง</th><th style="text-align:center;">⚙</th></tr></thead>
-          <tbody id="behTblBody"></tbody>
-        </table>
-      </div>
-    </div>
-    <div id="behGuestMsg" style="text-align:center; padding:30px; color:var(--muted); display:none;">
-      <p>🔒 กรุณาเข้าสู่ระบบ เพื่อดูตารางรายละเอียดผู้ตอบแบบสอบถามรายบุคคล</p>
-    </div>
-
-<div class="ov" id="ov-vidmgr" onclick="closePanel('vidmgr')"></div>
-<div class="panel" id="panel-vidmgr">
-  <div class="ph" style="background:#dc2626"><span class="ph-t">📺 จัดการเพลย์ลิสต์วิดีโอ</span><button class="ph-x" onclick="closePanel('vidmgr')">✕</button></div>
-  <div class="pb">
-    <div class="fs">
-      <div class="fs-t">เพิ่ม/แก้ไขวิดีโอ</div>
-      <input type="hidden" id="vidmgr-id">
-      <div class="fg" style="margin-bottom:8px;"><label>ชื่อวิดีโอ *</label><input type="text" id="vidmgr-label" placeholder="เช่น วิธีการดูแลสายตา"></div>
-      <div class="fg" style="margin-bottom:8px;"><label>URL วิดีโอ (YouTube หรือ mp4) *</label><input type="text" id="vidmgr-url" placeholder="https://www.youtube.com/watch?v=..."></div>
-      <button class="btn-p" id="btnSaveVidMgr" style="width:100%; justify-content:center; background:#dc2626;" onclick="saveVideoFromMgr()">💾 บันทึกวิดีโอ</button>
-    </div>
-    <div class="fs">
-      <div class="fs-t">วิดีโอทั้งหมดในระบบ</div>
-      <div id="vidmgrList"></div>
-    </div>
-  </div>
-</div>
-
-<div class="ov" id="ov-link" onclick="closePanel('link')"></div><div class="panel" id="panel-link"><div class="ph" style="background:#6366f1"><span class="ph-t">🔗 จัดการปุ่มลิ้งก์ (เมนูทางลัด)</span><button class="ph-x" onclick="closePanel('link')">✕</button></div><div class="pb"><div class="fs"><div class="fs-t">เพิ่ม/แก้ไขลิ้งก์</div><input type="hidden" id="link-id"><div class="fg" style="margin-bottom:8px;"><label>ชื่อปุ่ม *</label><input type="text" id="link-label" placeholder="เช่น เว็บไซต์ อบจ."></div><div class="fg" style="margin-bottom:8px;"><label>URL ลิ้งก์ปลายทาง *</label><input type="text" id="link-url" placeholder="https://..."></div><div class="fg" style="margin-bottom:8px;"><label>ลิ้งก์รูปภาพไอคอน (ใส่ได้ทั้ง .png, .jpg หรือลิ้งก์จาก Drive)</label><input type="text" id="link-icon" placeholder="https://.../icon.png"></div><button class="btn-p" id="btnSaveLink" style="width:100%; justify-content:center; background:#6366f1;" onclick="saveLink()">💾 บันทึกปุ่ม</button></div><div class="fs"><div class="fs-t">ปุ่มทั้งหมดในระบบ</div><div id="linkList"></div></div></div></div>
-<div class="ov" id="ov-line" onclick="closePanel('line')"></div>
-<div class="panel" id="panel-line">
-  <div class="ph" style="background:#059669"><span class="ph-t">💬 ตั้งค่า LINE Messaging API</span><button class="ph-x" onclick="closePanel('line')">✕</button></div>
-  <div class="pb">
-    <div class="fs">
-      <div class="fs-t" style="color:#059669; border-color:#a7f3d0;">ข้อมูลการเชื่อมต่อ (สำหรับ Admin)</div>
-      <div class="fg" style="margin-bottom:8px;"><label>Channel Access Token</label><input type="text" id="line-token" placeholder="Long-lived access token"></div>
-      <div class="fg" style="margin-bottom:12px;"><label>Target ID (User ID / Group ID)</label><input type="text" id="line-target" placeholder="Uxxxx / Cxxxx"></div>
-      <div style="display:flex; gap:10px;">
-        <button class="btn-p" style="flex:1; justify-content:center; background:#059669;" onclick="saveLine()">💾 บันทึกการตั้งค่า</button>
-        <button class="btn-p" style="flex:1; justify-content:center; background:#ca8a04;" onclick="testLine()">🔔 ทดสอบส่งข้อความ</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="ov" id="ov-manual" onclick="closePanel('manual')"></div><div class="panel" id="panel-manual"><div class="ph" style="background:var(--primary)"><span class="ph-t">📖 คู่มือการใช้งานระบบ</span><button class="ph-x" onclick="closePanel('manual')">✕</button></div><div class="pb" style="line-height:1.7; color:var(--text); font-size:13px;"><h3 style="color:var(--accent); margin-bottom:8px; border-bottom:1px solid #dbeafe; padding-bottom:5px;">1. การค้นหาและการกรองข้อมูล (Instant Filter)</h3><p style="margin-bottom:10px;">ท่านสามารถใช้เมนู <b>"กรองข้อมูล"</b> ด้านซ้ายมือ หรือคลิกที่แท่งกราฟเพื่อทำการกรองข้อมูล ข้อมูลในตารางและตัวเลขสรุปจะ <b>อัปเดตทันที (Instant)</b> โดยไม่ต้องรอโหลดหน้าจอใหม่ หากต้องการยกเลิกให้กด "ล้างตัวกรอง"</p><h3 style="color:var(--teal); margin-bottom:8px; border-bottom:1px solid #ccfbf1; padding-bottom:5px;">2. การนำเข้าและแปลงไฟล์ข้อมูล (Smart Parser)</h3><ul style="margin-bottom:10px; padding-left:20px;"><li>กดปุ่ม <b>"🛠 แปลง & นำเข้าไฟล์"</b> ระบบจะสามารถอ่านไฟล์ดิบ 18 คอลัมน์ (.txt) หรือ CSV 47 คอลัมน์ ได้ทันที โดยแยกคอลัมน์ให้อัตโนมัติและจัดเรียงให้ใหม่</li><li>ปัญหา <b>เลขบัตรประชาชนกลายเป็น E+12 ใน Excel</b> ถูกแก้ไขแล้ว! หากคุณกด <b>"🔄 แปลงเป็น Template ใหม่"</b> ระบบจะใส่สูตรป้องกันให้เลขบัตรคงอยู่ครบ 13 หลักเมื่อเปิดใน Excel</li><li>หลังจากกรอกข้อมูลเสร็จแล้ว ให้นำไฟล์มาอัปโหลดและกดปุ่ม <b style="color:#0d9488;">"⬇️ นำเข้าข้อมูล (Import)"</b> ระบบจะลบสูตรออกและจัด 47 คอลัมน์ลงฐานข้อมูลให้อัตโนมัติ</li></ul><h3 style="color:var(--purple); margin-bottom:8px; border-bottom:1px solid #ede9fe; padding-bottom:5px;">3. การทำแบบประเมินความพึงพอใจรายบุคคล</h3><p style="margin-bottom:10px;">ผู้ใช้งานสามารถเลือก <b>"ประเภทผู้ประเมิน"</b> ได้แล้ว หากเป็นนักเรียน (ผู้รับการตรวจ) ระบบจะให้ค้นหาด้วยเลขบัตรประชาชนเพื่อให้ข้อมูลเชื่อมโยงกันรายบุคคลอย่างสมบูรณ์แบบ (เวลา Print จะโชว์คะแนนของคนนั้นๆ) แต่หากเป็น <b>ผู้ปกครอง, ครู หรือ เจ้าหน้าที่</b> สามารถเลือกประเภทและประเมินได้ทันทีโดยไม่ต้องใช้เลขบัตรประชาชนครับ!</p><h3 style="color:var(--orange); margin-bottom:8px; border-bottom:1px solid #ffedd5; padding-bottom:5px;">4. ระบบช่วยสรุปผลวินิจฉัย (Auto-Diagnose)</h3><p style="margin-bottom:10px;">ในหน้าบันทึกผลการคัดกรอง เมื่อผู้ตรวจกรอกข้อมูลประวัติสุขภาพตา (ส่วนที่ 2), การตรวจ VA (ส่วนที่ 3) และการตรวจตาเหล่ (ส่วนที่ 4) ระบบจะ <b>คำนวณและสรุปผลวินิจฉัยรวมถึงการส่งต่อให้ในส่วนที่ 5 อัตโนมัติ</b> เพื่อเป็นข้อเสนอแนะในการทำงาน (ผู้ตรวจสามารถแก้ไขผลลัพธ์นั้นได้ตามวิจารณญาณ)</p><h3 style="color:#6366f1; margin-bottom:8px; border-bottom:1px solid #e0e7ff; padding-bottom:5px;">5. ระบบจัดการปุ่มลิ้งก์และวิดีโอ (Admin)</h3><p style="margin-bottom:10px;">Admin สามารถเพิ่ม แก้ไข ลบปุ่มลิ้งก์ด่วน หรือ <b>จัดการเพลย์ลิสต์วิดีโอ</b> บน Dashboard ได้เองผ่านเมนูลัด เพื่อให้ผู้ใช้งานท่านอื่นเลือกดูสื่อวิดีโอที่กำหนดไว้ได้อย่างรวดเร็ว</p></div><div class="pf"><button class="btn-sec" style="width:100%; text-align:center;" onclick="closePanel('manual')">ปิดหน้าต่าง</button></div></div>
-<div class="ov" id="ov-scr" onclick="closePanel('scr')"></div><div class="panel" id="panel-scr"><div class="ph" style="background:var(--primary)"><span class="ph-t" id="scrPanelTitle">📋 แบบตรวจ/ประเมินสายตา — Vision Screening</span><button class="ph-x" onclick="closePanel('scr')">✕</button></div><div class="pb" id="scrBody"><div class="fs"><div class="fs-t">ส่วนที่ 1 — ข้อมูลผู้รับการตรวจ</div><div class="fr"><div class="fg"><label>เลขบัตรประชาชน 13 หลัก *</label><input type="text" id="s-cid" maxlength="13" placeholder="13 หลัก" oninput="onCidInput(this.value)"></div><div class="fg"><label>คำนำหน้า</label><select id="s-pname" onchange="autoSelectSex(this.value)"><option>เด็กชาย</option><option>เด็กหญิง</option><option>นาย</option><option>นางสาว</option><option>นาง</option></select></div></div><div class="fr"><div class="fg"><label>ชื่อจริง *</label><input type="text" id="s-fname" placeholder="ไม่ต้องมีคำนำหน้า"></div><div class="fg"><label>นามสกุล *</label><input type="text" id="s-lname" placeholder="นามสกุล"></div></div><div class="fr fr3"><div class="fg"><label>วันเกิด</label><input type="text" class="datepicker" id="s-bd" placeholder="วว/ดด/ปปปป" onchange="calcAge()"></div><div class="fg"><label>อายุ (ปี)</label><input type="number" id="s-age" readonly></div><div class="fg"><label>เพศ</label><select id="s-sex"><option value="1">ชาย</option><option value="2">หญิง</option></select></div></div><div class="fr"><div class="fg"><label>ระดับชั้น</label><select id="s-lev"><option>อ.1</option><option>อ.2</option><option>อ.3</option><option>ป.1</option><option>ป.2</option><option selected>ป.3</option><option>ป.4</option><option>ป.5</option><option>ป.6</option><option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option></select></div><div class="fg"><label>ห้อง</label><input type="text" id="s-cls" placeholder="เช่น /1"></div></div><div class="fr fr4"><div class="fg" style="grid-column:span 2;"><label>ที่อยู่บ้านเลขที่</label><input type="text" id="s-addr"></div><div class="fg"><label>หมู่ที่ (moo)</label><input type="text" id="s-moo"></div><div class="fg"><label>รหัสปกครอง(aid)</label><input type="text" id="s-aid"></div></div><div class="fr"><div class="fg"><label>รพ.สต. ที่ตรวจ *</label><select id="s-hc" onchange="onHcChange()"><option value="">— เลือก รพ.สต. —</option></select></div><div class="fg"><label>วันที่ตรวจ *</label><input type="text" class="datepicker" id="s-dt" placeholder="วว/ดด/ปปปป"></div></div><div class="fr"><div class="fg" style="grid-column:span 2;"><label>สิทธิในการรักษา</label><select id="s-treat"><option value="">— ระบุสิทธิ์ —</option><option>สิทธิบัตรทอง (30 บาท)</option><option>สิทธิประกันสังคม</option><option>สิทธิข้าราชการ(กรมบัญชีกลาง)</option><option>สิทธิข้าราชการ(ท้องถิ่น)</option><option>สิทธิข้าราชการ(กทม.)</option><option>สวัสดิการรักษาพยาบาลข้าราชการ สำหรับบุคคลในครอบครัว</option><option>สิทธิประกันสุขภาพเอกชน</option><option>สิทธิรักษาของรัฐวิสาหกิจ</option><option>กองทุนทดแทนกรณีอุบัติเหตุจากการทำงาน</option><option>สิทธิ์สำหรับทหาร ตำรวจ หรือองค์กรเฉพาะ</option><option>ไม่มีสิทธิการรักษา(ต่างด้าว)</option></select></div><div class="fg" style="grid-column:span 1;"><label>สัญชาติ (Nationality)</label>
-    <select id="s-nat"><option value="ไทย">ไทย</option></select>
-  </div>
-</div></div><div class="fr fr3"><div class="fg"><label>ตำบล</label><input type="text" id="s-tambon"></div><div class="fg"><label>อำเภอ</label><input type="text" id="s-amphoe"></div><div class="fg"><label>จังหวัด</label><input type="text" id="s-prov" value="สมุทรสาคร"></div></div><div class="fr fr1"><div class="fg"><label>โรงเรียน (ค้นหาหรือพิมพ์ใหม่)</label><input type="text" list="dl-school" id="s-sch" placeholder="เลือกหรือพิมพ์ชื่อโรงเรียน" onchange="fillSchoolCoords()"><datalist id="dl-school"></datalist></div></div><div class="fr"><div class="fg"><label>พิกัดโรงเรียน (Lat)</label><input type="text" id="s-schl-lat"></div><div class="fg"><label>พิกัดโรงเรียน (Lon)</label><div style="display:flex;gap:4px"><input type="text" id="s-schl-lon" style="flex:1"><button class="btn-geo" onclick="getGeo('s-schl-lat','s-schl-lon')">📍</button></div></div></div><div class="fr"><div class="fg"><label>ชื่อผู้ตรวจ / ผู้บันทึก</label><input type="text" id="s-exam"></div><div class="fg"><label>ตำแหน่งผู้ตรวจ</label><input type="text" id="s-pos"></div></div></div><div class="fs"><div class="fs-t">ส่วนที่ 2 — ประวัติสุขภาพตา</div><div class="cb-group"><label class="cbi"><input type="checkbox" id="hx-g"> เคยสวมแว่น/เลนส์</label><label class="cbi"><input type="checkbox" id="hx-i"> เคยผ่าตัดตา/บาดเจ็บ</label><label class="cbi"><input type="checkbox" id="hx-r"> อาการตาแดงเรื้อรัง</label><label class="cbi"><input type="checkbox" id="hx-h"> ปวดศีรษะบ่อยครั้ง</label><label class="cbi"><input type="checkbox" id="hx-a"> ตาขี้เกียจ/ตาเหล่</label><label class="cbi"><input type="checkbox" id="hx-f"> ครอบครัวสวมแว่น</label></div></div><div class="fs"><div class="fs-t">ส่วนที่ 3 — ผลการตรวจสายตา (VA Snellen)</div><div class="fr fr1" style="margin-bottom:8px"><div class="fg"><label>หน่วยวัดสายตา (Unit)</label><select id="s-unit"><option value="F">F (ฟุต)</option><option value="M">M (เมตร)</option></select></div></div><table class="va-tbl"><thead><tr><th style="text-align:left">การทดสอบ</th><th>ตาขวา (OD)</th><th>ตาซ้าย (OS)</th><th>สองตา (OU)</th></tr></thead><tbody><tr><td>ไม่ใส่แว่น / เลนส์</td><td><select id="vr-n"></select></td><td><select id="vl-n"></select></td><td><select id="vou-naked" title="ผลรวมสองตา (ไม่ใส่แว่น)"></select></td></tr><tr><td>ใส่แว่น / คอนแทคเลนส์</td><td><select id="vr-g"></select></td><td><select id="vl-g"></select></td><td><select id="vou-glasses" title="ผลรวมสองตา (ใส่แว่น)"></select></td></tr><tr><td>Pin Hole Test</td><td><select id="vr-p"></select></td><td><select id="vl-p"></select></td><td></td></tr></tbody></table></div><div class="fs"><div class="fs-t">ส่วนที่ 4 — ตรวจภาวะตาเหล่ / ตาขี้เกียจ</div><table class="ex-tbl"><thead><tr><th>รายการตรวจ</th><th>ปกติ</th><th>ผิดปกติ</th></tr></thead><tbody><tr><td>Cover Test</td><td><input type="radio" name="ex-cov" value="ปกติ" checked></td><td><input type="radio" name="ex-cov" value="ผิดปกติ"></td></tr><tr><td>Hirschberg</td><td><input type="radio" name="ex-hir" value="ปกติ" checked></td><td><input type="radio" name="ex-hir" value="ผิดปกติ"></td></tr><tr><td>Color Vision</td><td><input type="radio" name="ex-col" value="ปกติ" checked></td><td><input type="radio" name="ex-col" value="ผิดปกติ"></td></tr><tr><td>Stereopsis</td><td><input type="radio" name="ex-ste" value="ปกติ" checked></td><td><input type="radio" name="ex-ste" value="ผิดปกติ"></td></tr></tbody></table></div><div class="fs"><div class="fs-t">ส่วนที่ 5 — สรุปผลและข้อแนะนำ</div><div class="fr fr1" style="margin-bottom:7px"><div class="fg"><label>วินิจฉัย (Diagnosis)</label><select id="s-diag"><option>สายตาปกติ</option><option>เริ่มเฝ้าระวังสายตาผิดปกติ</option><option>สงสัยสายตาผิดปกติ</option><option>สงสัยตาขี้เกียจ/สายตาผิดปกติรุนแรง</option><option>ความผิดปกติรุนแรงของการมองเห็น</option><option>อื่นๆ</option></select></div></div><div class="fr fr1">
-  <div class="fg">
-    <label>การส่งต่อ (Referral)</label>
-    <select id="s-ref">
-      <option>ไม่จำเป็นต้องส่งต่อ</option>
-      <option>ควรพบจักษุแพทย์ภายใน 3 เดือน</option>
-      <option>ควรพบจักษุแพทย์ภายใน 1 เดือน</option>
-      <option>ส่งต่อด่วน (ภายใน 1 สัปดาห์)</option>
-      <option>อื่นๆ</option>
-    </select>
-  </div>
-</div>
-
-<div class="fr fr1" style="margin-top:7px"><div class="fg"><label>หมายเหตุ</label><input type="text" id="s-remark" placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)"></div></div></div></div><div class="pf" style="justify-content:space-between"><div style="display:flex;gap:6px"><button class="btn-p" id="btnSScr" onclick="saveScr()">💾 บันทึก</button><button class="btn-sec" onclick="closePanel('scr')">ยกเลิก</button></div><button class="btn-sec" onclick="dlTemplate()" style="color:var(--accent);font-weight:600;">📥 โหลด Template Excel</button></div></div>
 <div class="ov" id="ov-sat" onclick="closePanel('sat')"></div><div class="panel" id="panel-sat"><div class="ph" style="background:var(--purple)"><span class="ph-t">😊 แบบประเมินความพึงพอใจ</span><button class="ph-x" onclick="closePanel('sat')">✕</button></div><div class="pb"><div class="fs" id="sat-type-sec"><div class="fs-t" style="color:var(--purple);">ส่วนที่ 1 — ข้อมูลผู้ประเมิน</div><div class="fr"><div class="fg"><label>รพ.สต. ที่ต้องการประเมิน *</label><select id="sat-hc"><option value="">— เลือกรพ.สต. —</option></select></div><div class="fg"><label>ประเภทผู้ประเมิน</label><select id="sat-type" onchange="onSatTypeChange()"><option value="นักเรียน">นักเรียน (ผู้รับการตรวจ)</option><option value="ผู้ปกครอง">ผู้ปกครอง</option><option value="ครู/อาจารย์">ครู / อาจารย์</option><option value="เจ้าหน้าที่">เจ้าหน้าที่สาธารณสุข</option><option value="อื่นๆ">ประชาชนทั่วไป / อื่นๆ</option></select></div></div></div><div class="fs" id="sat-search-sec"><div class="fs-t" style="color:var(--purple); border-color:#e9d5ff;">🔍 ตรวจสอบสิทธิ์ผู้เข้าร่วม (สำหรับนักเรียน)</div><div class="fr"><div class="fg"><label>ค้นหาด้วยเลขบัตรประชาชน</label><input type="text" id="sat-search-cid" placeholder="กรอกเลข 13 หลัก" maxlength="13" oninput="searchSatUser(this.value)"></div><div class="fg"><label>ชื่อ-สกุล (พบอัตโนมัติ)</label><input type="text" id="sat-search-name" readonly style="background:#f1f5f9;"></div></div><div id="sat-search-err" style="color:var(--red); font-size:11px; margin-top:4px; font-weight:600;"></div></div><div class="fs" id="sat-form-sec" style="opacity:0.5; pointer-events:none;"><div class="fr"><div class="fg" style="grid-column: span 2;"><label>โรงเรียน / สถานศึกษา</label><input type="text" list="dl-school" id="sat-sch" placeholder="พิมพ์ชื่อโรงเรียน"></div></div><div class="fr"><div class="fg"><label>เพศ</label><select id="sat-sex"><option value="1">ชาย</option><option value="2">หญิง</option></select></div><div class="fg"><label>อายุ (ปี)</label><input type="number" id="sat-age" min="5" max="99"></div></div><div class="fr"><div class="fg"><label>ระดับชั้น / ตำแหน่ง</label><input type="text" id="sat-cls" placeholder="เช่น ป.3, ครูประจำชั้น"></div></div></div><div class="fs" id="sat-q-sec" style="pointer-events:none; opacity:0.5;"><div class="fs-t">ส่วนที่ 2 — ระดับความพึงพอใจ</div><table class="sat-tbl"><thead><tr><th>รายการ</th><th>5</th><th>4</th><th>3</th><th>2</th><th>1</th></tr></thead><tbody id="satQBody"></tbody></table></div><div class="fs" id="sat-c-sec" style="pointer-events:none; opacity:0.5;"><div class="fs-t">ส่วนที่ 3 — ข้อเสนอแนะ</div><div class="fg" style="margin-bottom:7px"><label>จุดเด่น / สิ่งที่ชอบ</label><textarea id="sat-str" rows="2"></textarea></div><div class="fg" style="margin-bottom:8px"><label>ข้อเสนอแนะ / สิ่งที่ควรปรับปรุง</label><textarea id="sat-imp" rows="2"></textarea></div><div class="fg"><label>ท่านจะแนะนำโครงการนี้แก่ผู้อื่นหรือไม่?</label><div class="rg" style="margin-top:4px"><label class="ri"><input type="radio" name="satrec" value="แนะนำอย่างยิ่ง"> แนะนำอย่างยิ่ง</label><label class="ri"><input type="radio" name="satrec" value="แนะนำ" checked> แนะนำ</label><label class="ri"><input type="radio" name="satrec" value="ไม่แน่ใจ"> ไม่แน่ใจ</label><label class="ri"><input type="radio" name="satrec" value="ไม่แนะนำ"> ไม่แนะนำ</label></div></div></div></div><div class="pf"><button class="btn-p" id="btnSSat" onclick="saveSat()" disabled>💾 บันทึกแบบประเมิน</button><button class="btn-sec" onclick="closePanel('sat')">ยกเลิก</button></div></div>
 <div class="ov" id="ov-pre" onclick="closePanel('pre')"></div><div class="panel" id="panel-pre"><div class="ph" style="background:var(--teal)"><span class="ph-t">📝 แบบทดสอบก่อนอบรม — Pre-test</span><button class="ph-x" onclick="closePanel('pre')">✕</button></div><div class="pb"><div class="fs"><div class="fs-t">ข้อมูลผู้ทดสอบ</div><div class="fr"><div class="fg"><label>เลขบัตรประชาชน 13 หลัก *</label><input type="text" id="pre-cid" maxlength="13" placeholder="ตรวจสอบสิทธิ์" oninput="checkEligible('pre',this.value)"></div><div class="fg"><label>ชื่อ-สกุล (อ้างอิง)</label><input type="text" id="pre-name" readonly style="background:#f1f5f9"></div></div><div id="pre-err" style="color:var(--red);font-size:11px;margin-top:4px;font-weight:600;"></div></div><div class="fs" id="pre-q-sec" style="opacity:0.5;pointer-events:none;"><div class="fs-t" style="color:var(--teal)">คำชี้แจง — เลือกคำตอบที่ถูกต้องที่สุด เพียง 1 ข้อ (10 ข้อ)</div><div id="preQBody"></div><div class="score-card" id="preSC" style="display:none"><div class="score-big" id="preSN">0</div><div class="score-label">คะแนนที่ได้ จาก 10 คะแนน</div></div></div></div><div class="pf"><button class="btn-p" id="btnSPre" onclick="savePre()" disabled>💾 บันทึก Pre-test</button><button class="btn-sec" onclick="closePanel('pre')">ยกเลิก</button></div></div>
 <div class="ov" id="ov-post" onclick="closePanel('post')"></div><div class="panel" id="panel-post"><div class="ph" style="background:#0891b2"><span class="ph-t">📝 แบบทดสอบหลังอบรม — Post-test</span><button class="ph-x" onclick="closePanel('post')">✕</button></div><div class="pb"><div class="fs"><div class="fs-t">ข้อมูลผู้ทดสอบ</div><div class="fr"><div class="fg"><label>เลขบัตรประชาชน 13 หลัก *</label><input type="text" id="post-cid" maxlength="13" placeholder="ตรวจสอบสิทธิ์" oninput="checkEligible('post',this.value)"></div><div class="fg"><label>ชื่อ-สกุล (อ้างอิง)</label><input type="text" id="post-name" readonly style="background:#f1f5f9"></div></div><div id="post-err" style="color:var(--red);font-size:11px;margin-top:4px;font-weight:600;"></div></div><div class="fs" id="post-q-sec" style="opacity:0.5;pointer-events:none;"><div class="fs-t" style="color:#0891b2">คำชี้แจง — เลือกคำตอบที่ถูกต้องที่สุด เพียง 1 ข้อ (10 ข้อ)</div><div id="postQBody"></div><div class="score-card" id="postSC" style="display:none"><div class="score-big" id="postSN">0</div><div class="score-label">คะแนนที่ได้ จาก 10 คะแนน</div></div></div></div><div class="pf"><button class="btn-p" id="btnSPost" onclick="savePost()" disabled>💾 บันทึก Post-test</button><button class="btn-sec" onclick="closePanel('post')">ยกเลิก</button></div></div>
