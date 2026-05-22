@@ -1484,6 +1484,11 @@ function e_(str) {
 function toThaiDate(dateStr) { if (!dateStr) return '......../........../............'; var parts = dateStr.split('/'); if (parts.length === 3) { var y = parseInt(parts[2], 10); if (y < 2500) y += 543; return parts[0] + '/' + parts[1] + '/' + y; } return dateStr; }
 function smartParseCSVLine(line, delimiter) { var row = []; var inQuotes = false; var currentVal = ''; for(var j=0; j<line.length; j++) { var c = line[j]; if(c === '"') { inQuotes = !inQuotes; } else if(c === delimiter && !inQuotes) { row.push(currentVal.trim()); currentVal = ''; } else { currentVal += c; } } row.push(currentVal.trim()); return row; }
 function smartProcessRow(cols) {
+    // --- 🛠️ FIX JHCIS EXPORT BUG (กรณีอัปโหลดไฟล์ที่ไม่มีหัวคอลัมน์มา) ---
+    if (cols.length === 41 && (/^\d{10}$/.test(String(cols[34]).replace(/["']/g,'').trim()) || String(cols[30]).replace(/["']/g,'').trim().indexOf('สายตา') > -1)) {
+        cols.splice(30, 0, "", "", "", "", "", "");
+    }
+
     var cleanedCols = cols.map(function(c) { return String(c).replace(/^"|"$/g, '').trim(); }); 
     var out = new Array(47).fill(''); 
     
@@ -1513,7 +1518,6 @@ function smartProcessRow(cols) {
         out[32] = 'ปกติ'; out[33] = 'ปกติ'; out[34] = 'ปกติ'; out[35] = 'ปกติ'; out[36] = 'สายตาปกติ'; out[37] = 'ไม่จำเป็นต้องส่งต่อ';
         if (hc) { var hInfo = G.hospList.find(function(h) { return h.hospcode === hc; }); if (hInfo) { out[41] = hInfo.tambon || ''; out[42] = hInfo.amphoe || ''; out[43] = hInfo.province || 'สมุทรสาคร'; } else { out[43] = 'สมุทรสาคร'; } } else { out[43] = 'สมุทรสาคร'; }
     } else { 
-        // 🚨 แก้ไขจาก 46 เป็น 47 เพื่อให้ลูปดึงข้อมูลจนครบ 47 คอลัมน์
         for(var i=0; i<47; i++) { 
             var val = cleanedCols[i] || ''; 
             val = val.replace(/^[="']+|["']+$/g, '').trim(); 
@@ -1621,6 +1625,13 @@ function applyFilters() {
 function clearFilters() { ['fAmp','fHosp','fSch','fStat','fSex'].forEach(function(id){ document.getElementById(id).value = ''; }); document.getElementById('srchBox').value = ''; onAmpChange(); applyFilters(); }
 function forceRefresh() { clearFilters(); loadDashboard({}); toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf'); }
 function mapCsvToRowDynamic(headers, cols) {
+    // --- 🛠️ FIX JHCIS EXPORT BUG ---
+    // ไฟล์ JHCIS มีหัวคอลัมน์ 47 ช่อง แต่ข้อมูลจริงมีแค่ 41 ช่อง (หายไป 6 ช่องช่วงกลาง)
+    // ทำให้คอลัมน์เลื่อน เราจึงต้องแทรกช่องว่าง 6 ช่องที่ index 30 เพื่อให้ตรงกัน
+    if (headers.length === 47 && cols.length === 41) {
+        cols.splice(30, 0, "", "", "", "", "", "");
+    }
+    
     var HEADER_MAP = {
         "level_edu": 0, "ระดับชั้น": 0,
         "room": 1, "ห้อง": 1,
@@ -1674,8 +1685,6 @@ function mapCsvToRowDynamic(headers, cols) {
     var out = new Array(47).fill('');
     var foundKnownHeader = false;
     
-    // สร้าง Array ของ Key ที่เรียงความยาวจากมากไปน้อย 
-    // (เพื่อป้องกันคำสั้นไปตรงกับคำยาว เช่น ป้องกันคำว่า "ชื่อ" ไปสกัดโดน "ชื่อโรงเรียน")
     var sortedKeys = Object.keys(HEADER_MAP).sort(function(a, b) { 
         return b.length - a.length; 
     });
@@ -1686,11 +1695,9 @@ function mapCsvToRowDynamic(headers, cols) {
         
         var matchedIndex = -1;
         
-        // 1. ลองจับคู่แบบเป๊ะๆ ก่อน (Exact Match) - แม่นยำที่สุด
         if (HEADER_MAP[hName] !== undefined) {
             matchedIndex = HEADER_MAP[hName];
         } else {
-            // 2. ถ้าไม่เจอ ให้หาแบบมีคำซ่อนอยู่ แต่จะใช้ keys ที่เรียงยาวไปสั้น
             for (var k = 0; k < sortedKeys.length; k++) {
                 if (hName.indexOf(sortedKeys[k]) > -1) { 
                     matchedIndex = HEADER_MAP[sortedKeys[k]]; 
@@ -1701,12 +1708,10 @@ function mapCsvToRowDynamic(headers, cols) {
         
         if (matchedIndex > -1) {
             foundKnownHeader = true;
-            
-            // กรณีเป็นคอลัมน์ค่าสายตา ให้เข้าฟังก์ชันแปลงรหัส VA Map
             if ([24, 25, 26, 27, 28, 29, 30, 31].indexOf(matchedIndex) > -1) {
                val = (val && G.vaMap && G.vaMap[val]) ? G.vaMap[val] : val;
             }
-            if (matchedIndex === 2) val = val.replace(/\D/g, ''); // บังคับเลขบัตรมีแต่ตัวเลข
+            if (matchedIndex === 2) val = val.replace(/\D/g, ''); 
             if (matchedIndex === 14 && val.length > 0 && val.length < 5) val = ("00000" + val).slice(-5);
             
             out[matchedIndex] = val;
@@ -1714,7 +1719,7 @@ function mapCsvToRowDynamic(headers, cols) {
     }
     
     if(!foundKnownHeader) { return smartProcessRow(cols); }
-    if (!out[46]) out[46] = 'ไทย'; // กรณีช่องสัญชาติว่าง ให้บังคับเป็นไทย
+    if (!out[46]) out[46] = 'ไทย'; 
     return out;
 }
 
