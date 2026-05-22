@@ -46,8 +46,11 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .btn-hdr-out{background:rgba(220,38,38,.28);border:1px solid rgba(220,38,38,.4);color:#fca5a5} .btn-hdr-out:hover{background:rgba(220,38,38,.4)}
 
 .kpi-row{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;padding:7px 10px;background:#dce7ff;border-bottom:1px solid #c7d4f0;flex-shrink:0}
-.kpi{background:var(--card);border-radius:var(--r);padding:7px 5px;text-align:center;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;overflow:hidden;cursor:default;transition:.15s}
-.kpi:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)} .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi{background:var(--card);border-radius:var(--r);padding:7px 5px;text-align:center;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;overflow:hidden;cursor:pointer;user-select:none;transition:.15s}
+.kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)} .kpi:active{transform:scale(0.97)}
+.kpi.active{box-shadow:0 0 0 2px var(--accent),var(--shadow-md);transform:translateY(-2px)}
+.kpi.active::before{height:5px}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
 .kpi-t .kpi-v{color:var(--blue)} .kpi-t::before{background:var(--blue)} .kpi-n .kpi-v{color:var(--green)} .kpi-n::before{background:var(--green)}
 .kpi-ab .kpi-v{color:var(--yellow)} .kpi-ab::before{background:var(--yellow)} .kpi-rf .kpi-v{color:var(--orange)} .kpi-rf::before{background:var(--orange)}
 .kpi-gl .kpi-v{color:var(--red)} .kpi-gl::before{background:var(--red)} .kpi-s .kpi-v{color:var(--purple)} .kpi-s::before{background:var(--purple)}
@@ -247,16 +250,16 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <div id="linkArea" class="link-grid" style="display:none;"></div>
 
 <div class="kpi-row">
-  <div class="kpi kpi-t"><div class="kpi-lbl">📋 ทั้งหมด</div><div class="kpi-v" id="k-total">—</div><div class="kpi-sub">รายคน</div></div>
-  <div class="kpi kpi-n"><div class="kpi-lbl">🟢 ปกติ</div><div class="kpi-v" id="k-normal">—</div><div class="kpi-sub" id="k-npct">—</div></div>
-  <div class="kpi kpi-ab"><div class="kpi-lbl">🟡 ผิดปกติ</div><div class="kpi-v" id="k-abnormal">—</div><div class="kpi-sub" id="k-abpct">—</div></div>
-  <div class="kpi kpi-rf"><div class="kpi-lbl">🟠 ส่งต่อ</div><div class="kpi-v" id="k-referred">—</div><div class="kpi-sub" id="k-rfpct">—</div></div>
-  <div class="kpi kpi-gl"><div class="kpi-lbl">🔴 ตัดแว่น</div><div class="kpi-v" id="k-glasses">—</div><div class="kpi-sub" id="k-glpct">—</div></div>
-  <div class="kpi kpi-s"><div class="kpi-lbl">⭐ พึงพอใจ</div><div class="kpi-v" id="k-sat">—</div><div class="kpi-sub">/5.00</div></div>
-  <div class="kpi kpi-pr"><div class="kpi-lbl">📝 Pre-test</div><div class="kpi-v" id="k-pre">—</div><div class="kpi-sub">/10 คะแนน</div></div>
-  <div class="kpi kpi-po"><div class="kpi-lbl">📝 Post-test</div><div class="kpi-v" id="k-post">—</div><div class="kpi-sub">/10 คะแนน</div></div>
-  <div class="kpi kpi-g"><div class="kpi-lbl">📈 Learning Gain</div><div class="kpi-v" id="k-gain">—</div><div class="kpi-sub">เฉลี่ย</div></div>
-  <div class="kpi kpi-tr"><div class="kpi-lbl">🎓 ผู้เข้าอบรม</div><div class="kpi-v" id="k-trainee">—</div><div class="kpi-sub">รายคน (Pre-test)</div></div>
+  <div class="kpi kpi-t" data-kpi="total" onclick="toggleKpiFilter('total')" title="📋 กดเพื่อล้างตัวกรองทั้งหมด"><div class="kpi-lbl">📋 ทั้งหมด</div><div class="kpi-v" id="k-total">—</div><div class="kpi-sub">รายคน</div></div>
+  <div class="kpi kpi-n" data-kpi="normal" onclick="toggleKpiFilter('normal')" title="🟢 กรองเฉพาะปกติ (กดซ้ำยกเลิก)"><div class="kpi-lbl">🟢 ปกติ</div><div class="kpi-v" id="k-normal">—</div><div class="kpi-sub" id="k-npct">—</div></div>
+  <div class="kpi kpi-ab" data-kpi="abnormal" onclick="toggleKpiFilter('abnormal')" title="🟡 กรองเฉพาะผิดปกติทั้งหมด (กดซ้ำยกเลิก)"><div class="kpi-lbl">🟡 ผิดปกติ</div><div class="kpi-v" id="k-abnormal">—</div><div class="kpi-sub" id="k-abpct">—</div></div>
+  <div class="kpi kpi-rf" data-kpi="referred" onclick="toggleKpiFilter('referred')" title="🟠 กรองเฉพาะส่งต่อ (กดซ้ำยกเลิก)"><div class="kpi-lbl">🟠 ส่งต่อ</div><div class="kpi-v" id="k-referred">—</div><div class="kpi-sub" id="k-rfpct">—</div></div>
+  <div class="kpi kpi-gl" data-kpi="glasses" onclick="toggleKpiFilter('glasses')" title="🔴 กรองเฉพาะตัดแว่น (กดซ้ำยกเลิก)"><div class="kpi-lbl">🔴 ตัดแว่น</div><div class="kpi-v" id="k-glasses">—</div><div class="kpi-sub" id="k-glpct">—</div></div>
+  <div class="kpi kpi-s" data-kpi="sat" onclick="toggleKpiFilter('sat')" title="⭐ กรองผู้ทำแบบประเมินความพึงพอใจ (กดซ้ำยกเลิก)"><div class="kpi-lbl">⭐ พึงพอใจ</div><div class="kpi-v" id="k-sat">—</div><div class="kpi-sub">/5.00</div></div>
+  <div class="kpi kpi-pr" data-kpi="pre" onclick="toggleKpiFilter('pre')" title="📝 กรองผู้ทำ Pre-test (กดซ้ำยกเลิก)"><div class="kpi-lbl">📝 Pre-test</div><div class="kpi-v" id="k-pre">—</div><div class="kpi-sub">/10 คะแนน</div></div>
+  <div class="kpi kpi-po" data-kpi="post" onclick="toggleKpiFilter('post')" title="📝 กรองผู้ทำ Post-test (กดซ้ำยกเลิก)"><div class="kpi-lbl">📝 Post-test</div><div class="kpi-v" id="k-post">—</div><div class="kpi-sub">/10 คะแนน</div></div>
+  <div class="kpi kpi-g" data-kpi="gain" onclick="toggleKpiFilter('gain')" title="📈 กรองผู้มี Learning Gain (กดซ้ำยกเลิก)"><div class="kpi-lbl">📈 Learning Gain</div><div class="kpi-v" id="k-gain">—</div><div class="kpi-sub">เฉลี่ย</div></div>
+  <div class="kpi kpi-tr" data-kpi="trainee" onclick="toggleKpiFilter('trainee')" title="🎓 กรองผู้เข้าอบรม (กดซ้ำยกเลิก)"><div class="kpi-lbl">🎓 ผู้เข้าอบรม</div><div class="kpi-v" id="k-trainee">—</div><div class="kpi-sub">รายคน (Pre-test)</div></div>
 </div>
 
 <div class="main">
@@ -1587,6 +1590,8 @@ function applyFilters() {
     if (cf.metric === 'sat' && r.sat === null) return false;
     if (cf.metric === 'pre' && r.pre === null) return false;
     if (cf.metric === 'post' && r.post === null) return false;
+    if (cf.metric === 'gain' && r.gain === null) return false;
+    if (cf.metric === 'trainee' && r.pre === null) return false;
 
     if (cf.diag && getDiagSeverityForRow(r) !== cf.diag) return false;
     if (cf.treat && String(r.treatment || 'ไม่ระบุสิทธิ์') !== cf.treat) return false;
@@ -2523,7 +2528,8 @@ function updateKPIs(k) {
   sv('k-pre', k.preAvg !== null ? k.preAvg.toFixed(1) : '—'); 
   sv('k-post', k.postAvg !== null ? k.postAvg.toFixed(1) : '—'); 
   sv('k-gain', k.gainAvg !== null ? k.gainAvg + '%' : '—'); 
-  sv('k-trainee', k.preTestCount !== null ? k.preTestCount : '—'); 
+  sv('k-trainee', k.preTestCount !== null ? k.preTestCount : '—');
+  if (typeof updateKpiActiveState === 'function') updateKpiActiveState();  // ⬅️ เพิ่มบรรทัดนี้ 
 }
 
 function renderBarChart() {
@@ -4307,7 +4313,41 @@ function toggleAllChk(source) {
         checkboxes[i].checked = source.checked;
       }
     }
+function toggleKpiFilter(key) {
+  var statusKeys = ['normal', 'abnormal', 'referred', 'glasses'];
+  var metricKeys = ['sat', 'pre', 'post', 'gain', 'trainee'];
+  var fStatEl = document.getElementById('fStat');
+  
+  if (key === 'total') {
+    // กล่อง "ทั้งหมด" → ล้างทุกตัวกรอง KPI
+    fStatEl.value = '';
+    G_chartFilter.metric = null;
+  } else if (statusKeys.indexOf(key) > -1) {
+    // status filter (ปกติ/ผิดปกติ/ส่งต่อ/ตัดแว่น) → toggle
+    fStatEl.value = (fStatEl.value === key) ? '' : key;
+    G_chartFilter.metric = null;
+  } else if (metricKeys.indexOf(key) > -1) {
+    // metric filter (พึงพอใจ/Pre/Post/Gain/ผู้เข้าอบรม) → toggle
+    G_chartFilter.metric = (G_chartFilter.metric === key) ? null : key;
+    fStatEl.value = '';
+  }
+  
+  applyFilters();
+}
 
+function updateKpiActiveState() {
+  var fStat = document.getElementById('fStat').value;
+  var metric = (typeof G_chartFilter !== 'undefined' && G_chartFilter) ? G_chartFilter.metric : null;
+  var activeKey = fStat || metric || null;
+  
+  document.querySelectorAll('.kpi[data-kpi]').forEach(function(el) {
+    if (el.getAttribute('data-kpi') === activeKey) {
+      el.classList.add('active');
+    } else {
+      el.classList.remove('active');
+    }
+  });
+}
 </script>
 </body>
 </html>
