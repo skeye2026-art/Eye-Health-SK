@@ -2522,7 +2522,24 @@ function updateKPIs(k) {
   sv('k-normal', k.normal); sv('k-npct', k.normal !== null ? k.normalPct + '%' : '—'); sv('k-abnormal', k.abnormalTotal !== undefined ? k.abnormalTotal : k.abnormal); 
   sv('k-abpct', k.abnormalPct !== null ? k.abnormalPct + '%' : '—'); 
   
-  sv('k-referred', k.referred); sv('k-rfpct', k.referred !== null ? k.referredPct + '%' : '—'); 
+  sv('k-referred', k.referred);
+  // เพิ่มการคิด %  เทียบจำนวน "ทั้งหมด" และเทียบจำนวน "ผิดปกติ" สำหรับกล่อง ส่งต่อ
+  var _abTotal = (k.abnormalTotal !== undefined) ? k.abnormalTotal : (k.abnormal || 0);
+  var _refTotal = k.referred || 0;
+  var _refPctAll = (k.referredPct !== null && k.referredPct !== undefined) ? k.referredPct : 0;
+  var _refPctAb = _abTotal > 0 ? Math.round(_refTotal / _abTotal * 100) : 0;
+  var _rfSubEl = document.getElementById('k-rfpct');
+  if (_rfSubEl) {
+    if (k.referred === null || k.referred === undefined) {
+      _rfSubEl.innerHTML = '—';
+      _rfSubEl.title = '';
+    } else {
+      _rfSubEl.innerHTML = 
+        '<div style="font-size:9.5px;line-height:1.2;color:var(--muted2);">' + _refPctAll + '% <span style="opacity:0.75;">ของทั้งหมด</span></div>' +
+        '<div style="font-size:9.5px;line-height:1.2;color:var(--orange);font-weight:600;">' + _refPctAb + '% <span style="opacity:0.75;font-weight:400;">ของผิดปกติ</span></div>';
+      _rfSubEl.title = _refPctAll + '% เทียบกับจำนวนทั้งหมด • ' + _refPctAb + '% เทียบกับผู้ผิดปกติ';
+    }
+  }
   sv('k-glasses', k.glasses); sv('k-glpct', k.glasses !== null ? k.glassesPct + '%' : '—'); 
   sv('k-sat', k.satAvg !== null ? k.satAvg.toFixed(2) : '—'); 
   sv('k-pre', k.preAvg !== null ? k.preAvg.toFixed(1) : '—'); 
