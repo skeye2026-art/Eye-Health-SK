@@ -1485,69 +1485,107 @@ function toThaiDate(dateStr) { if (!dateStr) return '......../........../.......
 function smartParseCSVLine(line, delimiter) { var row = []; var inQuotes = false; var currentVal = ''; for(var j=0; j<line.length; j++) { var c = line[j]; if(c === '"') { inQuotes = !inQuotes; } else if(c === delimiter && !inQuotes) { row.push(currentVal.trim()); currentVal = ''; } else { currentVal += c; } } row.push(currentVal.trim()); return row; }
 function smartProcessRow(cols) {
     var cleanedCols = cols.map(function(c) { return String(c).replace(/^"|"$/g, '').trim(); }); 
-    var out = new Array(47).fill('');  // ⬅️ เปลี่ยนจาก 46 เป็น 47
+    var out = new Array(47).fill(''); 
     
-    // ฟังก์ชันย่อยสำหรับแปลงตัวเลข ID เป็นค่าสายตา
     function mapVa(val) {
         var v = String(val || '').trim();
         return (v && G.vaMap && G.vaMap[v]) ? G.vaMap[v] : v;
     }
 
-    if (cleanedCols.length >= 15 && cleanedCols.length <= 25 && cleanedCols[0].toLowerCase().indexOf('ระดับ') === -1) {
-        out[0] = cleanedCols[0]; out[1] = cleanedCols[1]; out[2] = (cleanedCols[2]||'').replace(/\D/g, ''); out[3] = cleanedCols[3]; out[4] = cleanedCols[4]; out[5] = cleanedCols[5]; out[6] = (cleanedCols[3]||'') + (cleanedCols[4]||'') + ' ' + (cleanedCols[5]||'');
-        var bd = cleanedCols[6] || ''; var byear = 0, bmonth = 0, bday = 0;
-        if (bd.indexOf('-') > -1) { var p = bd.split('-'); byear = parseInt(p[0]); bmonth = parseInt(p[1]); bday = parseInt(p[2]); } else if (bd.indexOf('/') > -1) { var p = bd.split('/'); bday = parseInt(p[0]); bmonth = parseInt(p[1]); byear = parseInt(p[2]); } else if (bd.length === 8) { byear = parseInt(bd.substring(0,4)); bmonth = parseInt(bd.substring(4,6)); bday = parseInt(bd.substring(6,8)); }
-        if (byear > 0) { if (byear < 2500) byear += 543; out[7] = String(bday).padStart(2,'0') + '/' + String(bmonth).padStart(2,'0') + '/' + byear; var dobG = new Date(byear - 543, bmonth - 1, bday); var today = new Date(); var age = today.getFullYear() - dobG.getFullYear(); var m = today.getMonth() - dobG.getMonth(); if (m < 0 || (m === 0 && today.getDate() < dobG.getDate())) { age--; } out[8] = age > 0 ? String(age) : ''; }
-        out[9] = (cleanedCols[7] === '1' || cleanedCols[7] === 'ชาย') ? '1' : '2'; out[10] = (cleanedCols[0]||'') + (cleanedCols[1] ? '/' + cleanedCols[1] : ''); 
-        var isTxtFormat = (cleanedCols[11] === 'F' || cleanedCols[11] === 'M' || cleanedCols.length <= 19);
-        if (isTxtFormat) { 
-            out[11] = ''; 
-            out[12] = cleanedCols[11] || 'F'; 
-            out[15] = cleanedCols[8] || ''; 
-            out[16] = cleanedCols[9] || ''; 
-            out[17] = cleanedCols[10] || ''; 
-            out[24] = mapVa(cleanedCols[12]); // VAขวา_ตาเปล่า
-            out[28] = mapVa(cleanedCols[13]); // PHขวา
-            out[25] = mapVa(cleanedCols[14]); // VAซ้าย_ตาเปล่า
-            out[29] = mapVa(cleanedCols[15]); // PHซ้าย
-            var hcRaw = String(cleanedCols[16] || '').trim().replace(/^[="']+|["']+$/g, ''); 
-            var sd = cleanedCols[17] || ''; 
+    if (cleanedCols.length >= 15 && cleanedCols.length <= 25 && cleanedCols[0].toLowerCase().indexOf('ระดับ') === -1) {
+        out[0] = cleanedCols[0]; out[1] = cleanedCols[1]; out[2] = (cleanedCols[2]||'').replace(/\D/g, ''); out[3] = cleanedCols[3]; out[4] = cleanedCols[4]; out[5] = cleanedCols[5]; out[6] = (cleanedCols[3]||'') + (cleanedCols[4]||'') + ' ' + (cleanedCols[5]||'');
+        var bd = cleanedCols[6] || ''; var byear = 0, bmonth = 0, bday = 0;
+        if (bd.indexOf('-') > -1) { var p = bd.split('-'); byear = parseInt(p[0]); bmonth = parseInt(p[1]); bday = parseInt(p[2]); } else if (bd.indexOf('/') > -1) { var p = bd.split('/'); bday = parseInt(p[0]); bmonth = parseInt(p[1]); byear = parseInt(p[2]); } else if (bd.length === 8) { byear = parseInt(bd.substring(0,4)); bmonth = parseInt(bd.substring(4,6)); bday = parseInt(bd.substring(6,8)); }
+        if (byear > 0) { if (byear < 2500) byear += 543; out[7] = String(bday).padStart(2,'0') + '/' + String(bmonth).padStart(2,'0') + '/' + byear; var dobG = new Date(byear - 543, bmonth - 1, bday); var today = new Date(); var age = today.getFullYear() - dobG.getFullYear(); var m = today.getMonth() - dobG.getMonth(); if (m < 0 || (m === 0 && today.getDate() < dobG.getDate())) { age--; } out[8] = age > 0 ? String(age) : ''; }
+        out[9] = (cleanedCols[7] === '1' || cleanedCols[7] === 'ชาย') ? '1' : '2'; out[10] = (cleanedCols[0]||'') + (cleanedCols[1] ? '/' + cleanedCols[1] : ''); 
+        var isTxtFormat = (cleanedCols[11] === 'F' || cleanedCols[11] === 'M' || cleanedCols.length <= 19);
+        if (isTxtFormat) { 
+            out[11] = ''; out[12] = cleanedCols[11] || 'F'; out[15] = cleanedCols[8] || ''; out[16] = cleanedCols[9] || ''; out[17] = cleanedCols[10] || ''; out[24] = mapVa(cleanedCols[12]); out[28] = mapVa(cleanedCols[13]); out[25] = mapVa(cleanedCols[14]); out[29] = mapVa(cleanedCols[15]); 
+            var hcRaw = String(cleanedCols[16] || '').trim().replace(/^[="']+|["']+$/g, ''); var sd = cleanedCols[17] || ''; 
         } else { 
-            out[11] = cleanedCols[11] || ''; 
-            out[12] = 'F'; 
-            out[15] = cleanedCols[8] || ''; 
-            out[16] = cleanedCols[9] || ''; 
-            out[17] = cleanedCols[10] || ''; 
-            out[24] = mapVa(cleanedCols[12]); // VAขวา_ตาเปล่า
-            out[25] = mapVa(cleanedCols[13]); // VAซ้าย_ตาเปล่า
-            out[28] = mapVa(cleanedCols[14]); // PHขวา
-            out[29] = mapVa(cleanedCols[15]); // PHซ้าย
-            // ไม่มี out[30], out[31] (VA OU)
-            out[32] = 'ปกติ'; // Cover_Test
-            var hcRaw = String(cleanedCols[16] || '').trim().replace(/^[="']+|["']+$/g, ''); 
-            var sd = cleanedCols[17] || ''; 
+            out[11] = cleanedCols[11] || ''; out[12] = 'F'; out[15] = cleanedCols[8] || ''; out[16] = cleanedCols[9] || ''; out[17] = cleanedCols[10] || ''; out[24] = mapVa(cleanedCols[12]); out[25] = mapVa(cleanedCols[13]); out[28] = mapVa(cleanedCols[14]); out[29] = mapVa(cleanedCols[15]); 
+            out[32] = 'ปกติ'; 
+            var hcRaw = String(cleanedCols[16] || '').trim().replace(/^[="']+|["']+$/g, ''); var sd = cleanedCols[17] || ''; 
         }
-        if (sd.indexOf('-') > -1) { var p = sd.split('-'); var sy = parseInt(p[0]); if(sy < 2500) sy += 543; out[13] = String(p[2]).padStart(2,'0') + '/' + String(p[1]).padStart(2,'0') + '/' + sy; } else if (sd.indexOf('/') > -1) { var p = sd.split('/'); var sy = parseInt(p[2]); if(sy < 2500) sy += 543; out[13] = String(p[0]).padStart(2,'0') + '/' + String(p[1]).padStart(2,'0') + '/' + sy; } else if (sd.length === 8) { var sy = parseInt(sd.substring(0,4)); if(sy < 2500) sy += 543; out[13] = sd.substring(6,8) + '/' + sd.substring(4,6) + '/' + sy; } else { var d = new Date(); out[13] = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + (d.getFullYear() + 543); }
-        var hc = hcRaw; if (!hc && G.session && G.session.hospcode !== 'all') hc = G.session.hospcode; if (hc && hc.length > 0 && hc.length < 5) hc = ("00000" + hc).slice(-5); out[14] = hc;
-        out[18] = '0'; out[19] = '0'; out[20] = '0'; out[21] = '0'; out[22] = '0'; out[23] = '0'; 
-        out[32] = 'ปกติ'; out[33] = 'ปกติ'; out[34] = 'ปกติ'; out[35] = 'ปกติ'; out[36] = 'สายตาปกติ'; out[37] = 'ไม่จำเป็นต้องส่งต่อ';
-        if (hc) { var hInfo = G.hospList.find(function(h) { return h.hospcode === hc; }); if (hInfo) { out[41] = hInfo.tambon || ''; out[42] = hInfo.amphoe || ''; out[43] = hInfo.province || 'สมุทรสาคร'; } else { out[43] = 'สมุทรสาคร'; } } else { out[43] = 'สมุทรสาคร'; }
-    } else { 
-        for(var i=0; i<46; i++) { 
+        if (sd.indexOf('-') > -1) { var p = sd.split('-'); var sy = parseInt(p[0]); if(sy < 2500) sy += 543; out[13] = String(p[2]).padStart(2,'0') + '/' + String(p[1]).padStart(2,'0') + '/' + sy; } else if (sd.indexOf('/') > -1) { var p = sd.split('/'); var sy = parseInt(p[2]); if(sy < 2500) sy += 543; out[13] = String(p[0]).padStart(2,'0') + '/' + String(p[1]).padStart(2,'0') + '/' + sy; } else if (sd.length === 8) { var sy = parseInt(sd.substring(0,4)); if(sy < 2500) sy += 543; out[13] = sd.substring(6,8) + '/' + sd.substring(4,6) + '/' + sy; } else { var d = new Date(); out[13] = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + (d.getFullYear() + 543); }
+        var hc = hcRaw; if (!hc && G.session && G.session.hospcode !== 'all') hc = G.session.hospcode; if (hc && hc.length > 0 && hc.length < 5) hc = ("00000" + hc).slice(-5); out[14] = hc;
+        out[18] = '0'; out[19] = '0'; out[20] = '0'; out[21] = '0'; out[22] = '0'; out[23] = '0'; 
+        out[32] = 'ปกติ'; out[33] = 'ปกติ'; out[34] = 'ปกติ'; out[35] = 'ปกติ'; out[36] = 'สายตาปกติ'; out[37] = 'ไม่จำเป็นต้องส่งต่อ';
+        if (hc) { var hInfo = G.hospList.find(function(h) { return h.hospcode === hc; }); if (hInfo) { out[41] = hInfo.tambon || ''; out[42] = hInfo.amphoe || ''; out[43] = hInfo.province || 'สมุทรสาคร'; } else { out[43] = 'สมุทรสาคร'; } } else { out[43] = 'สมุทรสาคร'; }
+    } else { 
+        // 🚨 แก้ไขจาก 46 เป็น 47 เพื่อให้ลูปดึงข้อมูลจนครบ 47 คอลัมน์
+        for(var i=0; i<47; i++) { 
             var val = cleanedCols[i] || ''; 
             val = val.replace(/^[="']+|["']+$/g, '').trim(); 
             if (i === 2) val = val.replace(/\D/g, ''); 
             if (i === 14 && val.length > 0 && val.length < 5) val = ("00000" + val).slice(-5); 
-            
-            // กรณีเป็นไฟล์ CSV 47 คอลัมน์ แปลงรหัสในคอลัมน์ VA ทั้ง 8 ช่อง
             if ([24, 25, 26, 27, 28, 29, 30, 31].indexOf(i) > -1) {
                 val = mapVa(val);
             }
             out[i] = val; 
         } 
     }
-    if (!out[46]) out[46] = 'ไทย';  // ⬅️ เพิ่มก่อน return 
+    if (!out[46]) out[46] = 'ไทย'; 
     return out;
+}
+
+// 🚨 โค้ดแปลงไฟล์ที่แนบให้ครบ 47 หัวข้อ
+function convertFile() {
+    var fileInput = document.getElementById('convFile');
+    if (!fileInput.files.length) { toast('กรุณาเลือกไฟล์ก่อนครับ', 'err'); return; }
+    var file = fileInput.files[0];
+    var reader = new FileReader();
+    var encoding = document.getElementById('fileEncoding') ? document.getElementById('fileEncoding').value : 'UTF-8';
+    
+    reader.onload = function(e) {
+        var text = e.target.result;
+        var lines = text.split(/\r\n|\n|\r/);
+        var processedRows = [];
+        var headers = [];
+        
+        for (var i = 0; i < lines.length; i++) { 
+            var line = lines[i].trim(); if (!line) continue; 
+            var delimiter = ','; 
+            if (line.indexOf('\t') !== -1) delimiter = '\t'; 
+            else if (line.indexOf('|') !== -1) delimiter = '|'; 
+            else if (line.indexOf(';') !== -1) delimiter = ';'; 
+            
+            var cols = smartParseCSVLine(line, delimiter); 
+            
+            if(i === 0 || line.indexOf('ระดับชั้น') > -1 || line.indexOf('cid') > -1 || line.indexOf('เลขบัตร') > -1) {
+                headers = cols; continue; 
+            }
+            
+            var mapped = (headers.length > 0) ? mapCsvToRowDynamic(headers, cols) : smartProcessRow(cols); 
+            if (mapped) processedRows.push(mapped); 
+        }
+        
+        if(processedRows.length === 0) { toast('ไม่พบข้อมูลในไฟล์', 'err'); return; } 
+        
+        // แนบหัวคอลัมน์ให้ครบ 47 ช่อง (เพิ่ม 'สิทธิการรักษา' และ 'สัญชาติ' เข้าไป)
+        var hdr = ["ระดับชั้น","ห้อง","เลขบัตรประชาชน_13หลัก","คำนำหน้า","ชื่อ","นามสกุล","ชื่อ-สกุลเต็ม","วันเกิด_dd/mm/yyyy","อายุ_ปี","เพศ_1ชาย_2หญิง","ชั้นเรียน","ชื่อโรงเรียน","หน่วยวัด_F_M","วันที่ตรวจ_dd/mm/yyyy","รหัสรพสต","บ้านเลขที่","หมู่","รหัสพื้นที่_aid","ประวัติสวมแว่น","ประวัติบาดเจ็บตา","ตาแดงเรื้อรัง","ปวดศีรษะบ่อย","ตาเหล่_ตาขี้เกียจ","ครอบครัวสวมแว่น","VAขวา_ตาเปล่า","VAซ้าย_ตาเปล่า","VAขวา_ใส่แว่น","VAซ้าย_ใส่แว่น","PHขวา","PHซ้าย","VA_OU_ตาเปล่า","VA_OU_ใส่แว่น","Cover_Test","Hirschberg","Color_Vision","Stereopsis","วินิจฉัย","การส่งต่อ","ผู้ตรวจ","ตำแหน่ง","รหัสโรงเรียน","ตำบล","อำเภอ","จังหวัด","หมายเหตุ","สิทธิการรักษา","สัญชาติ"];
+        
+        var csvContent = "\uFEFF" + hdr.join(',') + "\n";
+        processedRows.forEach(function(r) {
+            var rowStr = r.map(function(c, i) {
+                if (i === 2) return '="'+c+'"';
+                if (i === 14) return '="'+c+'"';
+                return '"'+String(c).replace(/"/g, '""')+'"';
+            }).join(',');
+            csvContent += rowStr + "\n";
+        });
+        
+        var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'Converted_Screening_Data.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast('แปลงไฟล์สำเร็จ! โปรดตรวจสอบและนำเข้า', 'ok');
+    }; 
+    reader.readAsText(file, encoding);
 }
 function toast(msg, type) { var wrap = document.getElementById('toastWrap'); if (!wrap) return; var t = document.createElement('div'); var icon = type === 'ok' ? '✅ ' : type === 'err' ? '❌ ' : 'ℹ️ '; t.className = 'toast t-' + (type || 'inf'); t.innerHTML = icon + msg; wrap.appendChild(t); setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(100%)'; t.style.transition = 'all 0.3s ease'; setTimeout(function() { t.remove(); }, 300); }, 3000); }
 function applyFilters() {
@@ -1583,7 +1621,6 @@ function applyFilters() {
 function clearFilters() { ['fAmp','fHosp','fSch','fStat','fSex'].forEach(function(id){ document.getElementById(id).value = ''; }); document.getElementById('srchBox').value = ''; onAmpChange(); applyFilters(); }
 function forceRefresh() { clearFilters(); loadDashboard({}); toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf'); }
 function mapCsvToRowDynamic(headers, cols) {
-    // อัปเดต Dictionary ให้รู้จักทั้งหัวคอลัมน์ "ภาษาไทย" และ "ภาษาอังกฤษ (ตาม Database จริง)"
     var HEADER_MAP = {
         "level_edu": 0, "ระดับชั้น": 0,
         "room": 1, "ห้อง": 1,
@@ -1634,34 +1671,31 @@ function mapCsvToRowDynamic(headers, cols) {
         "nationality": 46, "สัญชาติ": 46
     };
     
-    var out = new Array(47).fill(''); // สร้างแถวว่าง 47 ช่อง
+    var out = new Array(47).fill('');
+    var foundKnownHeader = false;
     for(var j=0; j<headers.length; j++) {
-        // ทำความสะอาดชื่อคอลัมน์เพื่อนำไปเทียบ
         var hName = String(headers[j]).toLowerCase().replace(/[\n\r"']/g, '').trim();
         var val = String(cols[j] || '').replace(/^[="']+|["']+$/g, '').trim();
         
-        // ค้นหาใน Dictionary ว่าตรงกับ Index ไหน
         var matchedIndex = -1;
         for (var key in HEADER_MAP) {
             if (hName === key || hName.indexOf(key) > -1) { matchedIndex = HEADER_MAP[key]; break; }
         }
         
-        // หากเจอตรงกัน ให้นำไปใส่ใน index นั้น
         if (matchedIndex > -1) {
-            // Mapping พิเศษสำหรับค่าสายตา (ให้แปลงรหัสเป็นค่าจริง)
+            foundKnownHeader = true;
             if ([24, 25, 26, 27, 28, 29, 30, 31].indexOf(matchedIndex) > -1) {
                val = (val && G.vaMap && G.vaMap[val]) ? G.vaMap[val] : val;
             }
-            // บังคับทำความสะอาดรูปแบบตัวเลข
-            if (matchedIndex === 2) val = val.replace(/\D/g, ''); // เลขบัตรให้เหลือแต่ตัวเลข
-            if (matchedIndex === 14 && val.length > 0 && val.length < 5) val = ("00000" + val).slice(-5); // รหัสรพ.สต. 5 หลัก
+            if (matchedIndex === 2) val = val.replace(/\D/g, ''); 
+            if (matchedIndex === 14 && val.length > 0 && val.length < 5) val = ("00000" + val).slice(-5);
             
             out[matchedIndex] = val;
         }
     }
     
-    // Fallback: หากระบบหาคอลัมน์ "เลขบัตรประชาชน" ไม่เจอ แสดงว่าไฟล์อาจไม่มี Header ที่รู้จัก ให้ใช้ระบบเดิมสำรอง
-    if(out[2] === '') { return smartProcessRow(cols); }
+    if(!foundKnownHeader) { return smartProcessRow(cols); }
+    if (!out[46]) out[46] = 'ไทย';
     return out;
 }
 
@@ -4097,6 +4131,7 @@ function toggleAllChk(source) {
         checkboxes[i].checked = source.checked;
       }
     }
+
 </script>
 </body>
 </html>
