@@ -1484,8 +1484,8 @@ function e_(str) {
 function toThaiDate(dateStr) { if (!dateStr) return '......../........../............'; var parts = dateStr.split('/'); if (parts.length === 3) { var y = parseInt(parts[2], 10); if (y < 2500) y += 543; return parts[0] + '/' + parts[1] + '/' + y; } return dateStr; }
 function smartParseCSVLine(line, delimiter) { var row = []; var inQuotes = false; var currentVal = ''; for(var j=0; j<line.length; j++) { var c = line[j]; if(c === '"') { inQuotes = !inQuotes; } else if(c === delimiter && !inQuotes) { row.push(currentVal.trim()); currentVal = ''; } else { currentVal += c; } } row.push(currentVal.trim()); return row; }
 function smartProcessRow(cols) {
-    // --- 🛠️ FIX JHCIS EXPORT BUG (กรณีอัปโหลดไฟล์ที่ไม่มีหัวคอลัมน์มา) ---
-    if (cols.length === 41 && (/^\d{10}$/.test(String(cols[34]).replace(/["']/g,'').trim()) || String(cols[30]).replace(/["']/g,'').trim().indexOf('สายตา') > -1)) {
+    // 🛠️ FIX JHCIS EXPORT BUG: ชดเชยคอลัมน์ที่ JHCIS ทำหายไป 6 ช่อง (กรณีไม่มี Header)
+    if (cols.length === 41 && (/^\d{10}$/.test(String(cols[34]).replace(/["']/g,'').trim()) || String(cols[30]).replace(/["']/g,'').trim().indexOf('สายตา') > -1 || String(cols[30]).replace(/["']/g,'').trim() === '')) {
         cols.splice(30, 0, "", "", "", "", "", "");
     }
 
@@ -1529,7 +1529,7 @@ function smartProcessRow(cols) {
             out[i] = val; 
         } 
     }
-    if (!out[46]) out[46] = 'ไทย'; 
+    if (!out[46] || out[46] === '') out[46] = 'ไทย'; 
     return out;
 }
 
@@ -1556,9 +1556,14 @@ function convertFile() {
             
             var cols = smartParseCSVLine(line, delimiter); 
             
-            if(i === 0 || line.indexOf('ระดับชั้น') > -1 || line.indexOf('cid') > -1 || line.indexOf('เลขบัตร') > -1) {
+            // 🛠️ FIX HEADER DETECTION
+            var isHeader = (line.indexOf('ระดับชั้น') > -1 || line.toLowerCase().indexOf('cid') > -1 || line.indexOf('เลขบัตร') > -1 || line.toLowerCase().indexOf('level_edu') > -1);
+            if (i === 0 && isHeader) {
                 headers = cols; continue; 
+            } else if (i === 0 && !isHeader) {
+                headers = [];
             }
+            if (i > 0 && isHeader) { headers = cols; continue; }
             
             var mapped = (headers.length > 0) ? mapCsvToRowDynamic(headers, cols) : smartProcessRow(cols); 
             if (mapped) processedRows.push(mapped); 
@@ -1566,14 +1571,13 @@ function convertFile() {
         
         if(processedRows.length === 0) { toast('ไม่พบข้อมูลในไฟล์', 'err'); return; } 
         
-        // แนบหัวคอลัมน์ให้ครบ 47 ช่อง (เพิ่ม 'สิทธิการรักษา' และ 'สัญชาติ' เข้าไป)
         var hdr = ["ระดับชั้น","ห้อง","เลขบัตรประชาชน_13หลัก","คำนำหน้า","ชื่อ","นามสกุล","ชื่อ-สกุลเต็ม","วันเกิด_dd/mm/yyyy","อายุ_ปี","เพศ_1ชาย_2หญิง","ชั้นเรียน","ชื่อโรงเรียน","หน่วยวัด_F_M","วันที่ตรวจ_dd/mm/yyyy","รหัสรพสต","บ้านเลขที่","หมู่","รหัสพื้นที่_aid","ประวัติสวมแว่น","ประวัติบาดเจ็บตา","ตาแดงเรื้อรัง","ปวดศีรษะบ่อย","ตาเหล่_ตาขี้เกียจ","ครอบครัวสวมแว่น","VAขวา_ตาเปล่า","VAซ้าย_ตาเปล่า","VAขวา_ใส่แว่น","VAซ้าย_ใส่แว่น","PHขวา","PHซ้าย","VA_OU_ตาเปล่า","VA_OU_ใส่แว่น","Cover_Test","Hirschberg","Color_Vision","Stereopsis","วินิจฉัย","การส่งต่อ","ผู้ตรวจ","ตำแหน่ง","รหัสโรงเรียน","ตำบล","อำเภอ","จังหวัด","หมายเหตุ","สิทธิการรักษา","สัญชาติ"];
         
         var csvContent = "\uFEFF" + hdr.join(',') + "\n";
         processedRows.forEach(function(r) {
-            var rowStr = r.map(function(c, i) {
-                if (i === 2) return '="'+c+'"';
-                if (i === 14) return '="'+c+'"';
+            var rowStr = r.map(function(c, idx) {
+                if (idx === 2) return '="'+c+'"';
+                if (idx === 14) return '="'+c+'"';
                 return '"'+String(c).replace(/"/g, '""')+'"';
             }).join(',');
             csvContent += rowStr + "\n";
@@ -1591,6 +1595,7 @@ function convertFile() {
     }; 
     reader.readAsText(file, encoding);
 }
+
 function toast(msg, type) { var wrap = document.getElementById('toastWrap'); if (!wrap) return; var t = document.createElement('div'); var icon = type === 'ok' ? '✅ ' : type === 'err' ? '❌ ' : 'ℹ️ '; t.className = 'toast t-' + (type || 'inf'); t.innerHTML = icon + msg; wrap.appendChild(t); setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(100%)'; t.style.transition = 'all 0.3s ease'; setTimeout(function() { t.remove(); }, 300); }, 3000); }
 function applyFilters() {
   var amp = document.getElementById('fAmp').value; var hc = document.getElementById('fHosp').value; var sch = document.getElementById('fSch').value; var stat = document.getElementById('fStat').value; var sex = document.getElementById('fSex').value; var q = document.getElementById('srchBox').value.toLowerCase().trim();
@@ -1625,13 +1630,6 @@ function applyFilters() {
 function clearFilters() { ['fAmp','fHosp','fSch','fStat','fSex'].forEach(function(id){ document.getElementById(id).value = ''; }); document.getElementById('srchBox').value = ''; onAmpChange(); applyFilters(); }
 function forceRefresh() { clearFilters(); loadDashboard({}); toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf'); }
 function mapCsvToRowDynamic(headers, cols) {
-    // --- 🛠️ FIX JHCIS EXPORT BUG ---
-    // ไฟล์ JHCIS มีหัวคอลัมน์ 47 ช่อง แต่ข้อมูลจริงมีแค่ 41 ช่อง (หายไป 6 ช่องช่วงกลาง)
-    // ทำให้คอลัมน์เลื่อน เราจึงต้องแทรกช่องว่าง 6 ช่องที่ index 30 เพื่อให้ตรงกัน
-    if (headers.length === 47 && cols.length === 41) {
-        cols.splice(30, 0, "", "", "", "", "", "");
-    }
-    
     var HEADER_MAP = {
         "level_edu": 0, "ระดับชั้น": 0,
         "room": 1, "ห้อง": 1,
@@ -1681,18 +1679,19 @@ function mapCsvToRowDynamic(headers, cols) {
         "treatment": 45, "สิทธิการรักษา": 45,
         "nationality": 46, "สัญชาติ": 46
     };
-    
+
+    // 🛠️ FIX JHCIS EXPORT BUG: ชดเชยคอลัมน์ที่ JHCIS ทำหายไป 6 ช่อง
+    if (headers.length >= 46 && cols.length === 41) {
+        cols.splice(30, 0, "", "", "", "", "", "");
+    }
+
     var out = new Array(47).fill('');
     var foundKnownHeader = false;
-    
-    var sortedKeys = Object.keys(HEADER_MAP).sort(function(a, b) { 
-        return b.length - a.length; 
-    });
+    var sortedKeys = Object.keys(HEADER_MAP).sort(function(a, b) { return b.length - a.length; });
 
     for(var j=0; j<headers.length; j++) {
         var hName = String(headers[j]).toLowerCase().replace(/[\n\r"']/g, '').trim();
         var val = String(cols[j] || '').replace(/^[="']+|["']+$/g, '').trim();
-        
         var matchedIndex = -1;
         
         if (HEADER_MAP[hName] !== undefined) {
@@ -1700,8 +1699,7 @@ function mapCsvToRowDynamic(headers, cols) {
         } else {
             for (var k = 0; k < sortedKeys.length; k++) {
                 if (hName.indexOf(sortedKeys[k]) > -1) { 
-                    matchedIndex = HEADER_MAP[sortedKeys[k]]; 
-                    break; 
+                    matchedIndex = HEADER_MAP[sortedKeys[k]]; break; 
                 }
             }
         }
@@ -1713,13 +1711,12 @@ function mapCsvToRowDynamic(headers, cols) {
             }
             if (matchedIndex === 2) val = val.replace(/\D/g, ''); 
             if (matchedIndex === 14 && val.length > 0 && val.length < 5) val = ("00000" + val).slice(-5);
-            
             out[matchedIndex] = val;
         }
     }
     
     if(!foundKnownHeader) { return smartProcessRow(cols); }
-    if (!out[46]) out[46] = 'ไทย'; 
+    if (!out[46] || out[46] === '') out[46] = 'ไทย'; 
     return out;
 }
 
@@ -1735,10 +1732,14 @@ function importCSV() {
             var delimiter = ','; if (line.indexOf('\t') !== -1) delimiter = '\t'; else if (line.indexOf('|') !== -1) delimiter = '|'; else if (line.indexOf(';') !== -1) delimiter = ';'; 
             var cols = smartParseCSVLine(line, delimiter); 
             
-            // อ่านหัวคอลัมน์ในบรรทัดแรก
-            if(i === 0 || line.indexOf('ระดับชั้น') > -1 || line.indexOf('cid') > -1 || line.indexOf('เลขบัตร') > -1) {
+            // 🛠️ FIX HEADER DETECTION: ป้องกันการลบข้อมูลบรรทัดแรกทิ้ง
+            var isHeader = (line.indexOf('ระดับชั้น') > -1 || line.toLowerCase().indexOf('cid') > -1 || line.indexOf('เลขบัตร') > -1 || line.toLowerCase().indexOf('level_edu') > -1);
+            if (i === 0 && isHeader) {
                 headers = cols; continue; 
+            } else if (i === 0 && !isHeader) {
+                headers = []; // ถ้าบรรทัดแรกไม่ใช่ Header ให้เว้นว่างไว้เพื่อเข้า smartProcessRow
             }
+            if (i > 0 && isHeader) { headers = cols; continue; } // ป้องกันกรณีหัวตารางแทรกอยู่กลางไฟล์
             
             var mapped = (headers.length > 0) ? mapCsvToRowDynamic(headers, cols) : smartProcessRow(cols); 
             if (mapped) processedRows.push(mapped); 
@@ -1755,6 +1756,7 @@ function importCSV() {
     }; 
     reader.readAsText(file, encoding);
 }
+
 function dlTemplate() {
   var headers = [ 
     "ระดับชั้น", "ห้อง", "เลขบัตรประชาชน_13หลัก", "คำนำหน้า", "ชื่อ", "นามสกุล", 
@@ -4155,7 +4157,6 @@ function toggleAllChk(source) {
         checkboxes[i].checked = source.checked;
       }
     }
-
 </script>
 </body>
 </html>
