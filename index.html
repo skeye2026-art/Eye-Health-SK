@@ -1281,26 +1281,82 @@ function renderExtraDashCharts(extraStats) {
   // รีเซ็ตสถานะคลิกทุกครั้งที่ render ใหม่
   G_extraClickIdx = { diag: null, treat: null, behRisk: null, fupWear: null, nat: null };
   
-  // ─── 1. ระดับความรุนแรง (Severity) ──────────────
+  // ─── Helper: สร้าง horizontal bar chart พร้อมป้ายชื่อกำกับ (X คน (Y%)) ──────────────
+  function makeHorizontalBarWithLabels(canvasId, labels, values, colors, clickFilterArgs) {
+    var total = values.reduce(function(a,b){return a+b;}, 0) || 1;
+    var ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+      type: 'bar',
+      data: { 
+        labels: labels, 
+        datasets: [{ 
+          data: values, 
+          backgroundColor: colors.slice(),
+          borderRadius: 6,
+          barThickness: labels.length === 1 ? 36 : 'flex',
+          maxBarThickness: 32,
+          categoryPercentage: 0.7,
+          barPercentage: 0.85
+        }] 
+      },
+      options: { 
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { right: 70, left: 4, top: 4, bottom: 4 } }, 
+        onClick: makeChartToggle(clickFilterArgs.stateKey, clickFilterArgs.filterKey, clickFilterArgs.values),
+        plugins: { 
+          legend: { display: false },
+          datalabels: { 
+            color: '#1e293b', 
+            anchor: 'end', 
+            align: 'right',
+            offset: 6,
+            font: { weight: 'bold', size: 11, family: 'Sarabun' }, 
+            formatter: function(v) { 
+              if (v === 0) return '';
+              var pct = Math.round(v/total*100);
+              return v + ' คน (' + pct + '%)'; 
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                var pct = Math.round(ctx.raw/total*100);
+                return ctx.raw + ' คน (' + pct + '%)';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { 
+            beginAtZero: true, 
+            grace: '40%', 
+            ticks: { font:{family:'Sarabun', size:10}, color:'#64748b' },
+            grid: { color: '#f1f5f9' }
+          },
+          y: { 
+            ticks: { font:{family:'Sarabun', size:10, weight:'bold'}, color:'#334155' },
+            grid: { display: false }
+          }
+        }
+      }, 
+      plugins: [ChartDataLabels]
+    });
+  }
+
+  // ─── 1. ระดับความรุนแรง (Severity) — Horizontal Bar with labels ──────────────
   if(extraStats.diagSeverityTally) {
     var dKeys = Object.keys(extraStats.diagSeverityTally);
     var dVals = dKeys.map(function(k){ return extraStats.diagSeverityTally[k]; });
+    var dColors = ['#16A34A','#ca8a04','#f97316','#dc2626'];
     if(window.G_diagInst) window.G_diagInst.destroy();
-    window.G_diagInst = new Chart(document.getElementById('diagSeverityDashChart').getContext('2d'), {
-      type: 'doughnut',
-      data: { labels: dKeys, datasets:[{ data: dVals, backgroundColor: ['#16A34A','#ca8a04','#f97316','#dc2626'] }] },
-      options: { 
-        maintainAspectRatio: false, 
-        onClick: makeChartToggle('diag', 'diag', dKeys),
-        plugins: { 
-          legend: { position:'bottom', labels: {font: {family:'Sarabun', size: 9}} },
-          datalabels: { color: '#fff', font: { weight: 'bold', size: 11 }, formatter: function(v){ return v>0?v:''; } }
-        } 
-      }, plugins: [ChartDataLabels]
+    window.G_diagInst = makeHorizontalBarWithLabels('diagSeverityDashChart', dKeys, dVals, dColors, {
+      stateKey: 'diag', filterKey: 'diag', values: dKeys
     });
   }
   
-  // ─── 2. สัดส่วนสิทธิการรักษา ─────────────────────
+  // ─── 2. สัดส่วนสิทธิการรักษา (คงรูปแบบ doughnut เดิม) ─────────────────────
   if(extraStats.treatTally) {
       var tKeys = Object.keys(extraStats.treatTally).sort(function(a,b){ return extraStats.treatTally[b]-extraStats.treatTally[a]; });
       var tVals = tKeys.map(function(k){ return extraStats.treatTally[k]; });
@@ -1320,120 +1376,61 @@ function renderExtraDashCharts(extraStats) {
       });
   }
 
-  // ─── 3. ความเสี่ยงพฤติกรรมหน้าจอ ──────────────────
+  // ─── 3. ความเสี่ยงพฤติกรรมหน้าจอ — Horizontal Bar with labels ──────────────────
   if(extraStats.behRiskTally) {
+      var bLabels = ['เสี่ยงน้อย (0-3)', 'ปานกลาง (4-7)', 'เสี่ยงสูง (≥8)'];
+      var bValueKeys = ['low', 'medium', 'high'];
+      var bVals = [extraStats.behRiskTally.low || 0, extraStats.behRiskTally.medium || 0, extraStats.behRiskTally.high || 0];
+      var bColors = ['#16A34A', '#f59e0b', '#dc2626'];
       if(window.G_behDashInst) window.G_behDashInst.destroy(); 
-      window.G_behDashInst = new Chart(document.getElementById('behRiskDashChart').getContext('2d'), {
-        type: 'pie',
-        data: { labels: ['เสี่ยงน้อย (0-3)', 'ปานกลาง (4-7)', 'เสี่ยงสูง (≥8)'], 
-                datasets:[{ data: [extraStats.behRiskTally.low, extraStats.behRiskTally.medium, extraStats.behRiskTally.high], 
-                            backgroundColor: ['#16A34A', '#f59e0b', '#dc2626'] }] },
-        options: { 
-          maintainAspectRatio: false, 
-          onClick: makeChartToggle('behRisk', 'behRisk', ['low', 'medium', 'high']),
-          plugins: { 
-            legend: { position:'bottom', labels: {font: {family:'Sarabun', size: 10}} },
-            datalabels: { color: '#fff', font: { weight: 'bold', size: 12 }, formatter: function(v){ return v>0?v:''; } }
-          } 
-        }, plugins: [ChartDataLabels]
+      window.G_behDashInst = makeHorizontalBarWithLabels('behRiskDashChart', bLabels, bVals, bColors, {
+        stateKey: 'behRisk', filterKey: 'behRisk', values: bValueKeys
       });
   }
 
-  // ─── 4. การติดตามแว่นตา ────────────────────────
+  // ─── 4. การติดตามแว่นตา — Horizontal Bar with labels ────────────────────────
   if(extraStats.fupWearTally) {
       var fKeys = Object.keys(extraStats.fupWearTally);
       var fVals = fKeys.map(function(k){ return extraStats.fupWearTally[k]; });
+      var fColors = ['#16A34A', '#84cc16', '#f59e0b', '#dc2626'];
       if(window.G_fupDashInst) window.G_fupDashInst.destroy(); 
-      window.G_fupDashInst = new Chart(document.getElementById('fupStatusDashChart').getContext('2d'), {
-        type: 'doughnut',
-        data: { labels: fKeys.length ? fKeys : ['ยังไม่มีข้อมูล'], 
-                datasets:[{ data: fKeys.length ? fVals : [1], 
-                            backgroundColor: fKeys.length ? ['#16A34A', '#84cc16', '#f59e0b', '#dc2626'] : ['#e2e8f0'] }] },
-        options: { 
-          maintainAspectRatio: false, 
-          onClick: fKeys.length ? makeChartToggle('fupWear', 'fupWear', fKeys) : undefined,
-          plugins: { 
-            legend: { position:'bottom', labels: {font: {family:'Sarabun', size: 10}} },
-            datalabels: { color: '#fff', font: { weight: 'bold', size: 12 }, formatter: function(v){ return fKeys.length&&v>0?v:''; } }
-          } 
-        }, plugins: [ChartDataLabels]
-      });
+      
+      if (fKeys.length === 0) {
+        // ถ้ายังไม่มีข้อมูล แสดง doughnut เปล่าๆ
+        window.G_fupDashInst = new Chart(document.getElementById('fupStatusDashChart').getContext('2d'), {
+          type: 'doughnut',
+          data: { labels: ['ยังไม่มีข้อมูล'], datasets:[{ data: [1], backgroundColor: ['#e2e8f0'] }] },
+          options: { 
+            maintainAspectRatio: false, 
+            plugins: { 
+              legend: { position:'bottom', labels: {font: {family:'Sarabun', size: 10}} },
+              datalabels: { display: false }
+            } 
+          }
+        });
+      } else {
+        var fBgColors = fKeys.map(function(_,i){ return fColors[i % fColors.length]; });
+        window.G_fupDashInst = makeHorizontalBarWithLabels('fupStatusDashChart', fKeys, fVals, fBgColors, {
+          stateKey: 'fupWear', filterKey: 'fupWear', values: fKeys
+        });
+      }
   }
 
-  // ─── 5. สัดส่วนสัญชาติ (Nationality) ─────────────────────
+  // ─── 5. สัดส่วนสัญชาติ (Nationality) — คงรูปแบบเดิม (ต้นแบบ) ─────────────────────
   if(extraStats.natTally) {
       var nKeys = Object.keys(extraStats.natTally).sort(function(a,b){ 
         return extraStats.natTally[b]-extraStats.natTally[a]; 
       });
       var nVals = nKeys.map(function(k){ return extraStats.natTally[k]; });
-      var nTotal = nVals.reduce(function(a,b){return a+b;}, 0) || 1;
       var nColors = ['#3b82f6','#10b981','#f59e0b','#ec4899','#8b5cf6','#64748b','#ef4444'];
       
       if(window.G_natInst) window.G_natInst.destroy();
       var can = document.getElementById('natDashChart');
       if(!can) return;
-      // เก็บสีเดิมไว้ใช้สลับ
       var origNatColors = nKeys.map(function(_,i){ return nColors[i%nColors.length]; });
       
-      window.G_natInst = new Chart(can.getContext('2d'), {
-        type: 'bar',
-        data: { 
-          labels: nKeys, 
-          datasets:[{ 
-            data: nVals, 
-            backgroundColor: origNatColors.slice(),
-            borderRadius: 6,
-            barThickness: nKeys.length === 1 ? 36 : 'flex',
-            maxBarThickness: 32,
-            categoryPercentage: 0.7,
-            barPercentage: 0.85
-          }] 
-        },
-        options: { 
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      // 1. เพิ่ม padding ขวาให้กว้างขึ้นเป็น 70 ตัวเลขจะได้ไม่โดนบัง
-      layout: { padding: { right: 70, left: 4, top: 4, bottom: 4 } }, 
-      onClick: makeChartToggle('nat', 'nat', nKeys),
-          plugins: { 
-            legend: { display: false },
-            datalabels: { 
-              color: '#1e293b', 
-              anchor: 'end', 
-              align: 'right',
-              offset: 6,
-              font: { weight: 'bold', size: 12, family: 'Sarabun' }, 
-              formatter: function(v) { 
-                if (v === 0) return '';
-                var pct = Math.round(v/nTotal*100);
-                return v + ' คน (' + pct + '%)'; 
-              }
-            },
-            tooltip: {
-              callbacks: {
-                label: function(ctx) {
-                  var pct = Math.round(ctx.raw/nTotal*100);
-                  return ctx.raw + ' คน (' + pct + '%)';
-                }
-              }
-            }
-          },
-      scales: {
-        x: { 
-          beginAtZero: true, 
-          // 2. ปรับ grace เป็น 40% เพื่อเผื่อที่ว่างด้านขวาของปลายแท่งกราฟ
-          grace: '40%', 
-          ticks: { font:{family:'Sarabun', size:10}, color:'#64748b' },
-          grid: { color: '#f1f5f9' }
-        },
-        y: { 
-          ticks: { font:{family:'Sarabun', size:11, weight:'bold'}, color:'#334155' },
-          grid: { display: false }
-        }
-      }
-    }, 
-        plugins: [ChartDataLabels]
+      window.G_natInst = makeHorizontalBarWithLabels('natDashChart', nKeys, nVals, origNatColors, {
+        stateKey: 'nat', filterKey: 'nat', values: nKeys
       });
   }
 } // <- ปิดฟังก์ชัน renderExtraDashCharts ตรงนี้ที่เดียวครับ
