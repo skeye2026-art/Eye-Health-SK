@@ -1628,7 +1628,7 @@ function mapCsvToRowDynamic(headers, cols) {
         "pname": 3, "คำนำหน้า": 3,
         "fname": 4, "ชื่อ": 4,
         "lname": 5, "นามสกุล": 5,
-        "student_name": 6, "ชื่อ-สกุลเต็ม": 6,
+        "student_name": 6, "ชื่อ-สกุลเต็ม": 6, "ชื่อสกุลเต็ม": 6,
         "birthday": 7, "วันเกิด": 7, "วันเกิด_dd/mm/yyyy": 7,
         "age_years": 8, "อายุ": 8, "อายุ_ปี": 8,
         "sex": 9, "เพศ": 9, "เพศ_1ชาย_2หญิง": 9,
@@ -1673,21 +1673,40 @@ function mapCsvToRowDynamic(headers, cols) {
     
     var out = new Array(47).fill('');
     var foundKnownHeader = false;
+    
+    // สร้าง Array ของ Key ที่เรียงความยาวจากมากไปน้อย 
+    // (เพื่อป้องกันคำสั้นไปตรงกับคำยาว เช่น ป้องกันคำว่า "ชื่อ" ไปสกัดโดน "ชื่อโรงเรียน")
+    var sortedKeys = Object.keys(HEADER_MAP).sort(function(a, b) { 
+        return b.length - a.length; 
+    });
+
     for(var j=0; j<headers.length; j++) {
         var hName = String(headers[j]).toLowerCase().replace(/[\n\r"']/g, '').trim();
         var val = String(cols[j] || '').replace(/^[="']+|["']+$/g, '').trim();
         
         var matchedIndex = -1;
-        for (var key in HEADER_MAP) {
-            if (hName === key || hName.indexOf(key) > -1) { matchedIndex = HEADER_MAP[key]; break; }
+        
+        // 1. ลองจับคู่แบบเป๊ะๆ ก่อน (Exact Match) - แม่นยำที่สุด
+        if (HEADER_MAP[hName] !== undefined) {
+            matchedIndex = HEADER_MAP[hName];
+        } else {
+            // 2. ถ้าไม่เจอ ให้หาแบบมีคำซ่อนอยู่ แต่จะใช้ keys ที่เรียงยาวไปสั้น
+            for (var k = 0; k < sortedKeys.length; k++) {
+                if (hName.indexOf(sortedKeys[k]) > -1) { 
+                    matchedIndex = HEADER_MAP[sortedKeys[k]]; 
+                    break; 
+                }
+            }
         }
         
         if (matchedIndex > -1) {
             foundKnownHeader = true;
+            
+            // กรณีเป็นคอลัมน์ค่าสายตา ให้เข้าฟังก์ชันแปลงรหัส VA Map
             if ([24, 25, 26, 27, 28, 29, 30, 31].indexOf(matchedIndex) > -1) {
                val = (val && G.vaMap && G.vaMap[val]) ? G.vaMap[val] : val;
             }
-            if (matchedIndex === 2) val = val.replace(/\D/g, ''); 
+            if (matchedIndex === 2) val = val.replace(/\D/g, ''); // บังคับเลขบัตรมีแต่ตัวเลข
             if (matchedIndex === 14 && val.length > 0 && val.length < 5) val = ("00000" + val).slice(-5);
             
             out[matchedIndex] = val;
@@ -1695,7 +1714,7 @@ function mapCsvToRowDynamic(headers, cols) {
     }
     
     if(!foundKnownHeader) { return smartProcessRow(cols); }
-    if (!out[46]) out[46] = 'ไทย';
+    if (!out[46]) out[46] = 'ไทย'; // กรณีช่องสัญชาติว่าง ให้บังคับเป็นไทย
     return out;
 }
 
