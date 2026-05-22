@@ -1368,7 +1368,14 @@ function renderExtraDashCharts(extraStats) {
           maintainAspectRatio: false, 
           onClick: makeChartToggle('treat', 'treat', tKeys),
           plugins: { 
-            legend: { display: false },
+            legend: { 
+              position: 'bottom', 
+              labels: { 
+                font: { family: 'Sarabun', size: 9 }, 
+                boxWidth: 12, 
+                padding: 6 
+              } 
+            },
             datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, formatter: function(v) { return v; } },
             tooltip: { callbacks: { label: function(ctx) { var t = ctx.chart.data.datasets[0].data.reduce(function(a,b){return a+b;},0); return ctx.label+': '+ctx.raw+' ('+Math.round(ctx.raw/t*100)+'%)'; } } }
           } 
