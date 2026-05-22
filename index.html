@@ -1216,62 +1216,62 @@ window.google.script.run = (function() {
 // ==============================================================
 // === ประกาศตัวแปร global ครั้งเดียว ===
 var G_extraClickIdx = { diag: null, treat: null, behRisk: null, fupWear: null, nat: null };
+var G_chartFilter = {
+  metric: null,
+  diag: null,
+  treat: null,
+  behRisk: null,
+  fupWear: null,
+  nat: null,
+  satBreakdown: null,
+  satType: null
+};
 
-// === Helper สำหรับ toggle ===
-function makeChartToggle(stateKey) {
-  return function(evt, elements) {
-    var chart = this;
-    var ds = chart.data.datasets[0];
-    if (!chart._origColors) chart._origColors = ds.backgroundColor.slice();
-    var orig = chart._origColors;
-    
-    if (!elements.length) {
-      ds.backgroundColor = orig.slice();
-      G_extraClickIdx[stateKey] = null;
-      chart.update();
-      return;
-    }
-    var idx = elements[0].index;
-    if (G_extraClickIdx[stateKey] === idx) {
-      ds.backgroundColor = orig.slice();
-      G_extraClickIdx[stateKey] = null;
-    } else {
-      G_extraClickIdx[stateKey] = idx;
-      ds.backgroundColor = orig.map(function(c, i) {
-        return i === idx ? c : c + '33';
-      });
-    }
-    chart.update();
-  };
+function getDiagSeverityForRow(r) {
+  var diagStr = String(r.diagnosis || '').trim();
+  if (/ปกติ|เฝ้าระวัง/.test(diagStr) || diagStr === '') return 'ปกติ/เฝ้าระวัง';
+  if (/สงสัยสายตาผิดปกติ/.test(diagStr)) return 'ผิดปกติ (เล็กน้อย-ปานกลาง)';
+  if (/ตาขี้เกียจ|รุนแรง/.test(diagStr) && !/ความผิดปกติรุนแรง/.test(diagStr)) return 'รุนแรง/ตาขี้เกียจ';
+  if (/ความผิดปกติรุนแรง/.test(diagStr) || /อื่นๆ/.test(diagStr)) return 'ฉุกเฉิน';
+  return 'ปกติ/เฝ้าระวัง';
 }
 
-// 🔧 Helper สำหรับ toggle highlight บนกราฟ doughnut/pie ทุกตัว
-function makeChartToggle(stateKey) {
+function makeChartToggle(stateKey, filterKey, values) {
   return function(evt, elements) {
     var chart = this;
     var ds = chart.data.datasets[0];
-    
-    if (!chart._origColors) chart._origColors = ds.backgroundColor.slice();
-    var orig = chart._origColors;
-    
+    if (!chart._origColors) {
+      chart._origColors = Array.isArray(ds.backgroundColor)
+        ? ds.backgroundColor.slice()
+        : chart.data.labels.map(function(){ return ds.backgroundColor; });
+    }
+
     if (!elements.length) {
-      ds.backgroundColor = orig.slice();
+      ds.backgroundColor = chart._origColors.slice();
       G_extraClickIdx[stateKey] = null;
+      G_chartFilter[filterKey] = null;
       chart.update();
+      applyFilters();
       return;
     }
-    
+
     var idx = elements[0].index;
+    var selectedValue = values ? values[idx] : chart.data.labels[idx];
+
     if (G_extraClickIdx[stateKey] === idx) {
-      ds.backgroundColor = orig.slice();
+      ds.backgroundColor = chart._origColors.slice();
       G_extraClickIdx[stateKey] = null;
+      G_chartFilter[filterKey] = null;
     } else {
       G_extraClickIdx[stateKey] = idx;
-      ds.backgroundColor = orig.map(function(c, i) {
+      G_chartFilter[filterKey] = selectedValue;
+      ds.backgroundColor = chart._origColors.map(function(c, i) {
         return i === idx ? c : c + '33';
       });
     }
+
     chart.update();
+    applyFilters();
   };
 }
 
@@ -1291,7 +1291,7 @@ function renderExtraDashCharts(extraStats) {
       data: { labels: dKeys, datasets:[{ data: dVals, backgroundColor: ['#16A34A','#ca8a04','#f97316','#dc2626'] }] },
       options: { 
         maintainAspectRatio: false, 
-        onClick: makeChartToggle('diag'),
+        onClick: makeChartToggle('diag', 'diag', dKeys),
         plugins: { 
           legend: { position:'bottom', labels: {font: {family:'Sarabun', size: 9}} },
           datalabels: { color: '#fff', font: { weight: 'bold', size: 11 }, formatter: function(v){ return v>0?v:''; } }
@@ -1310,7 +1310,7 @@ function renderExtraDashCharts(extraStats) {
         data: { labels: tKeys, datasets:[{ data: tVals, backgroundColor: ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#64748b','#f43f5e'] }] },
         options: { 
           maintainAspectRatio: false, 
-          onClick: makeChartToggle('treat'),
+          onClick: makeChartToggle('treat', 'treat', tKeys),
           plugins: { 
             legend: { display: false },
             datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, formatter: function(v) { return v; } },
@@ -1330,7 +1330,7 @@ function renderExtraDashCharts(extraStats) {
                             backgroundColor: ['#16A34A', '#f59e0b', '#dc2626'] }] },
         options: { 
           maintainAspectRatio: false, 
-          onClick: makeChartToggle('behRisk'),
+          onClick: makeChartToggle('behRisk', 'behRisk', ['low', 'medium', 'high']),
           plugins: { 
             legend: { position:'bottom', labels: {font: {family:'Sarabun', size: 10}} },
             datalabels: { color: '#fff', font: { weight: 'bold', size: 12 }, formatter: function(v){ return v>0?v:''; } }
@@ -1351,7 +1351,7 @@ function renderExtraDashCharts(extraStats) {
                             backgroundColor: fKeys.length ? ['#16A34A', '#84cc16', '#f59e0b', '#dc2626'] : ['#e2e8f0'] }] },
         options: { 
           maintainAspectRatio: false, 
-          onClick: fKeys.length ? makeChartToggle('fupWear') : undefined,
+          onClick: fKeys.length ? makeChartToggle('fupWear', 'fupWear', fKeys) : undefined,
           plugins: { 
             legend: { position:'bottom', labels: {font: {family:'Sarabun', size: 10}} },
             datalabels: { color: '#fff', font: { weight: 'bold', size: 12 }, formatter: function(v){ return fKeys.length&&v>0?v:''; } }
@@ -1372,7 +1372,6 @@ function renderExtraDashCharts(extraStats) {
       if(window.G_natInst) window.G_natInst.destroy();
       var can = document.getElementById('natDashChart');
       if(!can) return;
-      
       // เก็บสีเดิมไว้ใช้สลับ
       var origNatColors = nKeys.map(function(_,i){ return nColors[i%nColors.length]; });
       
@@ -1396,40 +1395,7 @@ function renderExtraDashCharts(extraStats) {
       maintainAspectRatio: false,
       // 1. เพิ่ม padding ขวาให้กว้างขึ้นเป็น 70 ตัวเลขจะได้ไม่โดนบัง
       layout: { padding: { right: 70, left: 4, top: 4, bottom: 4 } }, 
-      onClick: function(evt, elements) {
-            var chart = this;
-            var ds = chart.data.datasets[0];
-            if (!chart._origColors) chart._origColors = origNatColors.slice();
-            
-            // กดที่ว่าง → คืนค่า
-            if (!elements.length) {
-              ds.backgroundColor = chart._origColors.slice();
-              G_extraClickIdx.nat = null;
-              var sb = document.getElementById('srchBox');
-              if(sb) { sb.value = ''; applyFilters(); }
-              chart.update();
-              return;
-            }
-            
-            var idx = elements[0].index;
-            var nat = nKeys[idx];
-            var sb = document.getElementById('srchBox');
-            
-            // กดซ้ำแท่งเดิม → คืนค่า
-            if (G_extraClickIdx.nat === idx) {
-              ds.backgroundColor = chart._origColors.slice();
-              G_extraClickIdx.nat = null;
-              if(sb) { sb.value = ''; applyFilters(); }
-            } else {
-              // กดแท่งใหม่ → กรอง + highlight
-              G_extraClickIdx.nat = idx;
-              ds.backgroundColor = chart._origColors.map(function(c, i) {
-                return i === idx ? c : c + '33';
-              });
-              if(sb) { sb.value = nat; applyFilters(); }
-            }
-            chart.update();
-          },
+      onClick: makeChartToggle('nat', 'nat', nKeys),
           plugins: { 
             legend: { display: false },
             datalabels: { 
@@ -1473,8 +1439,8 @@ function renderExtraDashCharts(extraStats) {
 } // <- ปิดฟังก์ชัน renderExtraDashCharts ตรงนี้ที่เดียวครับ
 
 var G = {
-  session:{loggedIn:false,user:'',role:'',hospcode:''}, settings:{}, hospList:[], schoolList:[], vaList:[], vaMap: {}, natList:[], links:[], videos: [], allRows:[], dispRows:[], chartData: { amphoe: [], hosp: [], school: [] }, satCharts: {}, kpi: {}, hospSummaryData: [],
-  barInst:null, pieInst:null, lineInst:null, hospInst:null, schoolInst:null, satBreakdownInst:null, satTypePieInst:null, delTarget:{cid:'',sheet:''}
+  session:{loggedIn:false,user:'',role:'',hospcode:''}, settings:{}, hospList:[], schoolList:[], vaList:[], vaMap: {}, natList:[], links:[], videos: [], allRows:[], dispRows:[], chartData: { amphoe: [], hosp: [], school: [] }, satCharts: {}, kpi: {}, hospSummaryData: [],
+  barInst:null, pieInst:null, lineInst:null, hospInst:null, schoolInst:null, satBreakdownInst:null, satTypePieInst:null, delTarget:{cid:'',sheet:''}
 };
 var myMap = null; var hospLayer = null; var schoolLayer = null; var _satClickIdx = null; var _editMode = false;
 
@@ -1604,36 +1570,124 @@ function convertFile() {
 
 function toast(msg, type) { var wrap = document.getElementById('toastWrap'); if (!wrap) return; var t = document.createElement('div'); var icon = type === 'ok' ? '✅ ' : type === 'err' ? '❌ ' : 'ℹ️ '; t.className = 'toast t-' + (type || 'inf'); t.innerHTML = icon + msg; wrap.appendChild(t); setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(100%)'; t.style.transition = 'all 0.3s ease'; setTimeout(function() { t.remove(); }, 300); }, 3000); }
 function applyFilters() {
-  var amp = document.getElementById('fAmp').value; var hc = document.getElementById('fHosp').value; var sch = document.getElementById('fSch').value; var stat = document.getElementById('fStat').value; var sex = document.getElementById('fSex').value; var q = document.getElementById('srchBox').value.toLowerCase().trim();
-  G.dispRows = G.allRows.filter(function(r) { 
-    if(amp && r.amphoe !== amp) return false; 
-    if(hc && r.hospcode !== hc) return false; 
-    if(sch && r.school_name !== sch) return false; 
-    
-    // กรองสถานะแบบรวบยอด: abnormal = ทุกคนที่ไม่ normal / referred = รวมแว่นด้วย
-    if(stat === 'abnormal') { if(r.status === 'normal') return false; }
-    else if(stat === 'referred') { if(r.status !== 'referred' && r.status !== 'glasses') return false; }
-    else if(stat && r.status !== stat) return false; 
-    
-    if(sex && r.sex !== sex) return false; 
-    if(q && !( (r.student_name||'').toLowerCase().includes(q) || (r.cid||'').includes(q) || (r.hospcode||'').includes(q) || (r.school_name||'').toLowerCase().includes(q) )) return false; 
-    return true; 
+  var cf = G_chartFilter || {};
+  var amp = document.getElementById('fAmp').value;
+  var hc = document.getElementById('fHosp').value;
+  var sch = document.getElementById('fSch').value;
+  var stat = document.getElementById('fStat').value;
+  var sex = document.getElementById('fSex').value;
+  var srchEl = document.getElementById('srchBox');
+  var q = srchEl ? srchEl.value.toLowerCase().trim() : '';
+
+  G.dispRows = G.allRows.filter(function(r) {
+    if (cf.metric === 'sat' && r.sat === null) return false;
+    if (cf.metric === 'pre' && r.pre === null) return false;
+    if (cf.metric === 'post' && r.post === null) return false;
+
+    if (cf.diag && getDiagSeverityForRow(r) !== cf.diag) return false;
+    if (cf.treat && String(r.treatment || 'ไม่ระบุสิทธิ์') !== cf.treat) return false;
+    if (cf.behRisk && String(r.beh_risk || '') !== cf.behRisk) return false;
+    if (cf.fupWear && String(r.fup_status || '') !== cf.fupWear) return false;
+    if (cf.nat && String(r.nationality || 'ไทย') !== cf.nat) return false;
+
+    if (cf.satBreakdown) {
+      if (cf.satBreakdown.type === 'amphoe' && r.amphoe !== cf.satBreakdown.label) return false;
+      if (cf.satBreakdown.type === 'hosp' && r.hosp_name !== cf.satBreakdown.label) return false;
+      if (cf.satBreakdown.type === 'school' && r.school_name !== cf.satBreakdown.label) return false;
+      if (cf.satBreakdown.type === 'type' && String(r.sat_type || '') !== cf.satBreakdown.label) return false;
+    }
+
+    if (cf.satType && String(r.sat_type || '') !== cf.satType) return false;
+
+    if (amp && r.amphoe !== amp) return false;
+    if (hc && r.hospcode !== hc) return false;
+    if (sch && r.school_name !== sch) return false;
+
+    if (stat === 'abnormal') {
+      if (r.status === 'normal') return false;
+    } else if (stat === 'referred') {
+      if (r.status !== 'referred' && r.status !== 'glasses') return false;
+    } else if (stat && r.status !== stat) return false;
+
+    if (sex && r.sex !== sex) return false;
+
+    if (q) {
+      var qText = [
+        r.student_name, r.cid, r.hospcode, r.hosp_name, r.school_name,
+        r.treatment, r.nationality, r.diagnosis, r.referral, r.examiner,
+        SL[r.status] || r.status
+      ].join(' ').toLowerCase();
+
+      if (qText.indexOf(q) === -1) return false;
+    }
+
+    return true;
   });
+
   var k = {total:0, normal:0, abnormal:0, referred:0, glasses:0, preSum:0, postSum:0, gainSum:0, testCount:0};
-  G.dispRows.forEach(function(r) { k.total++; if(r.status==='normal') k.normal++; else if(r.status==='abnormal') k.abnormal++; else if(r.status==='referred') k.referred++; else if(r.status==='glasses') k.glasses++; if(r.pre !== null && r.post !== null) { k.preSum += Number(r.pre); k.postSum += Number(r.post); k.gainSum += Number(r.gain); k.testCount++; } });
-  
-  var t = k.total || 1; 
-  var kpiOut = { 
-    total: k.total, normal: k.normal, normalPct: Math.round(k.normal/t*100), 
-    abnormal: k.abnormal, abnormalTotal: k.total - k.normal, abnormalPct: Math.round((k.total - k.normal)/t*100), 
-    referred: k.referred + k.glasses, referredPct: Math.round((k.referred + k.glasses)/t*100), 
-    referredRaw: k.referred, glasses: k.glasses, glassesPct: Math.round(k.glasses/t*100), 
-    preAvg: k.testCount>0 ? Math.round(k.preSum/k.testCount*10)/10 : null, postAvg: k.testCount>0 ? Math.round(k.postSum/k.testCount*10)/10 : null, gainAvg: k.testCount>0 ? Math.round(k.gainSum/k.testCount) : null, satAvg: G.kpi.satAvg, preTestCount: G.kpi.preTestCount 
+  G.dispRows.forEach(function(r) {
+    k.total++;
+    if(r.status==='normal') k.normal++;
+    else if(r.status==='abnormal') k.abnormal++;
+    else if(r.status==='referred') k.referred++;
+    else if(r.status==='glasses') k.glasses++;
+    if(r.pre !== null && r.post !== null) {
+      k.preSum += Number(r.pre);
+      k.postSum += Number(r.post);
+      k.gainSum += Number(r.gain);
+      k.testCount++;
+    }
+  });
+
+  var t = k.total || 1;
+  var kpiOut = {
+    total: k.total,
+    normal: k.normal,
+    normalPct: Math.round(k.normal/t*100),
+    abnormal: k.abnormal,
+    abnormalTotal: k.total - k.normal,
+    abnormalPct: Math.round((k.total - k.normal)/t*100),
+    referred: k.referred + k.glasses,
+    referredPct: Math.round((k.referred + k.glasses)/t*100),
+    referredRaw: k.referred,
+    glasses: k.glasses,
+    glassesPct: Math.round(k.glasses/t*100),
+    preAvg: k.testCount>0 ? Math.round(k.preSum/k.testCount*10)/10 : null,
+    postAvg: k.testCount>0 ? Math.round(k.postSum/k.testCount*10)/10 : null,
+    gainAvg: k.testCount>0 ? Math.round(k.gainSum/k.testCount) : null,
+    satAvg: G.kpi.satAvg,
+    preTestCount: G.kpi.preTestCount
   };
-  updateKPIs(kpiOut); renderTable(G.dispRows); renderPieChart(kpiOut); renderBarChart(); renderHeatmap();
+
+  updateKPIs(kpiOut);
+  renderTable(G.dispRows);
+  renderPieChart(kpiOut);
+  renderBarChart();
+  renderHeatmap();
   if(typeof updateMapMarkers === 'function') updateMapMarkers();
 }
-function clearFilters() { ['fAmp','fHosp','fSch','fStat','fSex'].forEach(function(id){ document.getElementById(id).value = ''; }); document.getElementById('srchBox').value = ''; onAmpChange(); applyFilters(); }
+function clearFilters() {
+  ['fAmp','fHosp','fSch','fStat','fSex'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+
+  document.getElementById('srchBox').value = '';
+
+  G_extraClickIdx = { diag: null, treat: null, behRisk: null, fupWear: null, nat: null };
+  G_chartFilter = {
+    metric: null,
+    diag: null,
+    treat: null,
+    behRisk: null,
+    fupWear: null,
+    nat: null,
+    satBreakdown: null,
+    satType: null
+  };
+
+  onAmpChange();
+  applyFilters();
+}
 function forceRefresh() { clearFilters(); loadDashboard({}); toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf'); }
 function mapCsvToRowDynamic(headers, cols) {
     var HEADER_MAP = {
@@ -1990,6 +2044,25 @@ function renderSatBreakdownChart() {
       ]
     },
     options: {
+onClick: function(evt, elements) {
+  if (!elements.length) {
+    G_chartFilter.satBreakdown = null;
+    applyFilters();
+    return;
+  }
+
+  var idx = elements[0].index;
+  var selected = { type: type, label: dataArray[idx].label };
+  var cur = G_chartFilter.satBreakdown;
+
+  if (cur && cur.type === selected.type && cur.label === selected.label) {
+    G_chartFilter.satBreakdown = null;
+  } else {
+    G_chartFilter.satBreakdown = selected;
+  }
+
+  applyFilters();
+},
       responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: true, position: 'bottom', labels: { font: { family: 'Sarabun', size: 10 } } },
@@ -2012,8 +2085,23 @@ function renderSatTypePieChart() {
     type: 'doughnut',
     data: { labels: labels, datasets: [{ data: values, backgroundColor: bgColors }] },
     options: {
+
       responsive: true, maintainAspectRatio: false,
+      onClick: function(evt, elements) {
+        if (!elements.length) {
+          G_chartFilter.satType = null;
+          applyFilters();
+          return;
+        }
+
+        var idx = elements[0].index;
+        var label = labels[idx];
+
+        G_chartFilter.satType = (G_chartFilter.satType === label) ? null : label;
+        applyFilters();
+      },
       plugins: {
+	
         legend: { position: 'bottom', labels: { font: { size: 9.5, family: 'Sarabun' } } },
         datalabels: { color: '#ffffff', font: { weight: 'bold', size: 14, family: 'Sarabun' }, textStrokeColor: 'rgba(0,0,0,0.5)', textStrokeWidth: 2, formatter: function(val, context) { var total = context.chart.data.datasets[0].data.reduce(function(a,b){return a+b}, 0); var pct = Math.round((val / total) * 100); return val + ' คน\n(' + pct + '%)'; } }
       }
@@ -2611,10 +2699,35 @@ function renderPieChart(kpi) {
 }
 
 function renderSatTestChart(kpi) {
+  var metricKeys = ['sat', 'pre', 'post'];
   var ctx = document.getElementById('lineChart').getContext('2d'); if (G.lineInst) G.lineInst.destroy(); _satClickIdx = null;
   var satVal = kpi.satAvg !== null ? kpi.satAvg : 0; var preVal = kpi.preAvg !== null ? kpi.preAvg : 0; var postVal = kpi.postAvg !== null ? kpi.postAvg : 0;
   var origColors = ['#7c3aed', '#0d9488', '#0891b2']; var labels = ['ความพึงพอใจ', 'Pre-test', 'Post-test']; var displayVals = [satVal * 2, preVal, postVal];
-  G.lineInst = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ data: displayVals, backgroundColor: origColors.slice(), borderRadius: 6, borderSkipped: false }] }, options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 25 } }, onClick: function(evt, elements) { var ds = this.data.datasets[0]; if (!elements.length) { ds.backgroundColor = origColors.slice(); _satClickIdx = null; this.update(); return; } var idx = elements[0].index; if (_satClickIdx === idx) { ds.backgroundColor = origColors.slice(); _satClickIdx = null; } else { _satClickIdx = idx; ds.backgroundColor = origColors.map(function(c, i) { return i === idx ? c : c + '44'; }); } this.update(); }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { if (ctx.dataIndex === 0) return 'ความพึงพอใจ: ' + satVal.toFixed(2) + '/5'; if (ctx.dataIndex === 1) return 'Pre-test: ' + preVal.toFixed(1) + '/10'; return 'Post-test: ' + postVal.toFixed(1) + '/10'; } } }, datalabels: { display: true, color: '#1E3A5F', anchor: 'end', align: 'top', offset: 4, font: { weight: 'bold', size: 14, family: 'Sarabun' }, textStrokeColor: '#ffffff', textStrokeWidth: 4, formatter: function(value, ctx) { if (ctx.dataIndex === 0) return satVal > 0 ? satVal.toFixed(2) + ' /5' : '—'; if (ctx.dataIndex === 1) return preVal > 0 ? preVal.toFixed(1) + ' /10' : '—'; return postVal > 0 ? postVal.toFixed(1) + ' /10' : '—'; } } }, scales: { x: { ticks: { font: { family: 'Sarabun', size: 10 } } }, y: { beginAtZero: true, max: 10, ticks: { stepSize: 2 } } } }, plugins: [ChartDataLabels] });
+  G.lineInst = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ data: displayVals, backgroundColor: origColors.slice(), borderRadius: 6, borderSkipped: false }] }, options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 25 } }, onClick: function(evt, elements) { var ds = this.data.datasets[0]; if (!elements.length) {
+  ds.backgroundColor = origColors.slice();
+  _satClickIdx = null;
+  G_chartFilter.metric = null;
+  this.update();
+  applyFilters();
+  return;
+}
+
+var idx = elements[0].index;
+
+if (_satClickIdx === idx) {
+  ds.backgroundColor = origColors.slice();
+  _satClickIdx = null;
+  G_chartFilter.metric = null;
+} else {
+  _satClickIdx = idx;
+  G_chartFilter.metric = metricKeys[idx];
+  ds.backgroundColor = origColors.map(function(c, i) {
+    return i === idx ? c : c + '44';
+  });
+}
+
+this.update();
+applyFilters(); }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { if (ctx.dataIndex === 0) return 'ความพึงพอใจ: ' + satVal.toFixed(2) + '/5'; if (ctx.dataIndex === 1) return 'Pre-test: ' + preVal.toFixed(1) + '/10'; return 'Post-test: ' + postVal.toFixed(1) + '/10'; } } }, datalabels: { display: true, color: '#1E3A5F', anchor: 'end', align: 'top', offset: 4, font: { weight: 'bold', size: 14, family: 'Sarabun' }, textStrokeColor: '#ffffff', textStrokeWidth: 4, formatter: function(value, ctx) { if (ctx.dataIndex === 0) return satVal > 0 ? satVal.toFixed(2) + ' /5' : '—'; if (ctx.dataIndex === 1) return preVal > 0 ? preVal.toFixed(1) + ' /10' : '—'; return postVal > 0 ? postVal.toFixed(1) + ' /10' : '—'; } } }, scales: { x: { ticks: { font: { family: 'Sarabun', size: 10 } } }, y: { beginAtZero: true, max: 10, ticks: { stepSize: 2 } } } }, plugins: [ChartDataLabels] });
 }
 
 var SL = { normal:'ปกติ', abnormal:'ผิดปกติ', referred:'ส่งต่อ', glasses:'ตัดแว่น' }; 
