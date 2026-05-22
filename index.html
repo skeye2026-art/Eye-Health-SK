@@ -1233,8 +1233,8 @@ var G_chartFilter = {
 function getDiagSeverityForRow(r) {
   var diagStr = String(r.diagnosis || '').trim();
   if (/ปกติ|เฝ้าระวัง/.test(diagStr) || diagStr === '') return 'ปกติ/เฝ้าระวัง';
-  if (/สงสัยสายตาผิดปกติ/.test(diagStr)) return 'ผิดปกติ (เล็กน้อย-ปานกลาง)';
-  if (/ตาขี้เกียจ|รุนแรง/.test(diagStr) && !/ความผิดปกติรุนแรง/.test(diagStr)) return 'รุนแรง/ตาขี้เกียจ';
+  if (/สงสัยสายตาผิดปกติ/.test(diagStr)) return 'ผิดปกติ(น้อย-ปานกลาง)';
+  if (/ตาขี้เกียจ|รุนแรง/.test(diagStr) && !/ผิดปกติรุนแรง/.test(diagStr)) return 'รุนแรง/ตาขี้เกียจ';
   if (/ความผิดปกติรุนแรง/.test(diagStr) || /อื่นๆ/.test(diagStr)) return 'ฉุกเฉิน';
   return 'ปกติ/เฝ้าระวัง';
 }
