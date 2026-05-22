@@ -255,11 +255,11 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   <div class="kpi kpi-ab" data-kpi="abnormal" onclick="toggleKpiFilter('abnormal')" title="🟡 กรองเฉพาะผิดปกติทั้งหมด (กดซ้ำยกเลิก)"><div class="kpi-lbl">🟡 ผิดปกติ</div><div class="kpi-v" id="k-abnormal">—</div><div class="kpi-sub" id="k-abpct">—</div></div>
   <div class="kpi kpi-rf" data-kpi="referred" onclick="toggleKpiFilter('referred')" title="🟠 กรองเฉพาะส่งต่อ (กดซ้ำยกเลิก)"><div class="kpi-lbl">🟠 ส่งต่อ</div><div class="kpi-v" id="k-referred">—</div><div class="kpi-sub" id="k-rfpct">—</div></div>
   <div class="kpi kpi-gl" data-kpi="glasses" onclick="toggleKpiFilter('glasses')" title="🔴 กรองเฉพาะตัดแว่น (กดซ้ำยกเลิก)"><div class="kpi-lbl">🔴 ตัดแว่น</div><div class="kpi-v" id="k-glasses">—</div><div class="kpi-sub" id="k-glpct">—</div></div>
-  <div class="kpi kpi-s" data-kpi="sat" onclick="toggleKpiFilter('sat')" title="⭐ กรองผู้ทำแบบประเมินความพึงพอใจ (กดซ้ำยกเลิก)"><div class="kpi-lbl">⭐ พึงพอใจ</div><div class="kpi-v" id="k-sat">—</div><div class="kpi-sub" id="k-sat-sub">/5.00</div></div>
-  <div class="kpi kpi-pr" data-kpi="pre" onclick="toggleKpiFilter('pre')" title="📝 กรองผู้ทำ Pre-test (กดซ้ำยกเลิก)"><div class="kpi-lbl">📝 Pre-test</div><div class="kpi-v" id="k-pre">—</div><div class="kpi-sub" id="k-pre-sub">/10 คะแนน</div></div>
-  <div class="kpi kpi-po" data-kpi="post" onclick="toggleKpiFilter('post')" title="📝 กรองผู้ทำ Post-test (กดซ้ำยกเลิก)"><div class="kpi-lbl">📝 Post-test</div><div class="kpi-v" id="k-post">—</div><div class="kpi-sub" id="k-post-sub">/10 คะแนน</div></div>
+  <div class="kpi kpi-s" data-kpi="sat" onclick="toggleKpiFilter('sat')" title="⭐ กรองผู้ทำแบบประเมินความพึงพอใจ (กดซ้ำยกเลิก)"><div class="kpi-lbl">⭐ พึงพอใจ</div><div class="kpi-v" id="k-sat">—</div><div class="kpi-sub">/5.00</div></div>
+  <div class="kpi kpi-pr" data-kpi="pre" onclick="toggleKpiFilter('pre')" title="📝 กรองผู้ทำ Pre-test (กดซ้ำยกเลิก)"><div class="kpi-lbl">📝 Pre-test</div><div class="kpi-v" id="k-pre">—</div><div class="kpi-sub">/10 คะแนน</div></div>
+  <div class="kpi kpi-po" data-kpi="post" onclick="toggleKpiFilter('post')" title="📝 กรองผู้ทำ Post-test (กดซ้ำยกเลิก)"><div class="kpi-lbl">📝 Post-test</div><div class="kpi-v" id="k-post">—</div><div class="kpi-sub">/10 คะแนน</div></div>
   <div class="kpi kpi-g" data-kpi="gain" onclick="toggleKpiFilter('gain')" title="📈 กรองผู้มี Learning Gain (กดซ้ำยกเลิก)"><div class="kpi-lbl">📈 Learning Gain</div><div class="kpi-v" id="k-gain">—</div><div class="kpi-sub">เฉลี่ย</div></div>
-  <div class="kpi kpi-tr" data-kpi="trainee" onclick="toggleKpiFilter('trainee')" title="🎓 กรองผู้เข้าอบรม (กดซ้ำยกเลิก)"><div class="kpi-lbl">🎓 ผู้เข้าอบรม</div><div class="kpi-v" id="k-trainee">—</div><div class="kpi-sub" id="k-trainee-sub">รายคน (Pre-test)</div></div>
+  <div class="kpi kpi-tr" data-kpi="trainee" onclick="toggleKpiFilter('trainee')" title="🎓 กรองผู้เข้าอบรม (กดซ้ำยกเลิก)"><div class="kpi-lbl">🎓 ผู้เข้าอบรม</div><div class="kpi-v" id="k-trainee">—</div><div class="kpi-sub">รายคน (Pre-test)</div></div>
 </div>
 
 <div class="main">
@@ -283,9 +283,9 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   <button class="btn-form bf-post" id="btnPost" onclick="openPanel('post')">📝 Post-test</button>
   <button class="btn-form bf-loc" id="btnLoc" onclick="openEditHosp('')" style="display:none">📍พิกัด/ภาพผลงาน</button>
   <button class="btn-form bf-conv" id="btnConv" onclick="openPanel('conv')" style="display:none">🛠 แปลง & นำเข้าไฟล์</button>
-  <button class="btn-form bf-loc" style="background:#dc2626; margin-top:10px; display:none;" id="btnVidMgr" onclick="openVideoMgrPanel()">📺จัดการลิสต์วิดีโอ</button>
-<button class="btn-form bf-loc" style="background:#6366f1; margin-top:4px; display:none;" id="btnLinkMgr" onclick="openLinkMgr()">🔗 จัดการปุ่มลิ้งก์</button>
-<button class="btn-form bf-loc" style="background:#059669; margin-top:4px; display:none;" id="btnLineMgr" onclick="openLineMgr()">💬 ตั้งค่า LINE API</button>
+  <button class="btn-form bf-loc" style="background:#dc2626; margin-top:10px;" id="btnVidMgr" onclick="openVideoMgrPanel()" style="display:none">📺จัดการลิสต์วิดีโอ</button>
+  <button class="btn-form bf-loc" style="background:#6366f1; margin-top:4px;" id="btnLinkMgr" onclick="openLinkMgr()" style="display:none">🔗 จัดการปุ่มลิ้งก์</button>
+  <button class="btn-form bf-loc" style="background:#059669; margin-top:4px;" id="btnLineMgr" onclick="openLineMgr()" style="display:none">💬 ตั้งค่า LINE API</button>
 </div>
 
 <div class="add-sec" id="addSecGuest" style="display:none">
@@ -904,7 +904,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
       <div class="fr">
         <div class="fg"><label>ระดับชั้น</label>
           <select id="s-lev">
-            <option>อ.1</option><option>อ.2</option><option>อ.3</option>
+            <option>ก่อนวัยเรียน(ศูนย์เด็กเล็ก)</option><option>อ.1</option><option>อ.2</option><option>อ.3</option>
             <option>ป.1</option><option>ป.2</option><option selected>ป.3</option><option>ป.4</option><option>ป.5</option><option>ป.6</option>
             <option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option>
           </select>
@@ -1633,23 +1633,20 @@ function applyFilters() {
     return true;
   });
 
-  var k = {total:0, normal:0, abnormal:0, referred:0, glasses:0, preSum:0, postSum:0, gainSum:0, testCount:0, satCount:0, preCount:0, postCount:0};
+  var k = {total:0, normal:0, abnormal:0, referred:0, glasses:0, preSum:0, postSum:0, gainSum:0, testCount:0};
   G.dispRows.forEach(function(r) {
     k.total++;
     if(r.status==='normal') k.normal++;
     else if(r.status==='abnormal') k.abnormal++;
     else if(r.status==='referred') k.referred++;
     else if(r.status==='glasses') k.glasses++;
-    if(r.sat !== null) k.satCount++;
-    if(r.pre !== null) k.preCount++;
-    if(r.post !== null) k.postCount++;
     if(r.pre !== null && r.post !== null) {
       k.preSum += Number(r.pre);
       k.postSum += Number(r.post);
       k.gainSum += Number(r.gain);
       k.testCount++;
     }
-  });;
+  });
 
   var t = k.total || 1;
   var kpiOut = {
@@ -1668,15 +1665,7 @@ function applyFilters() {
     postAvg: k.testCount>0 ? Math.round(k.postSum/k.testCount*10)/10 : null,
     gainAvg: k.testCount>0 ? Math.round(k.gainSum/k.testCount) : null,
     satAvg: G.kpi.satAvg,
-    preTestCount: k.preCount,
-    satCount: k.satCount,
-    satPct: Math.round(k.satCount/t*100),
-    preCount: k.preCount,
-    prePct: Math.round(k.preCount/t*100),
-    postCount: k.postCount,
-    postPct: Math.round(k.postCount/t*100),
-    traineePct: Math.round(k.preCount/t*100),
-    traineePctGlasses: k.glasses > 0 ? Math.round(k.preCount/k.glasses*100) : null
+    preTestCount: G.kpi.preTestCount
   };
 
   updateKPIs(kpiOut);
@@ -2477,28 +2466,9 @@ function loadDashboard(params) {
   google.script.run.withSuccessHandler(function(r) {
     var d = JSON.parse(r); if (!d.ok) { toast('โหลดข้อมูลไม่สำเร็จ', 'err'); return; }
     G.chartData = { amphoe: d.data.barChartAmphoe, hosp: d.data.barChartHosp, school: d.data.barChartSchool }; G.kpi = d.data.kpi; G.hospSummaryData = d.data.hospSummary; G.satCharts = d.data.satCharts;
-    G.allRows = d.data.rows; G.dispRows = d.data.rows;
-    // 💡 Enrich G.kpi ด้วยจำนวนคนที่ตอบแบบประเมิน/ทำแบบทดสอบ (จาก allRows)
-    (function() {
-      var sc=0, pc=0, poc=0, glC=0;
-      for(var i=0; i<G.allRows.length; i++) {
-        var rr = G.allRows[i];
-        if(rr.sat !== null) sc++;
-        if(rr.pre !== null) pc++;
-        if(rr.post !== null) poc++;
-        if(rr.status === 'glasses') glC++;
-      }
-      var tt = G.kpi.total || 1;
-      G.kpi.satCount = sc; G.kpi.satPct = Math.round(sc/tt*100);
-      G.kpi.preCount = pc; G.kpi.prePct = Math.round(pc/tt*100);
-      G.kpi.postCount = poc; G.kpi.postPct = Math.round(poc/tt*100);
-      G.kpi.preTestCount = pc;
-      G.kpi.traineePct = Math.round(pc/tt*100);
-      G.kpi.traineePctGlasses = glC > 0 ? Math.round(pc/glC*100) : null;
-    })();
     updateKPIs(G.kpi); renderPieChart(G.kpi); renderSatTestChart(G.kpi); 
     try { renderSummaryTable(G.hospSummaryData); } catch(err) { console.error('Summary Error:', err); }
-    renderBarChart(); renderSatBreakdownChart(); renderSatTypePieChart(); renderHeatmap();
+    G.allRows = d.data.rows; G.dispRows = d.data.rows; renderBarChart(); renderSatBreakdownChart(); renderSatTypePieChart(); renderHeatmap();
     
     // เรียกวาดกราฟชุดใหม่ที่นี่
     if(d.data.extraStats) renderExtraDashCharts(d.data.extraStats);
@@ -2548,8 +2518,6 @@ function toggleHospFilter(hospcode) { var el = document.getElementById('fHosp');
 function toggleStatFilter(stat) { var el = document.getElementById('fStat'); if (el.value === stat) { el.value = ''; } else { el.value = stat; } applyFilters(); }
 function updateKPIs(k) { 
   function sv(id, v) { var e = document.getElementById(id); if (e) e.textContent = (v !== null && v !== undefined) ? v : '—'; } 
-  /* 👇 เพิ่มบรรทัดนี้เข้าไป เพื่อให้ svHtml ทำงานได้ 👇 */
-  function svHtml(id, v) { var e = document.getElementById(id); if (e) e.innerHTML = (v !== null && v !== undefined) ? v : '—'; }
   sv('k-total', k.total); 
   sv('k-normal', k.normal); sv('k-npct', k.normal !== null ? k.normalPct + '%' : '—'); sv('k-abnormal', k.abnormalTotal !== undefined ? k.abnormalTotal : k.abnormal); 
   sv('k-abpct', k.abnormalPct !== null ? k.abnormalPct + '%' : '—'); 
@@ -2590,40 +2558,12 @@ function updateKPIs(k) {
       _glSubEl.title = _glPctAll + '% เทียบกับจำนวนทั้งหมด • ' + _glPctAb + '% เทียบกับผู้ผิดปกติ';
     }
   } 
-  // ⭐ พึงพอใจ — แสดงจำนวนคน + % ที่ตอบ
   sv('k-sat', k.satAvg !== null ? k.satAvg.toFixed(2) : '—'); 
-  if (k.satPct !== undefined) {
-    svHtml('k-sat-sub', '/5.00<br><span style="font-size:9px; color:var(--purple); font-weight:600;">' + k.satCount + ' คน (' + k.satPct + '%)</span>');
-  }
-  
-  // 📝 Pre-test — แสดงจำนวนคน + % ที่ทำ
   sv('k-pre', k.preAvg !== null ? k.preAvg.toFixed(1) : '—'); 
-  if (k.prePct !== undefined) {
-    svHtml('k-pre-sub', '/10 คะแนน<br><span style="font-size:9px; color:var(--teal); font-weight:600;">' + k.preCount + ' คน (' + k.prePct + '%)</span>');
-  }
-  
-  // 📝 Post-test — แสดงจำนวนคน + % ที่ทำ
   sv('k-post', k.postAvg !== null ? k.postAvg.toFixed(1) : '—'); 
-  if (k.postPct !== undefined) {
-    svHtml('k-post-sub', '/10 คะแนน<br><span style="font-size:9px; color:#0891b2; font-weight:600;">' + k.postCount + ' คน (' + k.postPct + '%)</span>');
-  }
-  
   sv('k-gain', k.gainAvg !== null ? k.gainAvg + '%' : '—'); 
-  
-  // 🎓 ผู้เข้าอบรม — แสดง % รวม + % ในตัดแว่น
-  sv('k-trainee', k.preTestCount !== null ? k.preTestCount : '—'); 
-  if (k.traineePct !== undefined) {
-    var traineeGlassesTxt = (k.traineePctGlasses !== null && k.traineePctGlasses !== undefined)
-      ? k.traineePctGlasses + '% ในตัดแว่น'
-      : '— (ตัดแว่น 0 คน)';
-    svHtml('k-trainee-sub', 
-      'รายคน (Pre-test)<br>' +
-      '<span style="font-size:9px; color:var(--primary); font-weight:600;">' + k.traineePct + '% รวม</span><br>' +
-      '<span style="font-size:9px; color:var(--red); font-weight:600;">' + traineeGlassesTxt + '</span>'
-    );
-  }
-  
-  if (typeof updateKpiActiveState === 'function') updateKpiActiveState(); 
+  sv('k-trainee', k.preTestCount !== null ? k.preTestCount : '—');
+  if (typeof updateKpiActiveState === 'function') updateKpiActiveState();  // ⬅️ เพิ่มบรรทัดนี้ 
 }
 
 function renderBarChart() {
