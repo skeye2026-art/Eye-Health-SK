@@ -2540,7 +2540,24 @@ function updateKPIs(k) {
       _rfSubEl.title = _refPctAll + '% เทียบกับจำนวนทั้งหมด • ' + _refPctAb + '% เทียบกับผู้ผิดปกติ';
     }
   }
-  sv('k-glasses', k.glasses); sv('k-glpct', k.glasses !== null ? k.glassesPct + '%' : '—'); 
+  sv('k-glasses', k.glasses);
+  // เพิ่มการคิด % เทียบจำนวน "ทั้งหมด" และเทียบจำนวน "ผิดปกติ" สำหรับกล่อง ตัดแว่น
+  var _glAbTotal = (k.abnormalTotal !== undefined) ? k.abnormalTotal : (k.abnormal || 0);
+  var _glTotal = k.glasses || 0;
+  var _glPctAll = (k.glassesPct !== null && k.glassesPct !== undefined) ? k.glassesPct : 0;
+  var _glPctAb = _glAbTotal > 0 ? Math.round(_glTotal / _glAbTotal * 100) : 0;
+  var _glSubEl = document.getElementById('k-glpct');
+  if (_glSubEl) {
+    if (k.glasses === null || k.glasses === undefined) {
+      _glSubEl.innerHTML = '—';
+      _glSubEl.title = '';
+    } else {
+      _glSubEl.innerHTML = 
+        '<div style="font-size:9.5px;line-height:1.2;color:var(--muted2);">' + _glPctAll + '% <span style="opacity:0.75;">ของทั้งหมด</span></div>' +
+        '<div style="font-size:9.5px;line-height:1.2;color:var(--red);font-weight:600;">' + _glPctAb + '% <span style="opacity:0.75;font-weight:400;">ของผิดปกติ</span></div>';
+      _glSubEl.title = _glPctAll + '% เทียบกับจำนวนทั้งหมด • ' + _glPctAb + '% เทียบกับผู้ผิดปกติ';
+    }
+  } 
   sv('k-sat', k.satAvg !== null ? k.satAvg.toFixed(2) : '—'); 
   sv('k-pre', k.preAvg !== null ? k.preAvg.toFixed(1) : '—'); 
   sv('k-post', k.postAvg !== null ? k.postAvg.toFixed(1) : '—'); 
