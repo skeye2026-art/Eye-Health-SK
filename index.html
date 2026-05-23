@@ -124,11 +124,13 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; }
 .marquee-content { 
     display: inline-block; 
-    animation: text-marquee-ltr 15s linear infinite; 
+    animation: text-marquee-ltr 30s linear infinite; 
+    padding-left: 0; /* เปลี่ยนจาก 100% เป็น 0 เพื่อให้เริ่มที่ขอบซ้าย */
 }
+
 @keyframes text-marquee-ltr {
-    0% { transform: translateX(-100%); } /* เริ่มจากซ่อนอยู่ฝั่งซ้ายสุด */
-    100% { transform: translateX(350px); } /* เลื่อนไปจนสุดฝั่งขวา */
+    0% { transform: translateX(-100%); } /* เริ่มจากนอกจอฝั่งซ้าย */
+    100% { transform: translateX(100vw); } /* วิ่งไปจนสุดจอฝั่งขวา */
 }
 
 /* 2. ภาพวิ่ง */
@@ -150,16 +152,15 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .modal-overlay.open { display: flex; }
 .modal-overlay img { max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
 
-/* === Image Modal Popup (v6.3) === */
+/* ตรวจสอบว่า CSS นี้มีอยู่จริงในแท็ก <style> ของคุณ */
 #imgModal { 
   position: fixed; inset: 0;
   background: rgba(15,23,42,0.78); backdrop-filter: blur(4px);
   z-index: 1000;
-  display: none;
+  display: none; /* เริ่มต้นต้องซ่อนไว้ */
   align-items: center; justify-content: center;
-  padding: 30px;
-  animation: imgFadeIn 0.25s cubic-bezier(.4,0,.2,1);
 }
+#imgModal.open { display: flex; } /* เมื่อกดแล้วให้แสดงผล */
 #imgModal.open { display: flex; }
 #imgModal img {
   max-width: 80vw; max-height: 80vh;
@@ -313,7 +314,8 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 </div>
 
 <!-- Modal สำหรับขยายภาพ -->
-<div class="modal-overlay" id="img-modal" onclick="this.classList.remove('open')">
+<div class="modal-overlay" id="imgModal" onclick="this.classList.remove('open')">
+    <div class="close-btn" onclick="closeImg()">✕</div>
     <img id="modal-img" src="">
 </div>
 
@@ -530,9 +532,10 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 </div>
 
 <div id="printArea"></div>
-<div class="modal-overlay" id="img-modal" onclick="this.classList.remove('open')">
-        <img id="modal-img" src="">
-    </div>
+<div class="modal-overlay" id="imgModal" onclick="this.classList.remove('open')">
+    <div class="close-btn" onclick="closeImg()">✕</div>
+    <img id="modal-img" src="">
+</div>
 
 <div class="mov" id="printMov"><div class="mbox" style="width:450px; padding:25px;"><div class="m-ttl">🖨 พิมพ์แบบฟอร์ม / ส่งออก</div><div class="m-sub">เลือกข้อมูลจากตาราง แล้วเลือกประเภทแบบฟอร์ม</div><select id="printDocType" style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid var(--border); font-size:14px; outline:none; background:#f8faff; font-family:inherit;">
   <option value="scr">1. แบบตรวจ/ประเมินสายตา (Screening)</option>
@@ -2653,12 +2656,17 @@ function showImg(url) {
     if (match && match[1]) { 
         imgSrc = 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000'; 
     } 
-    const modal = document.getElementById('img-modal');
+    const modal = document.getElementById('imgmodal');
     const img = document.getElementById('modal-img');
     img.src = imgSrc;
     modal.classList.add('open');
 }
-function closeImg() { document.getElementById('imgModal').classList.remove('open'); setTimeout(function(){ document.getElementById('imgFull').src = ''; }, 250); }
+
+// แก้ไขฟังก์ชัน closeImg ให้ตรงกัน
+function closeImg() { 
+    document.getElementById('imgModal').classList.remove('open'); 
+    setTimeout(function(){ document.getElementById('modal-img').src = ''; }, 250); 
+}
 
 function renderSummaryTable(data) {
   var tb = document.getElementById('hospSumBody'); if (!data || data.length === 0) { tb.innerHTML = '<tr><td colspan="12" style="text-align:center;">ไม่มีข้อมูล</td></tr>'; return; }
@@ -4596,11 +4604,28 @@ function updateKpiActiveState() {
 }
 
 // ฟังก์ชันสำหรับเปิดรูปภาพแบบขยาย
-function showExpandedImage(url) {
-    const modal = document.getElementById('img-modal');
+function showExpandedImage(url) { 
+    var imgSrc = url;
+    // ตรวจสอบว่าใส่มาเป็น Link หรือ ID
+    if (!url.startsWith('http')) {
+        imgSrc = 'https://drive.google.com/thumbnail?id=' + url + '&sz=w1000';
+    } else {
+        var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/); 
+        if (match && match[1]) { 
+            imgSrc = 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000'; 
+        }
+    }
+    
+    const modal = document.getElementById('imgModal'); // ใช้ ID นี้
     const img = document.getElementById('modal-img');
-    img.src = url;
+    img.src = imgSrc;
     modal.classList.add('open');
+}
+
+// ฟังก์ชันสำหรับปิดรูปภาพ
+function closeImg() { 
+    document.getElementById('imgModal').classList.remove('open'); 
+    setTimeout(function(){ document.getElementById('modal-img').src = ''; }, 250); 
 }
 
 function applySettings() {
