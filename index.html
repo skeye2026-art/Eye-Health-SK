@@ -314,12 +314,6 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     </div>
 </div>
 
-<!-- Modal สำหรับขยายภาพ -->
-<div class="modal-overlay" id="imgModal" onclick="this.classList.remove('open')">
-    <div class="close-btn" onclick="closeImg()">✕</div>
-    <img id="modal-img" src="">
-</div>
-
 <div class="main">
   <aside class="sidebar">
     <div class="sb-title">🔍 กรองข้อมูล</div>
@@ -2651,20 +2645,36 @@ function loadDashboard(params) {
   }).getDashboardData(params);
 }
 
-// เปลี่ยนชื่อฟังก์ชันจาก showExpandedImage เป็น showImg เพื่อให้ตรงกับที่เรียกใน renderSummaryTable
+// ฟังก์ชันสำหรับเปิดภาพ (เรียกใช้จาก renderSummaryTable)
 function showImg(url) { 
     var imgSrc = url; 
-    // ตรวจสอบว่าใส่มาเป็น Link หรือ ID
     var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/); 
     if (match && match[1]) { 
         imgSrc = 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000'; 
     } 
     
-    // แก้ไขให้ตรงกับ ID ใน HTML (imgModal)
+    // อ้างอิง ID ให้ตรงกับ HTML ด้านบน (imgModal)
     const modal = document.getElementById('imgModal');
     const img = document.getElementById('modal-img');
-    img.src = imgSrc;
-    modal.classList.add('open');
+    
+    if (modal && img) {
+        img.src = imgSrc;
+        modal.classList.add('open');
+    } else {
+        console.error("ไม่พบ Element imgModal หรือ modal-img");
+    }
+}
+
+// ฟังก์ชันสำหรับปิดภาพ
+function closeImg() { 
+    const modal = document.getElementById('imgModal');
+    if (modal) {
+        modal.classList.remove('open'); 
+        setTimeout(function(){ 
+            const img = document.getElementById('modal-img');
+            if(img) img.src = ''; 
+        }, 250); 
+    }
 }
 
 // ฟังก์ชันปิด Modal
@@ -2680,7 +2690,12 @@ function renderSummaryTable(data) {
   data.forEach(function(r) {
     try {
         var picHtml = '<span style="color:var(--muted2); font-size:10px;">—</span>';
-        if (r.pics) { var urls = String(r.pics).split('\n'); var links = urls.map(function(url, idx) { url = url.trim(); if (!url) return ''; return '<a href="javascript:void(0)" onclick="event.stopPropagation(); showImg(\''+url+'\');" style="color:var(--blue);text-decoration:underline;font-weight:600;">[ดูภาพที่ '+(idx+1)+']</a>'; }).filter(Boolean); if (links.length > 0) picHtml = links.join('<br>'); }
+        if (r.pics) { var urls = String(r.pics).split('\n'); // ใน renderSummaryTable ของคุณ ต้องเป็นแบบนี้:
+var links = urls.map(function(url, idx) { 
+    url = url.trim(); 
+    if (!url) return ''; 
+    return '<a href="javascript:void(0)" onclick="event.stopPropagation(); showImg(\''+url+'\');" style="color:var(--blue);text-decoration:underline;font-weight:600;">[ดูภาพที่ '+(idx+1)+']</a>'; 
+}).filter(Boolean); if (links.length > 0) picHtml = links.join('<br>'); }
         var rowClass = (currentFilter === r.hospcode) ? 'tr-active' : ''; var sat = (r.satAvg != null && r.satAvg !== '') ? Number(r.satAvg).toFixed(2) : '—'; var pre = (r.preAvg != null && r.preAvg !== '') ? Number(r.preAvg).toFixed(1) : '—'; var post = (r.postAvg != null && r.postAvg !== '') ? Number(r.postAvg).toFixed(1) : '—'; var gain = (r.gainAvg != null && r.gainAvg !== '') ? (Number(r.gainAvg) > 0 ? '+'+r.gainAvg : r.gainAvg)+'%' : '—'; var gc = (r.gainAvg != null && r.gainAvg !== '') ? (Number(r.gainAvg) > 0 ? 'color:var(--green)' : (Number(r.gainAvg) < 0 ? 'color:var(--red)' : '')) : '';
         var actHtml = '—'; var tdAct = '';
         if (G.session.loggedIn) { if (G.session.role === 'admin' || G.session.hospcode === r.hospcode) { actHtml = '<button class="btn-act" style="color:#ea580c;border-color:#fed7aa;" onclick="openEditHosp(\''+r.hospcode+'\'); event.stopPropagation();" title="จัดการพิกัด/ภาพ">📍 จัดการพิกัด</button>'; } tdAct = '<td style="text-align:center;">'+actHtml+'</td>'; }
