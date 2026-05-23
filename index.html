@@ -1994,6 +1994,8 @@ function importCSV() {
     btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)';
     toast('❌ เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว: ' + (err.message || 'Unknown error'), 'err');
 }).importScreeningData(processedRows);
+};
+}
 
 var G_failedData = [];
 
