@@ -1203,8 +1203,7 @@ function startFloatingImage(imgUrl) {
 function initVisualSettings(settings) {
     // Marquee
     if(settings.marquee_text) {
-        // ในส่วนการตั้งค่าmarquee
-      document.getElementById('disp-marquee').innerText = settings.marquee_text + " &nbsp; &nbsp; &nbsp; " + settings.marquee_text;
+        document.getElementById('disp-marquee').innerText = settings.marquee_text;
         document.getElementById('marquee-container').classList.remove('hidden');
     }
     // Floating Image
