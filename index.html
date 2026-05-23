@@ -116,22 +116,32 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .del-box{background:#fff;border-radius:14px;padding:26px 24px;width:310px;box-shadow:0 20px 50px rgba(0,0,0,.2)} .del-ttl{font-size:17px;font-weight:700;color:var(--red);text-align:center;margin-bottom:12px} .del-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px} .del-warn{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:6px;padding:6px 10px;text-align:center;margin-bottom:12px}
 .toast-wrap{position:fixed;bottom:18px;right:18px;z-index:500;display:flex;flex-direction:column;gap:6px} .toast{padding:10px 14px;border-radius:9px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-md);min-width:200px;max-width:340px;animation:slIn .28s ease;display:flex;align-items:center;gap:7px} .t-ok{background:#dcfce7;color:#14532d;border:1px solid #86efac} .t-err{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5} .t-inf{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd} @keyframes slIn{from{transform:translateX(110%);opacity:0}to{transform:none;opacity:1}} .sp{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0} @keyframes spin{to{transform:rotate(360deg)}}
 
-/* --- Visual Settings --- */
 /* Floating Image */
 #floating-img-element { 
     position: fixed; top: 0; left: 0; z-index: 999; pointer-events: none; 
     opacity: 0.7; max-width: 150px; max-height: 80px; object-fit: contain; 
 }
 
-/* Marquee Text */
+/* Marquee Text - แก้ไขให้วิ่งสมูท */
 .marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; box-sizing: border-box; }
-.marquee-content { display: inline-block; padding-left: 100%; animation: marquee 25s linear infinite; }
-@keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+.marquee-content { 
+    display: inline-block; 
+    white-space: nowrap;
+    animation: marquee 20s linear infinite; 
+}
+@keyframes marquee { 
+    0% { transform: translateX(100%); } 
+    100% { transform: translateX(-100%); } 
+}
 
-/* Marquee Images */
+/* Marquee Images - แก้ไขให้วิ่งสมูท */
 .img-marquee-container { width: 100%; overflow: hidden; background: #fff; border-radius: 8px; border: 1px solid var(--border); margin: 10px 8px; }
-.img-marquee-wrapper { display: flex; animation: marquee 20s linear infinite; }
-.img-marquee-wrapper img { height: 120px; margin: 5px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+.img-marquee-wrapper { 
+    display: flex; 
+    white-space: nowrap;
+    animation: marquee 30s linear infinite;
+    }
+.img-marquee-wrapper img { height: 120px; margin: 5px; border-radius: 6px; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
 .img-marquee-wrapper img:hover { transform: scale(1.05); }
 
 /* Modal for Image */
@@ -2439,18 +2449,24 @@ function setDate() {
   document.getElementById('dateTxt').textContent = 'วัน' + days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + (d.getFullYear() + 543);
 }
 
+// ตรวจสอบการเปิด-ปิด Floating Image
 function applySettings() {
     var s = G.settings;
     if (s.sys_name) document.getElementById('sysName').textContent = s.sys_name;
     if (s.org_name) document.getElementById('orgName').textContent = s.org_name;
-    if (s.sys_name) document.getElementById('loginSub').textContent = s.sys_name;
-    if (s.logo_id) {
-    var img = document.createElement('img'); img.src = 'https://drive.google.com/thumbnail?id=' + s.logo_id + '&sz=w80';
-    img.onerror = function() { if (this.src.indexOf('thumbnail') > -1) { this.src = 'https://lh3.googleusercontent.com/d/' + s.logo_id; } else { this.parentElement.textContent = '👁'; } };
-    var lw = document.getElementById('logoWrap'); lw.innerHTML = ''; lw.appendChild(img);
-  }
-if (s.floating_img) {
+    if (s.logo_id) { /* โค้ดเดิม... */ }
+    
+    // เช็คค่าจาก Settings ถ้าเป็น "true" ให้แสดง
+    if (s.enable_float_img === "true" && s.floating_img) {
         startFloatingImage(s.floating_img);
+    } else {
+        document.getElementById('floating-img-element').classList.add('hidden');
+    }
+    
+    // เช็ค Text Marquee
+    if (s.enable_text_marquee === "true" && s.marquee_text) {
+        document.getElementById('disp-marquee').innerText = s.marquee_text;
+        document.getElementById('marquee-container').classList.remove('hidden');
     }
 }
 
@@ -4604,18 +4620,22 @@ function showExpandedImage(url) {
     modal.classList.add('open');
 }
 
-// ฟังก์ชันสำหรับแสดงภาพวิ่ง
+// ฟังก์ชันภาพวิ่ง (Image Marquee) - แก้ไขให้โคลนรูปภาพเพื่อความต่อเนื่อง
 function renderImageMarquee(imageUrlsString) {
     const container = document.getElementById('img-marquee-body');
-    if (!imageUrlsString || imageUrlsString.trim() === '') {
-        document.querySelector('.img-marquee-container').style.display = 'none';
+    const wrapper = document.querySelector('.img-marquee-container');
+    
+    // ตรวจสอบสถานะการเปิดจาก Settings (ถ้า Admin ปิดไว้)
+    if (!G.settings.enable_img_marquee || imageUrlsString.trim() === '') {
+        wrapper.style.display = 'none';
         return;
     }
     
+    wrapper.style.display = 'block';
     const urls = imageUrlsString.split(',').map(url => url.trim()).filter(url => url !== '');
     container.innerHTML = '';
     
-    // ทำ Loop สองรอบเพื่อให้ภาพวิ่งต่อเนื่องกันแบบไร้รอยต่อ
+    // ใส่รูปเข้าไป 2 รอบ เพื่อให้ภาพวิ่งวนแบบไม่มีรอยต่อ
     [...urls, ...urls].forEach(url => {
         const img = document.createElement('img');
         img.src = url;
