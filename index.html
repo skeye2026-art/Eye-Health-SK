@@ -128,38 +128,32 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   display: flex; /* เพิ่มเพื่อให้จัดการตำแหน่งง่ายขึ้น */
 }
 
-/* ส่วนครอบข้อความวิ่ง */
+/* 1. ส่วนของ Container ที่ใช้ครอบ */
 #marquee-container {
   position: absolute;
   top: 0;
-  left: 0; /* เปลี่ยนเป็น 0 เพื่อให้คลุมพื้นที่ตั้งแต่ขอบซ้ายสุด */
-  right: 250px; 
-  height: 100%;
-  overflow: hidden; /* ซ่อนข้อความที่อยู่นอกพื้นที่ */
-  z-index: 2;    /* ให้ต่ำกว่าโลโก้ (โลโก้ควรเป็น 3) */
-  pointer-events: none; /* เพื่อให้คลิกเมนูผ่านได้ */
+  left: 60px;   /* ปรับให้เริ่มที่ขอบโลโก้ */
+  right: 150px; /* เว้นที่ให้ปุ่มขวา */
+  height: 100%; /* ให้สูงเท่า Header */
+  overflow: hidden;
+  z-index: 1;   /* อยู่ต่ำกว่าโลโก้ (z-index:2) */
+  pointer-events: none;
 }
 
-.marquee-wrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
+/* 2. ตัวเนื้อหาที่วิ่ง */
 .marquee-content {
-  position: absolute;
-  top: 50%; /* จัดให้อยู่กลางแนวตั้ง */
-  transform: translateY(-50%);
+  display: inline-block;
+  animation: text-marquee-ltr 15s linear infinite;
   white-space: nowrap;
+  line-height: 52px; /* ปรับให้ข้อความอยู่กึ่งกลางแนวตั้ง */
   color: #fff;
   font-size: 14px;
-  animation: text-marquee-ltr 15s linear infinite;
 }
 
-/* Keyframes: ให้เริ่มวิ่งจากตำแหน่งที่มองไม่เห็น (หลังโลโก้) */
+/* 3. Keyframes ที่พุ่งออกจากหลังโลโก้ */
 @keyframes text-marquee-ltr {
   0% { transform: translateX(-100%); opacity: 0; }
-  10% { opacity: 1; } /* ให้โผล่พ้นโลโก้มาแล้วค่อยชัด */
+  5% { opacity: 1; } /* ให้โผล่พ้นโลโก้แล้วค่อยชัด */
   100% { transform: translateX(100vw); }
 }
 
@@ -224,9 +218,6 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   #imgModal img { max-width: 95vw; max-height: 80vh; }
   #imgModal .close-btn { top: 12px; right: 14px; width: 40px; height: 40px; font-size: 18px; }
 }
-@media (max-width: 600px) {
-       #marquee-container { display: none !important; }
-   }
 
 /* การตั้งค่าระบบการ Print หน้ากระดาษ A4 แบบ 100% (v6.2 - ปรับปรุง) */
 #printArea { display: none; } 
@@ -264,9 +255,6 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   .sys-name { font-size: 13px; }
   .date-txt, .btn-hdr { font-size: 10px; padding: 4px 8px; }
 }
-@media (max-width: 600px) {
-       #marquee-container { display: none !important; }
-   }
 
 /* === Behavior Dashboard === */
 .beh-panel { width: 95vw !important; max-width: 1400px !important; right: -100% !important; }
@@ -296,9 +284,6 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   .beh-kpi { grid-template-columns: repeat(3,1fr); }
   .beh-row-2, .beh-row-3, .beh-row-2-1 { grid-template-columns: 1fr; }
 }
-@media (max-width: 600px) {
-       #marquee-container { display: none !important; }
-   }
 
 /* Radio Group styling for part 3 */
 .radio-box-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -320,8 +305,8 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
         </div>
     </div>
 
-    <div class="hdr-text" style="position: relative; z-index: 3;">...</div>
-    <div class="hdr-right" style="position: relative; z-index: 3;">...</div>
+    <div class="hdr-text" style="z-index: 3;">...</div>
+    <div class="hdr-right" style="z-index: 3;">...</div>
 </header>
 
 <div id="linkArea" class="link-grid" style="display:none;"></div>
@@ -1229,12 +1214,12 @@ function startFloatingImage(imgUrl) {
 
 // 1. ปรับฟังก์ชัน initVisualSettings ให้ทำงานได้ถูกต้อง
 function initVisualSettings() {
-let s = G.settings; // ใช้ตัวแปร s ให้สอดคล้อง
-if(s.marquee_text) {
-// ใช้ s.marquee_text
-document.getElementById('disp-marquee').innerText = s.marquee_text + "       " + s.marquee_text;
-document.getElementById('marquee-container').classList.remove('hidden');
-}
+    let settings = G.settings; // ดึงมาจากตัวแปร Global
+    // Marquee ข้อความ
+    if(settings.marquee_text) {
+        document.getElementById('disp-marquee').innerText = settings.marquee_text + " &nbsp; &nbsp; &nbsp; " + settings.marquee_text;
+        document.getElementById('marquee-container').classList.remove('hidden');
+    }
     // Floating Image
     if(settings.floating_img) {
         startFloatingImage(settings.floating_img);
