@@ -121,16 +121,36 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
    Marquee Text & Image (ข้อความและภาพวิ่ง)
 ========================================= */
 /* 1. ข้อความวิ่ง (ตั้งให้เลื่อนจากซ้ายไปขวา) */
-.marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; }
-.marquee-content { 
-    display: inline-block; 
-    animation: text-marquee-ltr 30s linear infinite; 
-    padding-left: 0; /* เปลี่ยนจาก 100% เป็น 0 เพื่อให้เริ่มที่ขอบซ้าย */
+.marquee-wrapper { 
+  width: 100%; 
+  overflow: hidden; 
+  white-space: nowrap; 
+  display: flex; /* เพิ่มเพื่อให้จัดการตำแหน่งง่ายขึ้น */
+}
+
+#marquee-container {
+  position: absolute;
+  top: 0;
+  left: 65px;    /* ปรับค่านี้ให้พอดีกับความกว้างโลโก้ เพื่อให้โลโก้บังข้อความไว้ */
+  right: 250px;  /* เว้นที่ให้ปุ่มเมนูด้านขวา */
+  height: 100%;
+  overflow: hidden; /* ข้อความที่อยู่ซ้ายกว่า 65px จะถูกซ่อน */
+  z-index: 1;    /* อยู่ต่ำกว่าโลโก้ */
+  pointer-events: none;
+}
+
+.marquee-content {
+  display: inline-block;
+  animation: text-marquee-ltr 15s linear infinite;
+  white-space: nowrap;
+  line-height: 52px; /* ให้ความสูงเท่ากับ Header */
+  color: #fff;
+  font-size: 14px;
 }
 
 @keyframes text-marquee-ltr {
-    0% { transform: translateX(-100%); } /* เริ่มจากนอกจอฝั่งซ้าย */
-    100% { transform: translateX(100vw); } /* วิ่งไปจนสุดจอฝั่งขวา */
+  0% { transform: translateX(-100%); } /* เริ่มต้นให้วิ่งมาจากหลังโลโก้ */
+  100% { transform: translateX(100vw); }
 }
 
 /* 2. ภาพวิ่ง */
@@ -194,6 +214,9 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   #imgModal img { max-width: 95vw; max-height: 80vh; }
   #imgModal .close-btn { top: 12px; right: 14px; width: 40px; height: 40px; font-size: 18px; }
 }
+@media (max-width: 600px) {
+       #marquee-container { display: none !important; }
+   }
 
 /* การตั้งค่าระบบการ Print หน้ากระดาษ A4 แบบ 100% (v6.2 - ปรับปรุง) */
 #printArea { display: none; } 
@@ -231,6 +254,9 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   .sys-name { font-size: 13px; }
   .date-txt, .btn-hdr { font-size: 10px; padding: 4px 8px; }
 }
+@media (max-width: 600px) {
+       #marquee-container { display: none !important; }
+   }
 
 /* === Behavior Dashboard === */
 .beh-panel { width: 95vw !important; max-width: 1400px !important; right: -100% !important; }
@@ -260,6 +286,9 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   .beh-kpi { grid-template-columns: repeat(3,1fr); }
   .beh-row-2, .beh-row-3, .beh-row-2-1 { grid-template-columns: 1fr; }
 }
+@media (max-width: 600px) {
+       #marquee-container { display: none !important; }
+   }
 
 /* Radio Group styling for part 3 */
 .radio-box-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -272,25 +301,17 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <body>
 <img id="floating-img-element" class="hidden" src="" alt="floating">
 <div id="app">
-<header class="hdr">
-  <div class="hdr-logo" id="logoWrap">👁</div>
-  <div class="hdr-text">
-    <div class="sys-name" id="sysName">โครงการเด็กไทยสายตาดี</div>
-    <div class="org-name" id="orgName">องค์การบริหารส่วนจังหวัดสมุทรสาคร</div>
-  </div>
-  
-  <div id="marquee-container" class="hidden" style="flex:1; max-width: 300px; color: #fff; margin: 0 15px;">
-    <div class="marquee-wrapper">
-        <div id="disp-marquee" class="marquee-content" style="font-size: 13px; font-weight: bold;"></div>
+<header class="hdr" style="position: relative;">
+    <div class="hdr-logo" id="logoWrap" style="position: relative; z-index: 3;">👁</div>
+    
+    <div id="marquee-container" class="hidden">
+        <div class="marquee-wrapper">
+            <div id="disp-marquee" class="marquee-content"></div>
+        </div>
     </div>
-  </div>
 
-  <div class="hdr-right">
-    <div class="date-txt" id="dateTxt"></div>
-    <button class="btn-hdr btn-hdr-manual" onclick="openPanel('manual')">📖 คู่มือ</button>
-    <button class="btn-hdr btn-hdr-refresh" onclick="hardReload()" title="ล้างแคชและโหลดระบบใหม่ทั้งหมด">🔄 โหลดใหม่ (Clear Cache)</button>
-    <div id="authArea"><button class="btn-hdr btn-hdr-login" onclick="openLogin()">🔐 เข้าสู่ระบบ</button></div>
-  </div>
+    <div class="hdr-text" style="position: relative; z-index: 3;">...</div>
+    <div class="hdr-right" style="position: relative; z-index: 3;">...</div>
 </header>
 
 <div id="linkArea" class="link-grid" style="display:none;"></div>
@@ -1196,16 +1217,18 @@ function startFloatingImage(imgUrl) {
     animate();
 }
 
-// นำไปเรียกใช้ใน window.onload หรือฟังก์ชันที่โหลด settings
-function initVisualSettings(settings) {
-    // Marquee
-    if(settings.marquee_text) {
-        document.getElementById('disp-marquee').innerText = settings.marquee_text;
+function initVisualSettings() {
+    let s = G.settings; // ดึงค่าจากตัวแปร G
+    
+    // Marquee ข้อความ
+    if(s.marquee_text) {
+        document.getElementById('disp-marquee').innerText = s.marquee_text + "        " + s.marquee_text;
         document.getElementById('marquee-container').classList.remove('hidden');
     }
+    
     // Floating Image
-    if(settings.floating_img) {
-        startFloatingImage(settings.floating_img);
+    if(s.floating_img) {
+        startFloatingImage(s.floating_img);
     }
 }
 
@@ -4628,21 +4651,22 @@ function closeImg() {
     setTimeout(function(){ document.getElementById('modal-img').src = ''; }, 250); 
 }
 
+// 2. ปรับฟังก์ชัน applySettings ให้ใช้ตัวแปร s ที่ประกาศไว้แล้ว
 function applySettings() {
     var s = G.settings;
     if (s.sys_name) document.getElementById('sysName').textContent = s.sys_name;
     
-    // 1. นำโลโก้มาแสดงผล
+    // โลโก้
     if (s.logo_id) {
         document.getElementById('logoWrap').innerHTML = '<img src="https://drive.google.com/thumbnail?id=' + s.logo_id + '&sz=w200" alt="Logo">';
     } else {
-        document.getElementById('logoWrap').innerHTML = '👁'; // ค่าเริ่มต้นถ้าไม่มีโลโก้
+        document.getElementById('logoWrap').innerHTML = '👁';
     }
     
-    // 2. ตั้งค่าข้อความวิ่ง (Text Marquee)
-    // แปลงเป็น String และ toLowerCase เพื่อป้องกันข้อผิดพลาดที่ Sheets ส่งมาเป็น Boolean แบบเจาะจง
+    // ตั้งค่าข้อความวิ่ง (Text Marquee)
     if (String(s.enable_text_marquee).toLowerCase() === "true" && s.marquee_text) {
-        document.getElementById('disp-marquee').innerText = s.marquee_text;
+        // ใช้ s.marquee_text แทน settings.marquee_text
+        document.getElementById('disp-marquee').innerText = s.marquee_text + " &nbsp; &nbsp; &nbsp; " + s.marquee_text;
         document.getElementById('marquee-container').classList.remove('hidden');
     } else {
         document.getElementById('marquee-container').classList.add('hidden');
