@@ -1115,7 +1115,16 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   <div class="pb">
     <div class="tbl-wrap" style="max-height: 400px;">
         <table class="dtbl" id="error-dtbl">
-            <thead><tr><th>เหตุผลที่ไม่ผ่าน</th><th>เลขบัตร</th><th>ชื่อ-สกุล</th></tr></thead>
+            <thead>
+  <tr>
+    <th style="width:40px; text-align:center;">#</th>
+    <th style="width:30%;">เหตุผลที่ไม่ผ่าน</th>
+    <th>เลขบัตร ปชช.</th>
+    <th>ชื่อ-สกุล</th>
+    <th>โรงเรียน</th>
+    <th>รพ.สต.</th>
+  </tr>
+</thead>
             <tbody id="errorBody"></tbody>
         </table>
     </div>
@@ -1940,47 +1949,132 @@ function importCSV() {
         var btn = document.getElementById('btnImport'); btn.disabled = true; btn.innerHTML = '⏳ กำลังนำเข้า...';
         google.script.run.withSuccessHandler(function(res) { 
     btn.disabled = false; btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; 
-    var r = JSON.parse(res); 
+    
+    // 🟢 Defensive check: ป้องกัน res เป็น null/undefined
+    if (!res) { 
+        toast('❌ ไม่ได้รับ response จากเซิร์ฟเวอร์', 'err'); 
+        return; 
+    }
+    
+    var r;
+    try {
+        r = (typeof res === 'string') ? JSON.parse(res) : res;
+    } catch(e) {
+        toast('❌ Parse JSON ผิดพลาด: ' + e.message, 'err');
+        return;
+    }
+    
     if(r.ok) {
-        toast(r.msg, 'ok');
-        if (r.data.failed && r.data.failed.length > 0) {
-            renderErrorTable(r.data.failed);
+        // 🟢 Defensive check: r.data อาจเป็น null
+        var added = (r.data && r.data.added) ? r.data.added : 0;
+        var failed = (r.data && r.data.failed) ? r.data.failed : [];
+        
+        toast(r.msg || ('นำเข้าสำเร็จ ' + added + ' รายการ'), 'ok');
+        
+        if (failed.length > 0) {
+            // 🟢 แสดงตารางรายการที่ไม่ผ่านเงื่อนไข
+            renderErrorTable(failed);
             openPanel('error-report');
+            
+            // ยังคงรีเฟรชข้อมูลหลัก (อาจมีบางส่วนที่นำเข้าสำเร็จ)
+            if (added > 0) {
+                forceRefresh();
+            }
         } else {
+            // ไม่มี error เลย — ปิด panel นำเข้าและรีเฟรช
             closePanel('conv'); 
             fileInput.value = ''; 
             forceRefresh();
         }
-    } else { toast(r.msg, 'err'); } 
+    } else { 
+        toast(r.msg || 'นำเข้าข้อมูลไม่สำเร็จ', 'err'); 
+    } 
+}).withFailureHandler(function(err) {
+    btn.disabled = false; 
+    btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)';
+    toast('❌ เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว: ' + (err.message || 'Unknown error'), 'err');
 }).importScreeningData(processedRows);
-    }; 
-    reader.readAsText(file, encoding);
-}
 
-// เพิ่มฟังก์ชันแสดงตารางและดาวน์โหลด
 var G_failedData = [];
+
 function renderErrorTable(failedData) {
-    G_failedData = failedData;
+    G_failedData = failedData || [];
     var body = document.getElementById('errorBody');
-    body.innerHTML = failedData.map(item => `
-        <tr>
-            <td style="color:var(--red); font-weight:bold;">${item.reason}</td>
-            <td>${item.row[2] || '-'}</td>
-            <td>${item.row[6] || '-'}</td>
-        </tr>
-    `).join('');
+    
+    if (!G_failedData.length) {
+        body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted2)">ไม่มีรายการที่ผิดพลาด</td></tr>';
+        return;
+    }
+    
+    var html = '';
+    G_failedData.forEach(function(item, idx) {
+        var row = item.row || [];
+        // คอลัมน์สำคัญที่ผู้ใช้ต้องการเห็น
+        var cid = String(row[2] || '').replace(/^[="']+|["']+$/g, '').trim() || '-';
+        var fullName = ((row[3] || '') + (row[4] || '') + ' ' + (row[5] || '')).trim() || (row[6] || '-');
+        var school = row[11] || '-';
+        var hospcode = String(row[14] || '').replace(/^[="']+|["']+$/g, '').trim() || '-';
+        
+        html += '<tr>' +
+                '<td style="text-align:center;">' + (idx + 1) + '</td>' +
+                '<td style="color:var(--red); font-weight:bold; font-size:11px;">' + e_(item.reason) + '</td>' +
+                '<td style="font-family:monospace;">' + e_(cid) + '</td>' +
+                '<td>' + e_(fullName) + '</td>' +
+                '<td>' + e_(school) + '</td>' +
+                '<td>' + e_(hospcode) + '</td>' +
+                '</tr>';
+    });
+    body.innerHTML = html;
 }
 
 function downloadErrorCSV() {
-    if(!G_failedData.length) return;
-    var csvContent = "\uFEFFเหตุผลที่ไม่ผ่าน," + "ข้อมูลทุกคอลัมน์ (join ด้วยช่องว่าง)\n";
-    G_failedData.forEach(item => {
-        csvContent += '"' + item.reason + '","' + item.row.join(' ') + '"\n';
+    if (!G_failedData || !G_failedData.length) { 
+        toast('ไม่มีข้อมูลที่ผิดพลาดให้ดาวน์โหลด', 'err'); 
+        return; 
+    }
+    
+    // 🟢 Header ตรงกับ Template Excel เดิม + เพิ่มคอลัมน์ "เหตุผลที่ไม่ผ่าน" ไว้ท้ายสุด
+    var hdr = ["ระดับชั้น","ห้อง","เลขบัตรประชาชน_13หลัก","คำนำหน้า","ชื่อ","นามสกุล",
+               "ชื่อ-สกุลเต็ม","วันเกิด_dd/mm/yyyy","อายุ_ปี","เพศ_1ชาย_2หญิง","ชั้นเรียน",
+               "ชื่อโรงเรียน","หน่วยวัด_F_M","วันที่ตรวจ_dd/mm/yyyy","รหัสรพสต","บ้านเลขที่",
+               "หมู่","รหัสพื้นที่_aid","ประวัติสวมแว่น","ประวัติบาดเจ็บตา","ตาแดงเรื้อรัง",
+               "ปวดศีรษะบ่อย","ตาเหล่_ตาขี้เกียจ","ครอบครัวสวมแว่น","VAขวา_ตาเปล่า",
+               "VAซ้าย_ตาเปล่า","VAขวา_ใส่แว่น","VAซ้าย_ใส่แว่น","PHขวา","PHซ้าย",
+               "VA_OU_ตาเปล่า","VA_OU_ใส่แว่น","Cover_Test","Hirschberg","Color_Vision",
+               "Stereopsis","วินิจฉัย","การส่งต่อ","ผู้ตรวจ","ตำแหน่ง","รหัสโรงเรียน",
+               "ตำบล","อำเภอ","จังหวัด","หมายเหตุ","สิทธิการรักษา","สัญชาติ",
+               "_เหตุผลที่ไม่ผ่าน"];  // 🟢 คอลัมน์ extra สำหรับให้ผู้ใช้รู้ว่าต้องแก้อะไร
+    
+    var csvContent = "\uFEFF" + hdr.join(',') + "\n";
+    
+    G_failedData.forEach(function(item) {
+        var row = item.row || [];
+        var rowOut = [];
+        for (var i = 0; i < 47; i++) {
+            var val = String(row[i] || '').replace(/"/g, '""'); // escape double quote
+            // คอลัมน์ CID และ hospcode ต้องใส่ ="..." กัน Excel แปลงเป็น E+12
+            if (i === 2 || i === 14) {
+                rowOut.push('="' + val + '"');
+            } else {
+                rowOut.push('"' + val + '"');
+            }
+        }
+        // เพิ่มคอลัมน์เหตุผล
+        rowOut.push('"' + String(item.reason || '').replace(/"/g, '""') + '"');
+        csvContent += rowOut.join(',') + "\n";
     });
+    
     var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = url; a.download = 'Failed_Import_Data.csv'; a.click();
+    a.href = url; 
+    a.download = 'Failed_Import_Data_' + new Date().toISOString().slice(0,10) + '.csv'; 
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast('✅ ดาวน์โหลดรายการที่ผิดพลาดสำเร็จ — แก้ไขแล้วนำเข้าใหม่ได้ทันที', 'ok');
 }
 
 function dlTemplate() {
