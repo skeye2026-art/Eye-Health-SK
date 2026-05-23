@@ -128,28 +128,38 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   display: flex; /* เพิ่มเพื่อให้จัดการตำแหน่งง่ายขึ้น */
 }
 
+/* ส่วนครอบข้อความวิ่ง */
 #marquee-container {
   position: absolute;
   top: 0;
-  left: 65px;    /* ปรับค่านี้ให้พอดีกับความกว้างโลโก้ เพื่อให้โลโก้บังข้อความไว้ */
-  right: 250px;  /* เว้นที่ให้ปุ่มเมนูด้านขวา */
+  left: 0; /* เปลี่ยนเป็น 0 เพื่อให้คลุมพื้นที่ตั้งแต่ขอบซ้ายสุด */
+  right: 250px; 
   height: 100%;
-  overflow: hidden; /* ข้อความที่อยู่ซ้ายกว่า 65px จะถูกซ่อน */
-  z-index: 1;    /* อยู่ต่ำกว่าโลโก้ */
-  pointer-events: none;
+  overflow: hidden; /* ซ่อนข้อความที่อยู่นอกพื้นที่ */
+  z-index: 2;    /* ให้ต่ำกว่าโลโก้ (โลโก้ควรเป็น 3) */
+  pointer-events: none; /* เพื่อให้คลิกเมนูผ่านได้ */
+}
+
+.marquee-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 .marquee-content {
-  display: inline-block;
-  animation: text-marquee-ltr 15s linear infinite;
+  position: absolute;
+  top: 50%; /* จัดให้อยู่กลางแนวตั้ง */
+  transform: translateY(-50%);
   white-space: nowrap;
-  line-height: 52px; /* ให้ความสูงเท่ากับ Header */
   color: #fff;
   font-size: 14px;
+  animation: text-marquee-ltr 15s linear infinite;
 }
 
+/* Keyframes: ให้เริ่มวิ่งจากตำแหน่งที่มองไม่เห็น (หลังโลโก้) */
 @keyframes text-marquee-ltr {
-  0% { transform: translateX(-100%); } /* เริ่มต้นให้วิ่งมาจากหลังโลโก้ */
+  0% { transform: translateX(-100%); opacity: 0; }
+  10% { opacity: 1; } /* ให้โผล่พ้นโลโก้มาแล้วค่อยชัด */
   100% { transform: translateX(100vw); }
 }
 
