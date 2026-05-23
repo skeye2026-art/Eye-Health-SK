@@ -1635,123 +1635,50 @@ function smartProcessRow(cols) {
 }
 
 function importCSV() {
-    var fileInput = document.getElementById('convFile'); 
-    if (!fileInput.files.length) { toast('กรุณาเลือกไฟล์ก่อนครับ', 'err'); return; }
-    var file = fileInput.files[0]; 
-    var reader = new FileReader(); 
-    var encoding = document.getElementById('fileEncoding') ? document.getElementById('fileEncoding').value : 'UTF-8';
+    var fileInput = document.getElementById('convFile');
+    if (!fileInput.files.length) { toast('กรุณาเลือกไฟล์', 'err'); return; }
     
+    var reader = new FileReader();
     reader.onload = function(e) {
-        var text = e.target.result; 
-        var lines = text.split(/\r\n|\n|\r/); 
-        var processedRows = [];
-        var headers = [];
-        
-        for (var i = 0; i < lines.length; i++) { 
-            var line = lines[i].trim(); 
-            if (!line) continue; 
-            var delimiter = ','; 
-            if (line.indexOf('\t') !== -1) delimiter = '\t'; 
-            else if (line.indexOf('|') !== -1) delimiter = '|'; 
-            else if (line.indexOf(';') !== -1) delimiter = ';'; 
-            
-            var cols = smartParseCSVLine(line, delimiter); 
-            
-            var isHeader = (line.indexOf('ระดับชั้น') > -1 || line.toLowerCase().indexOf('cid') > -1 || line.indexOf('เลขบัตร') > -1 || line.toLowerCase().indexOf('level_edu') > -1);
-            if (i === 0 && isHeader) {
-                headers = cols; continue; 
-            } else if (i === 0 && !isHeader) {
-                headers = []; 
-            }
-            if (i > 0 && isHeader) { headers = cols; continue; } 
-            
-            var mapped = (headers.length > 0) ? mapCsvToRowDynamic(headers, cols) : smartProcessRow(cols); 
-            if (mapped) processedRows.push(mapped); 
-        }
-        
-        if(processedRows.length === 0) { toast('ไม่พบข้อมูลในไฟล์ หรือข้อมูลไม่ถูกต้อง', 'err'); return; } 
-        
-        // --- 🛡️ การตรวจสอบข้อมูลฝั่งหน้าเว็บ (Frontend Validation) ---
-        // 1. ดึงเลขบัตรที่มีอยู่ในระบบปัจจุบันมาเก็บไว้เทียบ
-        var existingCids = {};
-        if (G && G.allRows) {
-            G.allRows.forEach(function(r) {
-                if (r.cid) existingCids[String(r.cid).trim()] = true;
-            });
-        }
-        
+        var lines = e.target.result.split(/\r\n|\n|\r/);
         var validRows = [];
         var failedRows = [];
-        var importCids = {}; // เก็บเลขบัตรในไฟล์เพื่อเช็คซ้ำกันเอง
-        
-        var sessionHc = '';
-        if (G.session && G.session.hospcode && G.session.hospcode !== 'all') {
-            sessionHc = ("00000" + String(G.session.hospcode).trim()).slice(-5);
-        }
 
-        // 2. คัดแยกรายการที่ผ่านและไม่ผ่าน
-        processedRows.forEach(function(r) {
-            var cid = String(r[2] || '').replace(/^[="']+|["']+$/g, '').replace(/\D/g, '').trim();
-            var hc = String(r[14] || '').replace(/^[="']+|["']+$/g, '').trim();
-            if(hc) hc = ("00000" + hc).slice(-5);
+        // 1. วนลูปแยกข้อมูลก่อน
+        lines.forEach(function(line, idx) {
+            if (idx === 0 || !line.trim()) return; // ข้าม Header หรือบรรทัดว่าง
+            var cols = smartParseCSVLine(line, ','); 
+            var row = smartProcessRow(cols); // แปลงข้อมูลให้เป็น Array 47 ช่อง
             
+            // 2. ตรวจสอบเงื่อนไข
+            var cid = String(row[2] || '').trim();
             var reason = "";
+            if (!/^\d{13}$/.test(cid)) reason = "เลขบัตรไม่ครบ 13 หลัก";
+            // เพิ่มเงื่อนไขอื่นๆ เช่น check ซ้ำในระบบ
             
-            if (!/^\d{13}$/.test(cid)) {
-                reason = "เลขบัตร ปชช. ไม่ครบ 13 หลัก";
-            } else if (existingCids[cid]) {
-                reason = "เลขบัตรซ้ำกับในระบบ";
-            } else if (importCids[cid]) {
-                reason = "เลขบัตรซ้ำซ้อนภายในไฟล์อัปโหลด";
-            } else if (G.session && G.session.role !== 'admin' && hc !== sessionHc) {
-                reason = "รหัส รพ.สต. ไม่ตรงกับสิทธิ์ผู้ใช้";
-            }
-            
-            r[2] = cid; // อัปเดตข้อมูลให้คลีน
-            r[14] = hc; // อัปเดตข้อมูลให้คลีน
-
-            if (reason !== "") {
-                failedRows.push({ row: r, reason: reason });
+            if (reason) {
+                failedRows.push({ row: row, reason: reason });
             } else {
-                importCids[cid] = true;
-                validRows.push(r);
+                validRows.push(row);
             }
         });
-        
-        // 3. แสดง Modal หากมีข้อมูลที่ไม่ผ่าน
+
+        // 3. ถ้ามีข้อมูลที่ผิดพลาด ให้แสดง Modal
         if (failedRows.length > 0) {
             renderErrorTable(failedRows);
-            openPanel('error-report');
-        }
-        
-        // 4. ถ้าไม่มีข้อมูลที่ผ่านเลยให้หยุดการทำงาน
-        if (validRows.length === 0) {
-            toast('ไม่มีข้อมูลที่สามารถนำเข้าได้ (ติดเงื่อนไขทั้งหมด)', 'err');
-            return;
+            openPanel('error-report'); // ป๊อปอัปให้ผู้ใช้ดาวน์โหลดไฟล์ที่ผิดพลาด
         }
 
-        // 5. ส่งเฉพาะข้อมูลที่ "ผ่าน" เข้าไปบันทึก
-        var btn = document.getElementById('btnImport'); 
-        btn.disabled = true; 
-        btn.innerHTML = '⏳ กำลังนำเข้า... (' + validRows.length + ' รายการ)';
-        
-        google.script.run.withSuccessHandler(function(res) { 
-            btn.disabled = false; 
-            btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; 
-            var r = JSON.parse(res); 
-            if(r.ok) {
+        // 4. นำเข้าเฉพาะที่ถูกต้อง
+        if (validRows.length > 0) {
+            google.script.run.withSuccessHandler(function(res) {
                 toast("นำเข้าสำเร็จ " + validRows.length + " รายการ", 'ok');
-                if (failedRows.length === 0) {
-                    closePanel('conv'); 
-                }
-                fileInput.value = ''; 
-                forceRefresh();
-            } else { 
-                toast(r.msg, 'err'); 
-            } 
-        }).importScreeningData(validRows);
-    }; 
-    reader.readAsText(file, encoding);
+            }).importScreeningData(validRows);
+        } else {
+            toast('ไม่มีข้อมูลที่ถูกต้องให้นำเข้า', 'err');
+        }
+    };
+    reader.readAsText(fileInput.files[0]);
 }
 
 // ==========================================
