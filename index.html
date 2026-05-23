@@ -1158,6 +1158,29 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <button class="btn-sec" onclick="closePanel('error-report')">ปิด</button>
   </div>
 </div>
+<!-- Panel นำเข้าไฟล์ CSV -->
+<div class="ov" id="ov-conv" onclick="closePanel('conv')"></div>
+<div class="panel" id="panel-conv" style="width:580px;">
+  <div class="ph" style="background:#475569">
+    <span class="ph-t">🛠 นำเข้าข้อมูลจากไฟล์ CSV</span>
+    <button class="ph-x" onclick="closePanel('conv')">✕</button>
+  </div>
+  <div class="pb">
+    <div class="fs">
+      <div class="fs-t">เลือกไฟล์ CSV</div>
+      <div class="fg">
+        <input type="file" id="csvFileInput" accept=".csv" 
+               onchange="handleImportFile(this.files)" style="width:100%; padding:8px;">
+        <small style="color:var(--muted)">รองรับไฟล์ .csv จาก Excel / Google Sheets</small>
+      </div>
+    </div>
+
+    <div id="importStatus" style="margin-top:15px; min-height:40px;"></div>
+  </div>
+  <div class="pf">
+    <button class="btn-sec" onclick="closePanel('conv')">ปิด</button>
+  </div>
+</div>
 
 <script>
 // ==============================================================
@@ -4755,7 +4778,7 @@ function renderImageMarquee(imageUrlsString) {
   </div>
 </div>
 
-// ====================== IMPORT PREVIEW ======================
+// ====================== IMPORT CSV ======================
 let currentImportData = null;
 
 function handleImportFile(files) {
@@ -4767,55 +4790,63 @@ function handleImportFile(files) {
     return;
   }
 
+  document.getElementById('importStatus').innerHTML = 
+    `<span style="color:var(--accent);">กำลังอ่านไฟล์ ${file.name} ...</span>`;
+
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
       const csv = e.target.result;
-      const data = parseCSVToArray(csv); // ต้องมีฟังก์ชันนี้
+      const data = parseCSVToArray(csv);
       
-      if (!data || data.length === 0) {
-        toast('ไม่สามารถอ่านไฟล์ CSV ได้', 'err');
+      if (data.length === 0) {
+        toast('ไม่พบข้อมูลในไฟล์ CSV', 'err');
         return;
       }
 
       currentImportData = data;
       
-      toast('กำลังวิเคราะห์ไฟล์...', 'inf');
+      toast(`พบ ${data.length} แถว กำลังวิเคราะห์...`, 'inf');
+      
       google.script.run
         .withSuccessHandler(onPreviewSuccess)
-        .withFailureHandler((err) => toast('เกิดข้อผิดพลาด: ' + err.message, 'err'))
+        .withFailureHandler((err) => {
+          toast('เกิดข้อผิดพลาด: ' + err.message, 'err');
+          document.getElementById('importStatus').innerHTML = '';
+        })
         .previewImportScreeningData(data);
-        
+
     } catch (err) {
-      toast('ไม่สามารถประมวลผลไฟล์ได้: ' + err.message, 'err');
+      toast('ไม่สามารถอ่านไฟล์ได้: ' + err.message, 'err');
     }
   };
   reader.readAsText(file);
 }
 
-function onPreviewSuccess(r) {
-  const res = JSON.parse(r);
+function onPreviewSuccess(response) {
+  const res = JSON.parse(response);
   if (!res.ok) {
     toast(res.msg || 'เกิดข้อผิดพลาด', 'err');
     return;
   }
 
   const p = res.data;
-  let html = `<h3>📊 สรุปการนำเข้า</h3>`;
-  html += `<p><strong>ทั้งหมดในไฟล์:</strong> ${p.total} รายการ</p>`;
-  html += `<p class="good">✅ สามารถนำเข้าได้: ${p.valid} รายการ</p>`;
-  
+  let html = `<h3>📋 ผลการวิเคราะห์ไฟล์</h3>`;
+  html += `<p><strong>ทั้งหมด:</strong> ${p.total} รายการ</p>`;
+  html += `<p class="good">✅ สามารถนำเข้าได้ ${p.valid} รายการ</p>`;
+
   if (p.duplicateInSystem > 0) 
-    html += `<p class="warn">⚠️ ซ้ำในระบบแล้ว: ${p.duplicateInSystem} รายการ</p>`;
+    html += `<p class="warn">⚠️ ซ้ำในระบบ: ${p.duplicateInSystem} รายการ</p>`;
   if (p.duplicateInFile > 0) 
-    html += `<p class="warn">⚠️ ซ้ำภายในไฟล์: ${p.duplicateInFile} รายการ</p>`;
+    html += `<p class="warn">⚠️ ซ้ำในไฟล์: ${p.duplicateInFile} รายการ</p>`;
   if (p.invalidCid > 0) 
     html += `<p class="error">❌ เลขบัตรไม่ถูกต้อง: ${p.invalidCid} รายการ</p>`;
   if (p.permissionDenied > 0) 
-    html += `<p class="error">❌ ไม่มีสิทธิ์นำเข้า: ${p.permissionDenied} รายการ</p>`;
+    html += `<p class="error">❌ ไม่มีสิทธิ์: ${p.permissionDenied} รายการ</p>`;
 
   document.getElementById('previewResult').innerHTML = html;
   document.getElementById('importPreviewModal').classList.add('open');
+  document.getElementById('importStatus').innerHTML = '';
 }
 
 function confirmImport() {
@@ -4829,15 +4860,12 @@ function confirmImport() {
       const res = JSON.parse(r);
       if (res.ok) {
         toast(res.msg, 'ok');
-        // Log การนำเข้า
-        if (typeof logImportActivity === 'function') {
-          google.script.run.logImportActivity(
-            res.data.added || 0, 
-            (res.data.failed || []).length, 
-            currentImportData.length, 
-            G.session ? G.session.user : 'unknown'
-          );
-        }
+        google.script.run.logImportActivity(
+          res.data.added || 0, 
+          (res.data.failed || []).length, 
+          currentImportData.length, 
+          G.session?.user || 'unknown'
+        );
         forceRefresh();
       } else {
         toast(res.msg || 'นำเข้าล้มเหลว', 'err');
@@ -4851,6 +4879,60 @@ function confirmImport() {
 function closePreviewModal() {
   document.getElementById('importPreviewModal').classList.remove('open');
   currentImportData = null;
+}
+
+// ====================== PARSE CSV ======================
+function parseCSVToArray(csvString) {
+  const lines = csvString.trim().split(/\r?\n/);
+  if (lines.length === 0) return [];
+
+  // แยก Header
+  const headers = parseCSVLine(lines[0]);
+
+  const data = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    
+    const values = parseCSVLine(lines[i]);
+    const row = {};
+    
+    headers.forEach((header, index) => {
+      let key = String(header || `col${index}`).trim();
+      row[key] = values[index] !== undefined ? String(values[index]).trim() : '';
+    });
+    
+    data.push(row);
+  }
+  return data;
+}
+
+// ช่วยแยก CSV Line รองรับเครื่องหมาย " และ comma ภายในช่อง
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"' && !inQuotes) {
+      inQuotes = true;
+    } else if (char === '"' && inQuotes) {
+      if (line[i + 1] === '"') { // escaped quote
+        current += '"';
+        i++;
+      } else {
+        inQuotes = false;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result;
 }
 </script>
 </body>
