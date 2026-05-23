@@ -128,33 +128,15 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   display: flex; /* เพิ่มเพื่อให้จัดการตำแหน่งง่ายขึ้น */
 }
 
-/* 1. ส่วนของ Container ที่ใช้ครอบ */
-#marquee-container {
-  position: absolute;
-  top: 0;
-  left: 60px;   /* ปรับให้เริ่มที่ขอบโลโก้ */
-  right: 150px; /* เว้นที่ให้ปุ่มขวา */
-  height: 100%; /* ให้สูงเท่า Header */
-  overflow: hidden;
-  z-index: 1;   /* อยู่ต่ำกว่าโลโก้ (z-index:2) */
-  pointer-events: none;
+.marquee-content { 
+  display: inline-block; 
+  /* ใช้การเลื่อนจากตำแหน่งเริ่มต้น 0 (ชิดซ้ายสุด) ไปยังตำแหน่งที่กำหนด */
+  animation: text-marquee-ltr 30s linear infinite; 
 }
 
-/* 2. ตัวเนื้อหาที่วิ่ง */
-.marquee-content {
-  display: inline-block;
-  animation: text-marquee-ltr 15s linear infinite;
-  white-space: nowrap;
-  line-height: 52px; /* ปรับให้ข้อความอยู่กึ่งกลางแนวตั้ง */
-  color: #fff;
-  font-size: 14px;
-}
-
-/* 3. Keyframes ที่พุ่งออกจากหลังโลโก้ */
 @keyframes text-marquee-ltr {
-  0% { transform: translateX(-100%); opacity: 0; }
-  5% { opacity: 1; } /* ให้โผล่พ้นโลโก้แล้วค่อยชัด */
-  100% { transform: translateX(100vw); }
+  0% { transform: translateX(0%); } /* เริ่มจากขอบซ้ายสุด */
+  100% { transform: translateX(100%); } /* วิ่งไปสุดหน้าจอทางขวา */
 }
 
 /* 2. ภาพวิ่ง */
@@ -297,20 +279,20 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <img id="floating-img-element" class="hidden" src="" alt="floating">
 <div id="app">
 <header class="hdr">
-    <div class="hdr-logo" id="logoWrap" style="z-index: 2;">👁</div>
+    <div class="hdr-logo" id="logoWrap">👁</div>
     
-    <div class="hdr-text" style="z-index: 2;">
+    <div class="hdr-text">
         <div class="sys-name" id="sysName">โครงการเด็กไทยสายตาดี</div>
         <div class="org-name" id="orgName">องค์การบริหารส่วนจังหวัดสมุทรสาคร</div>
     </div>
 
-    <div id="marquee-container" class="hidden">
+    <div id="marquee-container" class="hidden" style="flex:1; overflow:hidden; margin: 0 15px; color: #fff;">
         <div class="marquee-wrapper">
-            <div id="disp-marquee" class="marquee-content"></div>
+            <div id="disp-marquee" class="marquee-content" style="font-size: 14px; font-weight: bold; white-space: nowrap;"></div>
         </div>
     </div>
 
-    <div class="hdr-right" style="z-index: 2;">
+    <div class="hdr-right">
         </div>
 </header>
 
