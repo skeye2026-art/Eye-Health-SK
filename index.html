@@ -4645,8 +4645,7 @@ function applySettings() {
     // 2. ตั้งค่าข้อความวิ่ง (Text Marquee)
     // แปลงเป็น String และ toLowerCase เพื่อป้องกันข้อผิดพลาดที่ Sheets ส่งมาเป็น Boolean แบบเจาะจง
     if (String(s.enable_text_marquee).toLowerCase() === "true" && s.marquee_text) {
-        // ในส่วนการตั้งค่าmarquee
-        document.getElementById('disp-marquee').innerText = settings.marquee_text + " &nbsp; &nbsp; &nbsp; " + settings.marquee_text;
+        document.getElementById('disp-marquee').innerText = s.marquee_text;
         document.getElementById('marquee-container').classList.remove('hidden');
     } else {
         document.getElementById('marquee-container').classList.add('hidden');
