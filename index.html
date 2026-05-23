@@ -116,6 +116,32 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .del-box{background:#fff;border-radius:14px;padding:26px 24px;width:310px;box-shadow:0 20px 50px rgba(0,0,0,.2)} .del-ttl{font-size:17px;font-weight:700;color:var(--red);text-align:center;margin-bottom:12px} .del-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px} .del-warn{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:6px;padding:6px 10px;text-align:center;margin-bottom:12px}
 .toast-wrap{position:fixed;bottom:18px;right:18px;z-index:500;display:flex;flex-direction:column;gap:6px} .toast{padding:10px 14px;border-radius:9px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-md);min-width:200px;max-width:340px;animation:slIn .28s ease;display:flex;align-items:center;gap:7px} .t-ok{background:#dcfce7;color:#14532d;border:1px solid #86efac} .t-err{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5} .t-inf{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd} @keyframes slIn{from{transform:translateX(110%);opacity:0}to{transform:none;opacity:1}} .sp{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0} @keyframes spin{to{transform:rotate(360deg)}}
 
+/* --- Visual Settings --- */
+/* Floating Image */
+#floating-img-element { 
+    position: fixed; top: 0; left: 0; z-index: 999; pointer-events: none; 
+    opacity: 0.7; max-width: 150px; max-height: 80px; object-fit: contain; 
+}
+
+/* Marquee Text */
+.marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; box-sizing: border-box; }
+.marquee-content { display: inline-block; padding-left: 100%; animation: marquee 25s linear infinite; }
+@keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
+/* Marquee Images */
+.img-marquee-container { width: 100%; overflow: hidden; background: #fff; border-radius: 8px; border: 1px solid var(--border); margin: 10px 8px; }
+.img-marquee-wrapper { display: flex; animation: marquee 60s linear infinite; }
+.img-marquee-wrapper img { height: 120px; margin: 5px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+.img-marquee-wrapper img:hover { transform: scale(1.05); }
+
+/* Modal for Image */
+.modal-overlay { 
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); 
+    z-index: 9999; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-overlay img { max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+
 /* === Image Modal Popup (v6.3) === */
 #imgModal { 
   position: fixed; inset: 0;
@@ -235,8 +261,14 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 </style>
 </head>
 <body>
+<img id="floating-img-element" class="hidden" src="" alt="floating">
 <div id="app">
 <header class="hdr">
+  <div id="marquee-container" class="hidden" style="width: 100%; max-width: 300px; color: #fff; margin-left: 10px;">
+    <div class="marquee-wrapper">
+        <div id="disp-marquee" class="marquee-content" style="font-size: 13px; font-weight: bold;"></div>
+    </div>
+</div>
   <div class="hdr-logo" id="logoWrap">👁</div>
   <div class="hdr-text"><div class="sys-name" id="sysName">โครงการเด็กไทยสายตาดี</div><div class="org-name" id="orgName">องค์การบริหารส่วนจังหวัดสมุทรสาคร</div></div>
   <div class="hdr-right">
@@ -260,6 +292,16 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   <div class="kpi kpi-po" data-kpi="post" onclick="toggleKpiFilter('post')" title="📝 กรองผู้ทำ Post-test (กดซ้ำยกเลิก)"><div class="kpi-lbl">📝 Post-test</div><div class="kpi-v" id="k-post">—</div><div class="kpi-sub" id="k-post-sub">/10 คะแนน</div></div>
   <div class="kpi kpi-g" data-kpi="gain" onclick="toggleKpiFilter('gain')" title="📈 กรองผู้มี Learning Gain (กดซ้ำยกเลิก)"><div class="kpi-lbl">📈 Learning Gain</div><div class="kpi-v" id="k-gain">—</div><div class="kpi-sub">เฉลี่ย</div></div>
   <div class="kpi kpi-tr" data-kpi="trainee" onclick="toggleKpiFilter('trainee')" title="🎓 กรองผู้เข้าอบรม (กดซ้ำยกเลิก)"><div class="kpi-lbl">🎓 ผู้เข้าอบรม</div><div class="kpi-v" id="k-trainee">—</div><div class="kpi-sub" id="k-trainee-sub">รายคน (Pre-test)</div></div>
+</div>
+<div class="img-marquee-container">
+    <div class="img-marquee-wrapper" id="img-marquee-body">
+        <!-- ภาพจะถูกดึงมาแสดงที่นี่ผ่าน JS -->
+    </div>
+</div>
+
+<!-- Modal สำหรับขยายภาพ -->
+<div class="modal-overlay" id="img-modal" onclick="this.classList.remove('open')">
+    <img id="modal-img" src="">
 </div>
 
 <div class="main">
@@ -475,7 +517,9 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 </div>
 
 <div id="printArea"></div>
-<div id="imgModal" onclick="closeImg()"><span class="close-btn" onclick="event.stopPropagation(); closeImg()">✕</span><img id="imgFull" src="" onclick="event.stopPropagation()"></div>
+<div class="modal-overlay" id="img-modal" onclick="this.classList.remove('open')">
+        <img id="modal-img" src="">
+    </div>
 
 <div class="mov" id="printMov"><div class="mbox" style="width:450px; padding:25px;"><div class="m-ttl">🖨 พิมพ์แบบฟอร์ม / ส่งออก</div><div class="m-sub">เลือกข้อมูลจากตาราง แล้วเลือกประเภทแบบฟอร์ม</div><select id="printDocType" style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid var(--border); font-size:14px; outline:none; background:#f8faff; font-family:inherit;">
   <option value="scr">1. แบบตรวจ/ประเมินสายตา (Screening)</option>
@@ -1054,6 +1098,22 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
 <div class="mov" id="delMov"><div class="del-box"><div class="del-ttl">🗑 ยืนยันการลบข้อมูล</div><div class="del-sub">CID: <strong id="delCidShow"></strong></div><div class="del-warn">⚠ ข้อมูลที่ลบจะไม่สามารถกู้คืนได้</div><div style="display:flex;gap:8px;margin-top:4px"><button style="flex:1;padding:10px;background:var(--red);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px" onclick="confirmDel()">ยืนยันลบ</button><button style="flex:1;padding:10px;background:#f1f5f9;border:1px solid var(--border);border-radius:8px;font-size:12px" onclick="closeDel()">ยกเลิก</button></div><div class="lerr" id="delErr"></div></div></div>
 <div class="toast-wrap" id="toastWrap"></div>
+<div class="ov" id="ov-error-report" onclick="closePanel('error-report')"></div>
+<div class="panel beh-panel" id="panel-error-report">
+  <div class="ph" style="background:var(--red)"><span class="ph-t">⚠️ รายการที่นำเข้าไม่สำเร็จ</span><button class="ph-x" onclick="closePanel('error-report')">✕</button></div>
+  <div class="pb">
+    <div class="tbl-wrap" style="max-height: 400px;">
+        <table class="dtbl" id="error-dtbl">
+            <thead><tr><th>เหตุผลที่ไม่ผ่าน</th><th>เลขบัตร</th><th>ชื่อ-สกุล</th></tr></thead>
+            <tbody id="errorBody"></tbody>
+        </table>
+    </div>
+  </div>
+  <div class="pf">
+    <button class="btn-p" style="background:var(--red);" onclick="downloadErrorCSV()">📥 ดาวน์โหลดรายการที่ผิดพลาด</button>
+    <button class="btn-sec" onclick="closePanel('error-report')">ปิด</button>
+  </div>
+</div>
 
 <script>
 // ==============================================================
@@ -1091,6 +1151,46 @@ function _polyfillToast(msg, type) {
 function _sleep(ms) {
   const jitter = Math.random() * 500;
   return new Promise(r => setTimeout(r, ms + jitter));
+}
+
+let floatAnimId = null;
+let floatX = 0, floatY = 0, floatVX = 1.5, floatVY = 1.5;
+
+function startFloatingImage(imgUrl) {
+    const el = document.getElementById('floating-img-element');
+    if(!imgUrl || !el) return;
+    el.src = imgUrl;
+    el.classList.remove('hidden');
+    
+    floatX = Math.random() * (window.innerWidth - 150);
+    floatY = Math.random() * (window.innerHeight - 80);
+    
+    function animate() {
+        if (el.classList.contains('hidden')) return;
+        const w = 150, h = 80;
+        const winW = window.innerWidth, winH = window.innerHeight;
+        
+        if (floatX + w >= winW || floatX <= 0) floatVX *= -1;
+        if (floatY + h >= winH || floatY <= 0) floatVY *= -1;
+        
+        floatX += floatVX; floatY += floatVY;
+        el.style.transform = `translate(${floatX}px, ${floatY}px)`;
+        floatAnimId = requestAnimationFrame(animate);
+    }
+    animate();
+}
+
+// นำไปเรียกใช้ใน window.onload หรือฟังก์ชันที่โหลด settings
+function initVisualSettings(settings) {
+    // Marquee
+    if(settings.marquee_text) {
+        document.getElementById('disp-marquee').innerText = settings.marquee_text;
+        document.getElementById('marquee-container').classList.remove('hidden');
+    }
+    // Floating Image
+    if(settings.floating_img) {
+        startFloatingImage(settings.floating_img);
+    }
 }
 
 // ─── Core: ยิง API พร้อมระบบ Retry อัตโนมัติ ───
@@ -1828,13 +1928,48 @@ function importCSV() {
         if(processedRows.length === 0) { toast('ไม่พบข้อมูลในไฟล์ หรือข้อมูลไม่ถูกต้อง', 'err'); return; } 
         var btn = document.getElementById('btnImport'); btn.disabled = true; btn.innerHTML = '⏳ กำลังนำเข้า...';
         google.script.run.withSuccessHandler(function(res) { 
-           btn.disabled = false; btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; var r = JSON.parse(res); 
-           if(r.ok) { toast(r.msg, 'ok'); closePanel('conv'); fileInput.value = ''; forceRefresh(); } else { toast(r.msg, 'err'); } 
-        }).withFailureHandler(function(err){ 
-           btn.disabled = false; btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; toast('Error: ' + err.message, 'err'); 
-        }).importScreeningData(processedRows);
+    btn.disabled = false; btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; 
+    var r = JSON.parse(res); 
+    if(r.ok) {
+        toast(r.msg, 'ok');
+        if (r.data.failed && r.data.failed.length > 0) {
+            renderErrorTable(r.data.failed);
+            openPanel('error-report');
+        } else {
+            closePanel('conv'); 
+            fileInput.value = ''; 
+            forceRefresh();
+        }
+    } else { toast(r.msg, 'err'); } 
+}).importScreeningData(processedRows);
     }; 
     reader.readAsText(file, encoding);
+}
+
+// เพิ่มฟังก์ชันแสดงตารางและดาวน์โหลด
+var G_failedData = [];
+function renderErrorTable(failedData) {
+    G_failedData = failedData;
+    var body = document.getElementById('errorBody');
+    body.innerHTML = failedData.map(item => `
+        <tr>
+            <td style="color:var(--red); font-weight:bold;">${item.reason}</td>
+            <td>${item.row[2] || '-'}</td>
+            <td>${item.row[6] || '-'}</td>
+        </tr>
+    `).join('');
+}
+
+function downloadErrorCSV() {
+    if(!G_failedData.length) return;
+    var csvContent = "\uFEFFเหตุผลที่ไม่ผ่าน," + "ข้อมูลทุกคอลัมน์ (join ด้วยช่องว่าง)\n";
+    G_failedData.forEach(item => {
+        csvContent += '"' + item.reason + '","' + item.row.join(' ') + '"\n';
+    });
+    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'Failed_Import_Data.csv'; a.click();
 }
 
 function dlTemplate() {
@@ -1927,7 +2062,9 @@ window.onload = function () {
       renderVideoPlaylist(G.videos);
       if(G.videos.length > 0) renderVideo(G.videos[0].url);
       else renderVideo('');
-      
+      if (G.settings.marquee_imgs) {
+            renderImageMarquee(G.settings.marquee_imgs);
+        }
     })
     .withFailureHandler(function(e) {
       toast('การเชื่อมต่อระบบล้มเหลว: ' + e.message, 'err');
@@ -2303,15 +2440,18 @@ function setDate() {
 }
 
 function applySettings() {
-  var s = G.settings;
-  if (s.sys_name) document.getElementById('sysName').textContent = s.sys_name;
-  if (s.org_name) document.getElementById('orgName').textContent = s.org_name;
-  if (s.sys_name) document.getElementById('loginSub').textContent = s.sys_name;
-  if (s.logo_id) {
+    var s = G.settings;
+    if (s.sys_name) document.getElementById('sysName').textContent = s.sys_name;
+    if (s.org_name) document.getElementById('orgName').textContent = s.org_name;
+    if (s.sys_name) document.getElementById('loginSub').textContent = s.sys_name;
+    if (s.logo_id) {
     var img = document.createElement('img'); img.src = 'https://drive.google.com/thumbnail?id=' + s.logo_id + '&sz=w80';
     img.onerror = function() { if (this.src.indexOf('thumbnail') > -1) { this.src = 'https://lh3.googleusercontent.com/d/' + s.logo_id; } else { this.parentElement.textContent = '👁'; } };
     var lw = document.getElementById('logoWrap'); lw.innerHTML = ''; lw.appendChild(img);
   }
+if (s.floating_img) {
+        startFloatingImage(s.floating_img);
+    }
 }
 
 function buildDropdowns() {
@@ -2508,7 +2648,17 @@ function loadDashboard(params) {
   }).getDashboardData(params);
 }
 
-function showImg(url) { var imgSrc = url; var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/); if (match && match[1]) { imgSrc = 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000'; } document.getElementById('imgFull').src = imgSrc; document.getElementById('imgModal').classList.add('open'); }
+function showImg(url) { 
+    var imgSrc = url; 
+    var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/); 
+    if (match && match[1]) { 
+        imgSrc = 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000'; 
+    } 
+    const modal = document.getElementById('img-modal');
+    const img = document.getElementById('modal-img');
+    img.src = imgSrc;
+    modal.classList.add('open');
+}
 function closeImg() { document.getElementById('imgModal').classList.remove('open'); setTimeout(function(){ document.getElementById('imgFull').src = ''; }, 250); }
 
 function renderSummaryTable(data) {
@@ -4383,6 +4533,9 @@ function hardReload() {
         renderLinks(d.data.links || []);
         renderVideoPlaylist(G.videos);
         if (G.videos.length > 0) renderVideo(G.videos[0].url);
+        if(G.settings.marquee_imgs) {
+        renderImageMarquee(G.settings.marquee_imgs);
+    }
 
         // โหลด Dashboard ใหม่ทั้งหมด
         loadDashboard({});
@@ -4442,6 +4595,35 @@ function updateKpiActiveState() {
     }
   });
 }
+
+// ฟังก์ชันสำหรับเปิดรูปภาพแบบขยาย
+function showExpandedImage(url) {
+    const modal = document.getElementById('img-modal');
+    const img = document.getElementById('modal-img');
+    img.src = url;
+    modal.classList.add('open');
+}
+
+// ฟังก์ชันสำหรับแสดงภาพวิ่ง
+function renderImageMarquee(imageUrlsString) {
+    const container = document.getElementById('img-marquee-body');
+    if (!imageUrlsString || imageUrlsString.trim() === '') {
+        document.querySelector('.img-marquee-container').style.display = 'none';
+        return;
+    }
+    
+    const urls = imageUrlsString.split(',').map(url => url.trim()).filter(url => url !== '');
+    container.innerHTML = '';
+    
+    // ทำ Loop สองรอบเพื่อให้ภาพวิ่งต่อเนื่องกันแบบไร้รอยต่อ
+    [...urls, ...urls].forEach(url => {
+        const img = document.createElement('img');
+        img.src = url;
+        img.onclick = () => showExpandedImage(url);
+        container.appendChild(img);
+    });
+}
+
 </script>
 </body>
 </html>
