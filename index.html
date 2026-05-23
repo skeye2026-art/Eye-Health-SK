@@ -1,9 +1,1268 @@
+// =================================================================
+// code.gs — โครงการเด็กไทยสายตาดี | อบจ.สมุทรสาคร
+// Version: 6.1 (Perfect Print Templates with Logo + Followup Form + Flow Prompts)
+// =================================================================
+
+var SS_ID = '1c7IHeW_MPZw_8pcM0DXgjrVNOlNOFdapF0dFF8_7NII';   
+var FOLDER_ID = '1WfEd9QEhxZz2DFSFkcMb47snmoQimtQI';
+
+// =========== เพิ่มฟังก์ชันนี้เข้าไปตรงนี้ครับ ===========
+function ss_() {
+  return SpreadsheetApp.openById(SS_ID);
+}
+
+// ==========================================
+// ส่วนตั้งค่า LINE Messaging API (ปรับเป็นดึงค่าจากชีต Settings อัตโนมัติ)
+// ==========================================
+function getLineSettings_() {
+  var settings = {};
+  try {
+    var data = ss_().getSheetByName(SH.SETTINGS).getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0]) settings[String(data[i][0]).trim()] = data[i][1];
+    }
+  } catch(e) {}
+  return settings;
+}
+
+function sendLineMessageApi_(msg) {
+  var s = getLineSettings_();
+  var token = s.LINE_TOKEN || '';
+  var target = s.LINE_TARGET || '';
+  if (!token || !target) return;
+  var url = 'https://api.line.me/v2/bot/message/push';
+  var payload = { to: target, messages: [ { type: 'text', text: msg } ] };
+  var options = { method: 'post', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, payload: JSON.stringify(payload) };
+  try { UrlFetchApp.fetch(url, options); } catch(e) { Logger.log('LINE API Error: ' + e.message); }
+}
+
+var SH = { SCR:'Screening_Data', SAT:'Satisfaction_Data', PRE:'Pre_Test', POST:'Post_Test', SCHOOL:'School_Data', HOSP:'Hosp_Data', USER:'User', SETTINGS:'Settings', VA:'VA_Mapping', LINKS:'Links_Data', VIDEO:'VIDEO_data', BEH:'Behavior_Data', FUP:'Followup_Data' };
+var SC = { level_edu:0, room:1, cid:2, pname:3, fname:4, lname:5, student_name:6, birthday:7, age_years:8, sex:9, school_class:10, school_name:11, unit:12, screen_date:13, hospcode:14, address:15, moo:16, aid:17, hx_glasses:18, hx_injury:19, hx_red_eye:20, hx_headache:21, hx_amblyopia:22, hx_family:23, va_r_naked:24, va_l_naked:25, va_r_glasses:26, va_l_glasses:27, ph_r:28, ph_l:29, va_naked_OU:30, va_glasses_OU:31, cover_test:32, hirschberg:33, color_vision:34, stereopsis:35, diagnosis:36, referral:37, examiner:38, position:39, school_code:40, tambon:41, amphoe:42, province:43, remarks:44, treatment:45, nationality:46 };
+var SC_LEN = 47;
+var SA = { eval_sex:0, eval_age:1, eval_class:2, q1:3, q2:4, q3:5, q4:6, q7:7, q8:8, q9:9, q10:10, q11:11, q12:12, comment_s:13, comment_i:14, school_name:15, hospcode:16, recommend:17, eval_type:18, cid:19 };
+var TP = { cid:0, q1:1, q2:2, q3:3, q4:4, q5:5, q6:6, q7:7, q8:8, q9:9, q10:10, total:11 };
+var ANS_KEY = ['ข','ก','ค','ข','ข','ค','ข','ค','ข','ค'];
+var NO_REFER_VALUES = ['', 'ไม่จำเป็นต้องส่งต่อ', 'ไม่ส่ง'];
+
+function sheetData_(name) { 
+  var sh = ss_().getSheetByName(name); 
+  if (!sh) { 
+    sh = ss_().insertSheet(name); 
+    if(name === SH.LINKS) sh.appendRow(['ID', 'Label', 'URL', 'IconURL', 'Order']);
+    else if(name === SH.VIDEO) sh.appendRow(['ID', 'Label', 'URL', 'Order']);
+    else if(name === SH.SETTINGS) sh.appendRow(['Key', 'Value']);
+    else if(name === SH.USER) sh.appendRow(['User', 'Password', 'Role', 'Name', 'Status']);
+    else if(name === SH.BEH) sh.appendRow(['cid', 'q_device', 'q_purpose', 'q_time_wk_morn', 'q_time_wk_noon', 'q_time_wk_eve', 'q_time_we_morn', 'q_time_we_noon', 'q_time_we_eve', 'q_dist', 'q_rest', 'q_blue', 'q_symptom', 'q_comment', 'timestamp']);
+    else if(name === SH.FUP) sh.appendRow(['cid','tel','duration','f_board','f_book','f_screen','f_sport','f_days','c_status','c_clarity','q_board','q_focus','q_confidence','q_headache','reasons','overall_sat','comment','timestamp']);
+    return []; 
+  } 
+  var vals = sh.getDataRange().getValues(); 
+  return vals.length > 1 ? vals.slice(1) : []; 
+}
+
+function resp_(ok, data, msg) { return JSON.stringify({ ok: ok, data: data || null, msg: msg || '' }); }
+function today_() { var d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + (d.getFullYear() + 543); }
+function formatDate_(d) {
+  if (!d) return ''; var str = String(d).replace(/^'/, '').trim();
+  if (typeof d === 'object' && d instanceof Date) { var day = d.getDate(), m = d.getMonth() + 1, y = d.getFullYear(); while (y > 2650) y -= 543; while (y > 1900 && y < 2400) y += 543; return String(day).padStart(2, '0') + '/' + String(m).padStart(2, '0') + '/' + y; }
+  var parts = str.split('/'); if (parts.length === 3) { var day = parseInt(parts[0], 10), m = parseInt(parts[1], 10), y = parseInt(parts[2], 10); while (y > 2650) y -= 543; while (y > 1900 && y < 2400) y += 543; return String(day).padStart(2, '0') + '/' + String(m).padStart(2, '0') + '/' + y; }
+  return str;
+}
+function toBE_(dateStr) {
+   if (!dateStr) return ''; var str = String(dateStr).replace(/^'/, '').trim(); var parts = str.split('/');
+   if (parts.length === 3) { var y = parseInt(parts[2], 10); while (y > 2650) y -= 543; while (y > 1900 && y < 2400) y += 543; return "'" + parts[0].padStart(2, '0') + '/' + parts[1].padStart(2, '0') + '/' + y; }
+   return "'" + str;
+}
+function getSchoolCode_(schoolName) { if(!schoolName) return ''; var schools = sheetData_(SH.SCHOOL); for(var i=0; i<schools.length; i++) { if(String(schools[i][1]).trim() === String(schoolName).trim()) return String(schools[i][0]).trim(); } return ''; }
+
+function login(username, password) {
+  try {
+    var rows = sheetData_(SH.USER);
+    for (var i = 0; i < rows.length; i++) {
+      var u = String(rows[i][0] || '').trim(), p = String(rows[i][1] || '').trim(), role = String(rows[i][2] || 'user').trim(), status = String(rows[i][4] || 'active').trim();
+      if (u === String(username).trim() && p === String(password).trim() && status === 'active') {
+        var props = PropertiesService.getUserProperties(); var hospcode = (role === 'admin') ? 'all' : u; props.setProperties({ user: u, role: role, hospcode: hospcode });
+        return resp_(true, { user: u, role: role, hospcode: hospcode });
+      }
+    }
+    return resp_(false, null, 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+  } catch (e) { return resp_(false, null, e.message); }
+}
+function logout() { PropertiesService.getUserProperties().deleteAllProperties(); return resp_(true, null, 'ออกจากระบบสำเร็จ'); }
+function getSession_() { var props = PropertiesService.getUserProperties(); var user = props.getProperty('user'); if (!user) return { loggedIn: false, user: '', role: '', hospcode: '' }; return { loggedIn: true, user: user, role: props.getProperty('role') || 'user', hospcode: props.getProperty('hospcode') || '' }; }
+
+function getInitData() {
+  try {
+    var settings = {}; var natList = [];
+    sheetData_(SH.SETTINGS).forEach(function (r) { 
+        if (r[0]) settings[String(r[0]).trim()] = r[1]; 
+        // อ่านคอลัมน์ C (Index 2) สำหรับสัญชาติ (Nationality)
+        if (r[2]) natList.push(String(r[2]).trim());
+    });
+    // ลบค่าว่างใน natList
+    natList = natList.filter(Boolean);
+    if(natList.length === 0) natList = ['ไทย', 'พม่า', 'กัมพูชา', 'ลาว', 'อื่นๆ']; // Fallback หากไม่มีการตั้งค่า
+
+    var hospList = sheetData_(SH.HOSP).map(function (r) { return { hospcode: String(r[0] || '').trim().replace(/^'/, ''), name: String(r[1] || '').trim(), tambon: String(r[2] || '').trim(), amphoe: String(r[3] || '').trim(), province: String(r[4] || 'สมุทรสาคร').trim(), lat: String(r[5] || '').trim(), lon: String(r[6] || '').trim() }; }).filter(function (h) { return h.hospcode; });
+    var schoolList = sheetData_(SH.SCHOOL).map(function (r) { return { code: String(r[0] || '').trim(), name: String(r[1] || '').trim(), address: String(r[2] || '').trim(), aid: String(r[3] || '').trim(), lat: String(r[4] || '').trim(), lon: String(r[5] || '').trim() }; }).filter(function (s) { return s.name; });
+    var vaList = []; var vaMap = {}; 
+    sheetData_(SH.VA).forEach(function (r) { 
+      var id = String(r[0] || '').trim(), f = String(r[1] || '').trim(); 
+      if (f && f !== 'หน่วยฟุต (F)' && f !== '') { vaList.push(f); if (id) vaMap[id] = f; }
+    });
+    var links = []; sheetData_(SH.LINKS).forEach(function(r) { links.push({ id: r[0], label: r[1], url: r[2], icon: r[3], order: r[4] }); });
+    var videos = []; sheetData_(SH.VIDEO).forEach(function(r) { videos.push({ id: r[0], label: r[1], url: r[2], order: r[3] }); });
+    
+    return resp_(true, { settings: settings, hospList: hospList, schoolList: schoolList, vaList: vaList, vaMap: vaMap, natList: natList, links: links, videos: videos, session: getSession_() });
+  } catch (e) { return resp_(false, null, 'getInitData error: ' + e.message); }
+}
+
+function calcStatus_(row, fupMap) {
+  fupMap = fupMap || {};
+  var cid = String(row[SC.cid] || '').trim();
+  var diagnosis = String(row[SC.diagnosis] || '').trim(); 
+  if (diagnosis === 'สายตาปกต') diagnosis = 'สายตาปกติ';
+  var referral  = String(row[SC.referral]  || '').trim(); 
+  var noRefer = NO_REFER_VALUES.indexOf(referral) >= 0;
+  if (!noRefer && fupMap[cid]) return 'glasses';
+  if (!noRefer) return 'referred'; 
+  if (diagnosis && diagnosis !== 'สายตาปกติ') return 'abnormal'; 
+  return 'normal';
+}
+function calcTestScore_(answers10) { var score = 0; for (var i = 0; i < 10; i++) { if (String(answers10[i] || '').trim() === ANS_KEY[i]) score++; } return score; }
+function calcGain_(pre, post) { pre = Number(pre) || 0; post = Number(post) || 0; if (pre >= 10) return 100; return Math.round((post - pre) / (10 - pre) * 100); }
+function calcSatAvg_(row) { var sum = 0, count = 0; for (var q = 3; q <= 12; q++) { var v = Number(row[q]); if (v >= 1 && v <= 5) { sum += v; count++; } } return count > 0 ? Math.round(sum / count * 100) / 100 : null; }
+
+function getDashboardData(params) {
+  try {
+    params = params || {};
+    var fHosp = params.hospcode || '', fAmphoe = params.amphoe || '', fSchool = params.school || '', fStatus = params.status || '', fSex = params.sex || '', userHosp = params.userHosp || '';
+    var hospMap = {};
+    sheetData_(SH.HOSP).forEach(function (r) { var hc = String(r[0] || '').trim().replace(/^'/, ''); if (hc) hospMap[hc] = { name: String(r[1] || '').trim(), tambon: String(r[2] || '').trim(), amphoe: String(r[3] || '').trim(), pics: String(r[7] || '').trim() }; });
+    var hospTally = {}; Object.keys(hospMap).forEach(function(hc) { hospTally[hc] = { name: hospMap[hc].name, amphoe: hospMap[hc].amphoe, normal:0, abnormal:0, referred:0, glasses:0, total:0, preSum:0, preCount:0, postSum:0, postCount:0, gainSum:0, gainCount:0 }; });
+    
+    var preMap = {}, postMap = {}, satMap = {}, satIndvMap = {}, satTypeIndvMap = {}; 
+    var satAmphoeTally = {}, satHospTally = {}, satSchoolTally = {}, satTypeTally = {}; var globalPreCount = 0;
+    
+    var treatTally = {}, behRiskTally = { low: 0, medium: 0, high: 0 }, fupWearTally = {};
+    var diagSeverityTally = { 'ปกติ/เฝ้าระวัง': 0, 'ผิดปกติ(น้อย-ปานกลาง)': 0, 'รุนแรง/ตาขี้เกียจ': 0, 'ฉุกเฉิน': 0 };
+    var natTally = {}; // Tally สัญชาติ
+    var behMap = {}, fupMap = {};
+
+    sheetData_(SH.PRE).forEach(function (r) { var cid = String(r[TP.cid] || '').trim(); if (!cid) return; globalPreCount++; var saved = Number(r[TP.total]); preMap[cid] = isNaN(saved) || saved === 0 ? calcTestScore_(r.slice(1,11)) : saved; });
+    sheetData_(SH.POST).forEach(function (r) { var cid = String(r[TP.cid] || '').trim(); if (!cid) return; var saved = Number(r[TP.total]); postMap[cid] = isNaN(saved) || saved === 0 ? calcTestScore_(r.slice(1,11)) : saved; });
+    
+    var timeMap = {'ไม่ใช้':0, 'ไม่ถึง 1 ชม.':0.5, '1-2 ชม.':1.5, '2-3 ชม.':2.5, '3-4 ชม.':3.5, 'มากกว่า 4 ชม.':5};
+    sheetData_(SH.BEH).forEach(function(r) {
+       var cid = String(r[0] || '').trim(); if (!cid) return;
+       var distVal = String(r[9]||'').trim(), restVal = String(r[10]||'').trim();
+       var symArr = String(r[12]||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+       var hWk = 0, hWe = 0;
+       var slots = [{k:'wk',v:r[3]},{k:'wk',v:r[4]},{k:'wk',v:r[5]},{k:'we',v:r[6]},{k:'we',v:r[7]},{k:'we',v:r[8]}];
+       slots.forEach(function(s) { var val = String(s.v||'').trim(); if (timeMap[val] !== undefined) { if (s.k === 'wk') hWk += timeMap[val]; else hWe += timeMap[val]; } });
+       var risk = 0;
+       if (hWk > 8) risk += 3; else if (hWk > 4) risk += 2; else if (hWk > 2) risk += 1;
+       if (hWe > 8) risk += 3; else if (hWe > 4) risk += 2; else if (hWe > 2) risk += 1;
+       if (distVal === 'ใกล้กว่า 1 ฟุต') risk += 2; else if (distVal === 'ประมาณ 1 ฟุต') risk += 1;
+       if (restVal === 'ไม่ค่อยพัก') risk += 2; else if (restVal === 'พักบ้างบางครั้ง') risk += 1;
+       risk += symArr.filter(function(s){return s !== 'ไม่มีอาการ';}).length;
+       behMap[cid] = (risk >= 8) ? 'high' : (risk >= 4) ? 'medium' : 'low';
+    });
+
+    sheetData_(SH.FUP).forEach(function(r) { var cid = String(r[0] || '').trim(); if (cid) fupMap[cid] = String(r[7]||'').trim() || 'มีข้อมูล'; });
+
+    sheetData_(SH.SAT).forEach(function (r) { 
+      var hc = String(r[SA.hospcode] || '').trim().replace(/^'/, ''); var cid = String(r[SA.cid] || '').trim();
+      var school = String(r[SA.school_name] || '').trim() || 'ไม่ระบุโรงเรียน';
+      var evalType = String(r[SA.eval_type] || '').trim() || 'ประชาชนทั่วไป / อื่นๆ';
+      var avg = calcSatAvg_(r); if (avg === null) return; 
+      var lvl = 'lvl1'; if (avg >= 4.5) lvl = 'lvl5'; else if (avg >= 3.5) lvl = 'lvl4'; else if (avg >= 2.5) lvl = 'lvl3'; else if (avg >= 1.5) lvl = 'lvl2';
+      var hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ' }; var amp = hInfo.amphoe || 'ไม่ระบุอำเภอ';
+      function initSatTally(obj, key, name) { if (!obj[key]) obj[key] = { label: name || key, lvl5:0, lvl4:0, lvl3:0, lvl2:0, lvl1:0, sum:0, count:0 }; obj[key][lvl]++; obj[key].sum += avg; obj[key].count++; }
+      initSatTally(satAmphoeTally, amp, amp); initSatTally(satHospTally, hc, hInfo.name || hc); initSatTally(satSchoolTally, school, school); initSatTally(satTypeTally, evalType, evalType);
+      if (hc) { if (!satMap[hc]) satMap[hc] = { sum: 0, count: 0 }; satMap[hc].sum += avg; satMap[hc].count++; }
+      if (cid) {
+        satIndvMap[cid] = avg;
+        satTypeIndvMap[cid] = evalType;
+      }
+    });
+    
+    var kpi = { total:0, normal:0, abnormal:0, referred:0, glasses:0 };
+    var amphoeTally = {}, schoolTally = {}, preSumTotal=0, postSumTotal=0, gainSumTotal=0, testCount=0, tableRows = [];
+    
+    sheetData_(SH.SCR).forEach(function (r) {
+      var cid = String(r[SC.cid] || '').trim(); var hc  = String(r[SC.hospcode] || '').trim().replace(/^'/, '');
+      if (fHosp && hc !== fHosp) return;
+      var hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ', tambon: '', pics: '' };
+      if (fAmphoe && hInfo.amphoe !== fAmphoe) return;
+      var sName = String(r[SC.school_name] || '').trim(); if (fSchool && sName !== fSchool) return;
+      var sex = String(r[SC.sex] || '').trim(); if (fSex && sex !== fSex) return;
+      var status = calcStatus_(r, fupMap); if (fStatus && status !== fStatus) return;
+      if (!hospTally[hc]) hospTally[hc] = { name: hInfo.name, amphoe: hInfo.amphoe, normal:0, abnormal:0, referred:0, glasses:0, total:0, preSum:0, preCount:0, postSum:0, postCount:0, gainSum:0, gainCount:0 };
+      hospTally[hc][status]++; hospTally[hc].total++;
+      if (userHosp && userHosp !== 'all' && hc !== userHosp) return;
+      
+      var pre  = preMap[cid]  !== undefined ? preMap[cid]  : null; var post = postMap[cid] !== undefined ? postMap[cid] : null; var gain = (pre !== null && post !== null) ? calcGain_(pre, post) : null;
+      if (pre !== null && post !== null) { preSumTotal += pre; postSumTotal += post; gainSumTotal += gain; testCount++; hospTally[hc].preSum += pre; hospTally[hc].preCount++; hospTally[hc].postSum += post; hospTally[hc].postCount++; hospTally[hc].gainSum += gain; hospTally[hc].gainCount++; }
+      kpi.total++; kpi[status]++;
+      var amp = hInfo.amphoe || 'ไม่ระบุ'; if (!amphoeTally[amp]) amphoeTally[amp] = { normal:0, abnormal:0, referred:0, glasses:0, total:0 }; amphoeTally[amp][status]++; amphoeTally[amp].total++;
+      var schKey = sName || 'ไม่ระบุโรงเรียน'; if (!schoolTally[schKey]) schoolTally[schKey] = { label: schKey, normal:0, abnormal:0, referred:0, glasses:0, total:0 }; schoolTally[schKey][status]++; schoolTally[schKey].total++;
+      
+      var treat = String(r[SC.treatment] || '').trim() || 'ไม่ระบุสิทธิ์';
+      treatTally[treat] = (treatTally[treat] || 0) + 1;
+      var nat = String(r[SC.nationality] || 'ไทย').trim() || 'ไทย';
+      natTally[nat] = (natTally[nat] || 0) + 1;
+      
+      var bRisk = behMap[cid]; if(bRisk) behRiskTally[bRisk]++;
+      var fWear = fupMap[cid]; if(fWear) fupWearTally[fWear] = (fupWearTally[fWear] || 0) + 1;
+      var diagStr = String(r[SC.diagnosis] || '').trim();
+      if (/ปกติ|เฝ้าระวัง/.test(diagStr) || diagStr === '') diagSeverityTally['ปกติ/เฝ้าระวัง']++;
+      else if (/สงสัยสายตาผิดปกติ/.test(diagStr)) diagSeverityTally['ผิดปกติ(น้อย-ปานกลาง)']++;
+      else if (/ตาขี้เกียจ|รุนแรง/.test(diagStr) && !/ความผิดปกติรุนแรง/.test(diagStr)) diagSeverityTally['รุนแรง/ตาขี้เกียจ']++;
+      else if (/ความผิดปกติรุนแรง/.test(diagStr) || /อื่นๆ/.test(diagStr)) diagSeverityTally['ฉุกเฉิน']++;
+      
+      tableRows.push({
+        cid: cid, student_name: String(r[SC.student_name] || (r[SC.pname]+r[SC.fname]+' '+r[SC.lname]) || '').trim(), 
+        age_years: String(r[SC.age_years] || '').trim(), school_class: String(r[SC.school_class] || '').trim(),
+        school_name: sName, school_code: String(r[SC.school_code] || '').trim(), hospcode: hc, hosp_name: hInfo.name, amphoe: hInfo.amphoe, sex: sex,
+        diagnosis: String(r[SC.diagnosis] || '').trim(), referral: String(r[SC.referral] || '').trim(),
+        screen_date: formatDate_(r[SC.screen_date]), status: status, pre: pre, post: post, gain: gain, sat: satIndvMap[cid] !== undefined ? satIndvMap[cid] : null, sat_type: satTypeIndvMap[cid] || null, examiner: String(r[SC.examiner] || '').trim(),
+        treatment: treat, nationality: nat, beh_risk: bRisk || null, fup_status: fWear || null,
+        va_r_naked: String(r[SC.va_r_naked] || '').trim(), va_l_naked: String(r[SC.va_l_naked] || '').trim(), va_naked_OU: String(r[SC.va_naked_OU] || '').trim(),
+        va_r_glasses: String(r[SC.va_r_glasses] || '').trim(), va_l_glasses: String(r[SC.va_l_glasses] || '').trim(), va_glasses_OU: String(r[SC.va_glasses_OU] || '').trim(),
+        ph_r: String(r[SC.ph_r] || '').trim(), ph_l: String(r[SC.ph_l] || '').trim(),
+        pname: String(r[SC.pname] || '').trim(), fname: String(r[SC.fname] || '').trim(), lname: String(r[SC.lname] || '').trim(), birthday: formatDate_(r[SC.birthday]),
+        level_edu: String(r[SC.level_edu] || '').trim(), room: String(r[SC.room] || '').trim(), unit: String(r[SC.unit] || '').trim(), address: String(r[SC.address] || '').trim(),
+        moo: String(r[SC.moo] || '').trim(), aid: String(r[SC.aid] || '').trim(), tambon: String(r[SC.tambon] || '').trim(), province: String(r[SC.province] || '').trim(),
+        position: String(r[SC.position] || '').trim(), remarks: String(r[SC.remarks] || '').trim(),
+        hx_glasses: r[SC.hx_glasses] == 1 ? 'ใช่' : 'ไม่ใช่', hx_injury: r[SC.hx_injury] == 1 ? 'ใช่' : 'ไม่ใช่', hx_red_eye: r[SC.hx_red_eye] == 1 ? 'ใช่' : 'ไม่ใช่',
+        hx_headache: r[SC.hx_headache] == 1 ? 'ใช่' : 'ไม่ใช่', hx_amblyopia: r[SC.hx_amblyopia] == 1 ? 'ใช่' : 'ไม่ใช่', hx_family: r[SC.hx_family] == 1 ? 'ใช่' : 'ไม่ใช่',
+        cover_test: String(r[SC.cover_test] || '').trim(), hirschberg: String(r[SC.hirschberg] || '').trim(), color_vision: String(r[SC.color_vision] || '').trim(), stereopsis: String(r[SC.stereopsis] || '').trim()
+      });
+    });
+    
+    var t = kpi.total || 1;
+    var kpiOut = {
+      total: kpi.total, normal: kpi.normal, normalPct: Math.round(kpi.normal / t * 100), 
+      abnormal: kpi.abnormal, abnormalTotal: kpi.total - kpi.normal, abnormalPct: Math.round((kpi.total - kpi.normal) / t * 100),
+      referred: kpi.referred + kpi.glasses, referredPct: Math.round((kpi.referred + kpi.glasses) / t * 100),
+      referredRaw: kpi.referred,
+      glasses: kpi.glasses, glassesPct: Math.round(kpi.glasses / t * 100),
+      preAvg: testCount > 0 ? Math.round(preSumTotal / testCount * 10) / 10 : null, postAvg: testCount > 0 ? Math.round(postSumTotal / testCount * 10) / 10 : null, gainAvg: testCount > 0 ? Math.round(gainSumTotal / testCount) : null, preTestCount: globalPreCount
+    };
+    var satTotal=0, satCount=0; Object.keys(satMap).forEach(function (hc) { if (!hospTally[hc]) return; satTotal += satMap[hc].sum / satMap[hc].count; satCount++; });
+    kpiOut.satAvg = satCount > 0 ? Math.round(satTotal / satCount * 100) / 100 : null;
+    
+    var barChartAmphoe = Object.keys(amphoeTally).sort().map(function (amp) { var d = amphoeTally[amp]; return { label: amp, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, normalPct: Math.round(d.normal / (d.total||1) * 100) }; });
+    var barChartHosp = Object.keys(hospTally).sort().map(function (hc) { var d = hospTally[hc]; return { label: d.name, hospcode: hc, amphoe: d.amphoe, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, normalPct: Math.round(d.normal / (d.total||1) * 100) }; });
+    var barChartSchool = Object.keys(schoolTally).sort().map(function(s) { var d = schoolTally[s]; return { label: s, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, normalPct: Math.round(d.normal / (d.total||1) * 100) }; });
+    function formatSatTally(tObj) { return Object.keys(tObj).sort().map(function(k) { var o = tObj[k]; o.avg = o.count > 0 ? (Math.round((o.sum / o.count) * 100) / 100) : 0; return o; }); }
+    var satCharts = { amphoe: formatSatTally(satAmphoeTally), hosp: formatSatTally(satHospTally), school: formatSatTally(satSchoolTally), type: formatSatTally(satTypeTally) };
+    
+    var hospSummary = Object.keys(hospTally).map(function(hc) {
+        var ht = hospTally[hc]; var satAvgRow = satMap[hc] ? Math.round(satMap[hc].sum / satMap[hc].count * 100) / 100 : null;
+        return { hospcode: hc, name: ht.name, amphoe: ht.amphoe, pics: hospMap[hc].pics, normal: ht.normal, abnormal: (ht.total - ht.normal), referred: ht.referred, glasses: ht.glasses, total: ht.total, satAvg: satAvgRow, preAvg: ht.preCount > 0 ? Math.round(ht.preSum / ht.preCount * 10) / 10 : null, postAvg: ht.postCount > 0 ? Math.round(ht.postSum / ht.postCount * 10) / 10 : null, gainAvg: ht.gainCount > 0 ? Math.round(ht.gainSum / ht.gainCount) : null };
+    }).filter(function(h) { return fAmphoe ? h.amphoe === fAmphoe : true; }).sort(function(a, b) { return a.hospcode.localeCompare(b.hospcode); });
+    
+    var extraStats = { treatTally: treatTally, behRiskTally: behRiskTally, fupWearTally: fupWearTally, diagSeverityTally: diagSeverityTally, natTally: natTally }; // Added natTally
+
+    return resp_(true, { kpi: kpiOut, barChartAmphoe: barChartAmphoe, barChartHosp: barChartHosp, barChartSchool: barChartSchool, satCharts: satCharts, rows: tableRows, hospSummary: hospSummary, extraStats: extraStats });
+  } catch (e) { return resp_(false, null, 'getDashboardData error: ' + e.message); }
+}
+function getBehaviorDashboard(params) {
+  try {
+    params = params || {};
+    var fHosp = params.hospcode || '', fAmphoe = params.amphoe || '', fSchool = params.school || '';
+    var fSex = params.sex || '', fClass = params.school_class || '';
+    var fRisk = params.risk || '';
+    var scrMap = {};
+    sheetData_(SH.SCR).forEach(function(r) {
+      var cid = String(r[SC.cid] || '').trim();
+      if (cid) scrMap[cid] = { 
+        hospcode: String(r[SC.hospcode] || '').trim().replace(/^'/, ''), 
+        school_name: String(r[SC.school_name] || '').trim(), 
+        school_class: String(r[SC.school_class] || '').trim(), 
+        sex: String(r[SC.sex] || '').trim(), 
+        age_years: String(r[SC.age_years] || '').trim(), 
+        student_name: String(r[SC.student_name] || '').trim(),
+        amphoe: String(r[SC.amphoe] || '').trim() // เพิ่มการดึงข้อมูลอำเภอ
+      };
+    });
+    var hospMap = {}; sheetData_(SH.HOSP).forEach(function(r) { var hc = String(r[0] || '').trim().replace(/^'/, ''); if (hc) hospMap[hc] = { name: String(r[1] || '').trim(), amphoe: String(r[3] || '').trim() }; });
+
+    var timeMap = {'ไม่ใช้':0, 'ไม่ถึง 1 ชม.':0.5, '1-2 ชม.':1.5, '2-3 ชม.':2.5, '3-4 ชม.':3.5, 'มากกว่า 4 ชม.':5};
+    var devices = {}, purposes = {}, symptoms = {};
+    var distance = {'ใกล้กว่า 1 ฟุต':0, 'ประมาณ 1 ฟุต':0, 'มากกว่า 1 ฟุต':0};
+    var rest = {'พักทุก 20 นาที':0, 'พักบ้างบางครั้ง':0, 'ไม่ค่อยพัก':0};
+    var blue = {'มีการใช้':0, 'ไม่มีการใช้':0};
+    var timeSlots = { wk_morn:{total:0,count:0,dist:{}}, wk_noon:{total:0,count:0,dist:{}}, wk_eve:{total:0,count:0,dist:{}}, we_morn:{total:0,count:0,dist:{}}, we_noon:{total:0,count:0,dist:{}}, we_eve:{total:0,count:0,dist:{}} };
+    var riskBuckets = {low:0, medium:0, high:0};
+    var hospRisk = {}; var rows = [], totalCount = 0, riskSumGlobal = 0;
+
+    sheetData_(SH.BEH).forEach(function(r) {
+      var cid = String(r[0] || '').trim(); if (!cid) return;
+      var demo = scrMap[cid] || {};
+      
+      // ตัวกรองพฤติกรรมหน้าจอ (รวมคัดกรองอำเภอ)
+      if (fHosp && demo.hospcode !== fHosp) return; 
+      if (fAmphoe && demo.amphoe !== fAmphoe) return; 
+      if (fSchool && demo.school_name !== fSchool) return; 
+      if (fSex && demo.sex !== fSex) return; 
+      if (fClass && demo.school_class !== fClass) return;
+
+      var devArr = String(r[1]||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+      var purArr = String(r[2]||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+      var symArr = String(r[12]||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+      var distVal = String(r[9]||'').trim(), restVal = String(r[10]||'').trim(), blueVal = String(r[11]||'').trim();
+
+      var hWk = 0, hWe = 0;
+      var slots = [{k:'wk_morn',v:r[3]},{k:'wk_noon',v:r[4]},{k:'wk_eve',v:r[5]},{k:'we_morn',v:r[6]},{k:'we_noon',v:r[7]},{k:'we_eve',v:r[8]}];
+      slots.forEach(function(s) { var val = String(s.v||'').trim(); if (timeMap[val] !== undefined) { timeSlots[s.k].total += timeMap[val]; timeSlots[s.k].count++; timeSlots[s.k].dist[val] = (timeSlots[s.k].dist[val]||0) + 1; if (s.k.indexOf('wk_') === 0) hWk += timeMap[val]; else hWe += timeMap[val]; } });
+
+      var risk = 0;
+      if (hWk > 8) risk += 3; else if (hWk > 4) risk += 2; else if (hWk > 2) risk += 1;
+      if (hWe > 8) risk += 3; else if (hWe > 4) risk += 2; else if (hWe > 2) risk += 1;
+      if (distVal === 'ใกล้กว่า 1 ฟุต') risk += 2; else if (distVal === 'ประมาณ 1 ฟุต') risk += 1;
+      if (restVal === 'ไม่ค่อยพัก') risk += 2; else if (restVal === 'พักบ้างบางครั้ง') risk += 1;
+      risk += symArr.filter(function(s){return s !== 'ไม่มีอาการ';}).length;
+
+      var riskLevel = (risk >= 8) ? 'high' : (risk >= 4) ? 'medium' : 'low';
+      if (fRisk && riskLevel !== fRisk) return;
+
+      totalCount++; riskSumGlobal += risk; riskBuckets[riskLevel]++;
+      devArr.forEach(function(d){ devices[d] = (devices[d]||0)+1; }); purArr.forEach(function(p){ purposes[p] = (purposes[p]||0)+1; }); symArr.forEach(function(s){ symptoms[s] = (symptoms[s]||0)+1; });
+      if (distance[distVal] !== undefined) distance[distVal]++; if (rest[restVal] !== undefined) rest[restVal]++;
+      if (blueVal.indexOf('มี') === 0) blue['มีการใช้']++; else if (blueVal.indexOf('ไม่') === 0) blue['ไม่มีการใช้']++;
+
+      if (demo.hospcode) { if (!hospRisk[demo.hospcode]) hospRisk[demo.hospcode] = {name:(hospMap[demo.hospcode]||{}).name||demo.hospcode, low:0, medium:0, high:0, total:0}; hospRisk[demo.hospcode][riskLevel]++; hospRisk[demo.hospcode].total++; }
+
+      rows.push({ cid:cid, name:demo.student_name||'', hospcode:demo.hospcode||'', hosp_name:(hospMap[demo.hospcode]||{}).name||'', school:demo.school_name||'', school_class:demo.school_class||'', sex:demo.sex||'', age:demo.age_years||'', devices:devArr.join(', '), purposes:purArr.join(', '), symptoms:symArr.join(', '), distance:distVal, rest:restVal, blue:blueVal, hours_wk:hWk, hours_we:hWe, risk_score:risk, risk_level:riskLevel });
+    });
+
+    var kpi = { total: totalCount, symptomPct: 0, heavyUsePct: 0, properDistPct: 0, properRestPct: 0, blueLightPct: 0, avgHoursWk: 0, avgHoursWe: 0, avgRisk: 0 };
+    if (totalCount > 0) {
+      var withSymptom = totalCount - (symptoms['ไม่มีอาการ']||0); kpi.symptomPct = Math.round(withSymptom/totalCount*100);
+      var heavy = rows.filter(function(r){return r.hours_wk>4 || r.hours_we>4;}).length; kpi.heavyUsePct = Math.round(heavy/totalCount*100);
+      kpi.properDistPct = Math.round((distance['มากกว่า 1 ฟุต']||0)/totalCount*100);
+      kpi.properRestPct = Math.round((rest['พักทุก 20 นาที']||0)/totalCount*100);
+      kpi.blueLightPct = Math.round((blue['มีการใช้']||0)/totalCount*100);
+      var sWk=0,sWe=0; rows.forEach(function(r){sWk+=r.hours_wk;sWe+=r.hours_we;});
+      kpi.avgHoursWk = Math.round(sWk/totalCount*10)/10; kpi.avgHoursWe = Math.round(sWe/totalCount*10)/10; kpi.avgRisk = Math.round(riskSumGlobal/totalCount*10)/10;
+    }
+    return resp_(true, { kpi:kpi, devices:devices, purposes:purposes, symptoms:symptoms, distance:distance, rest:rest, blue:blue, timeSlots:timeSlots, riskBuckets:riskBuckets, hospRisk:hospRisk, rows:rows });
+  } catch(e) { return resp_(false, null, e.message); }
+}
+
+function getFollowupDashboard(params) {
+  try {
+    params = params || {};
+    var fHosp = params.hospcode || '', fAmphoe = params.amphoe || '', fSchool = params.school || '';
+    var fSex = params.sex || '', fClass = params.school_class || '';
+    
+    var scrMap = {};
+    sheetData_(SH.SCR).forEach(function(r) {
+      var cid = String(r[SC.cid] || '').trim();
+      if (cid) scrMap[cid] = {
+        hospcode: String(r[SC.hospcode] || '').trim().replace(/^'/, ''),
+        school_name: String(r[SC.school_name] || '').trim(),
+        student_name: String(r[SC.student_name] || '').trim(),
+        school_class: String(r[SC.school_class] || '').trim(),
+        sex: String(r[SC.sex] || '').trim(),
+        age_years: String(r[SC.age_years] || '').trim(),
+        amphoe: String(r[SC.amphoe] || '').trim() // เพิ่มการดึงข้อมูลอำเภอ
+      };
+    });
+    var hospMap = {};
+    sheetData_(SH.HOSP).forEach(function(r) {
+      var hc = String(r[0] || '').trim().replace(/^'/, '');
+      if (hc) hospMap[hc] = { name: String(r[1] || '').trim(), amphoe: String(r[3] || '').trim() };
+    });
+    
+    var satScoreMap = {'มากที่สุด':5, 'มาก':4, 'ปานกลาง':3, 'น้อย':2, 'น้อยที่สุด':1};
+    
+    var rows = [];
+    var hospTally = {};
+    var freqUsage = {
+      board:  {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0},
+      book:   {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0},
+      screen: {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0},
+      sport:  {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0}
+    };
+    var qol = {
+      board:      {'ดีขึ้นมาก':0,'ดีขึ้น':0,'เหมือนเดิม':0,'แย่ลง':0},
+      focus:      {'ดีขึ้นมาก':0,'ดีขึ้น':0,'เหมือนเดิม':0,'แย่ลง':0},
+      confidence: {'ดีขึ้นมาก':0,'ดีขึ้น':0,'เหมือนเดิม':0,'แย่ลง':0},
+      headache:   {'ลดลงมาก':0,'ลดลง':0,'เท่าเดิม':0,'เพิ่มขึ้น':0}
+    };
+    var fDaysTally = {'6-7 วัน':0,'3-5 วัน':0,'1-2 วัน':0,'ไม่ได้ใส่เลย':0};
+    var conditionTally = {};
+    var reasonsCount = {};
+    var satSum = 0, satCnt = 0;
+    var goodCondCnt = 0, dailyWearCnt = 0, totalCnt = 0;
+    
+    sheetData_(SH.FUP).forEach(function(r) {
+      var cid = String(r[0]||'').trim(); if (!cid) return;
+      var demo = scrMap[cid] || {};
+      var hc = demo.hospcode || '';
+      
+      // ตัวกรองติดตามแว่นตา (รวมคัดกรองอำเภอ)
+      if (fHosp && hc !== fHosp) return;
+      if (fAmphoe && demo.amphoe !== fAmphoe) return;
+      if (fSchool && demo.school_name !== fSchool) return;
+      if (fSex && demo.sex !== fSex) return;
+      if (fClass && demo.school_class !== fClass) return;
+      
+      totalCnt++;
+      var fBoard=r[3]||'', fBook=r[4]||'', fScreen=r[5]||'', fSport=r[6]||'';
+      var fDays=r[7]||'', cStatus=r[8]||'', cClarity=r[9]||'';
+      var qBoard=r[10]||'', qFocus=r[11]||'', qConfidence=r[12]||'', qHeadache=r[13]||'';
+      var reasons = String(r[14]||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+      var overallSat=r[15]||'';
+      
+      function tally(obj, val){ if(val && obj[val] !== undefined) obj[val]++; }
+      tally(freqUsage.board, fBoard); tally(freqUsage.book, fBook);
+      tally(freqUsage.screen, fScreen); tally(freqUsage.sport, fSport);
+      tally(qol.board, qBoard); tally(qol.focus, qFocus);
+      tally(qol.confidence, qConfidence); tally(qol.headache, qHeadache);
+      tally(fDaysTally, fDays);
+      conditionTally[cStatus] = (conditionTally[cStatus]||0) + 1;
+      reasons.forEach(function(rs){ reasonsCount[rs] = (reasonsCount[rs]||0)+1; });
+      
+      if (satScoreMap[overallSat]) { satSum += satScoreMap[overallSat]; satCnt++; }
+      var isGoodCond = cStatus.indexOf('ดีมาก') > -1 || cStatus.indexOf('ดี แต่') > -1;
+      if (isGoodCond) goodCondCnt++;
+      if (fDays === '6-7 วัน') dailyWearCnt++;
+      
+      // Tally by hosp
+      if (!hospTally[hc]) hospTally[hc] = {
+        hospcode: hc, name:(hospMap[hc]||{}).name||hc, amphoe:(hospMap[hc]||{}).amphoe||'',
+        total:0, dailyWear:0, goodCond:0, visionImp:0, focusImp:0, headacheImp:0, satSum:0, satCnt:0
+      };
+      var ht = hospTally[hc]; ht.total++;
+      if (fDays === '6-7 วัน') ht.dailyWear++;
+      if (isGoodCond) ht.goodCond++;
+      if (qBoard.indexOf('ดีขึ้น') > -1) ht.visionImp++;
+      if (qFocus.indexOf('ดีขึ้น') > -1) ht.focusImp++;
+      if (qHeadache === 'ลดลงมาก' || qHeadache === 'ลดลง') ht.headacheImp++;
+      if (satScoreMap[overallSat]) { ht.satSum += satScoreMap[overallSat]; ht.satCnt++; }
+      
+      rows.push({
+        cid:cid, name:demo.student_name||'', hospcode:hc, hosp_name:(hospMap[hc]||{}).name||'',
+        school:demo.school_name||'', school_class:demo.school_class||'',
+        tel:r[1]||'', duration:r[2]||'', f_days:fDays, c_status:cStatus, c_clarity:cClarity,
+        q_board:qBoard, q_focus:qFocus, q_confidence:qConfidence, q_headache:qHeadache,
+        overall_sat:overallSat, reasons:reasons.join(', '), sat_score: satScoreMap[overallSat]||0
+      });
+    });
+    
+    var kpi = {
+      total: totalCnt,
+      dailyWearPct: totalCnt > 0 ? Math.round(dailyWearCnt/totalCnt*100) : 0,
+      goodCondPct:  totalCnt > 0 ? Math.round(goodCondCnt/totalCnt*100) : 0,
+      satAvg: satCnt > 0 ? Math.round(satSum/satCnt*100)/100 : null
+    };
+    
+    function pctImp(o) { 
+      var t = o['ดีขึ้นมาก']+o['ดีขึ้น']+o['เหมือนเดิม']+o['แย่ลง']; 
+      return t>0 ? Math.round((o['ดีขึ้นมาก']+o['ดีขึ้น'])/t*100) : 0;
+    }
+    var qolImpPct = {
+      board: pctImp(qol.board), focus: pctImp(qol.focus), confidence: pctImp(qol.confidence),
+      headache: (function(o){ var t=o['ลดลงมาก']+o['ลดลง']+o['เท่าเดิม']+o['เพิ่มขึ้น']; return t>0?Math.round((o['ลดลงมาก']+o['ลดลง'])/t*100):0;})(qol.headache)
+    };
+    
+    var topReasons = Object.keys(reasonsCount).sort(function(a,b){return reasonsCount[b]-reasonsCount[a];}).slice(0,5).map(function(k){return {label:k, count:reasonsCount[k]};});
+    
+    var hospHeatmap = Object.keys(hospTally).sort().map(function(hc) {
+      var h = hospTally[hc]; var t = h.total || 1;
+      return {
+        hospcode: hc, name: h.name, amphoe: h.amphoe, total: h.total,
+        dailyWearPct: Math.round(h.dailyWear/t*100),
+        goodCondPct: Math.round(h.goodCond/t*100),
+        visionImpPct: Math.round(h.visionImp/t*100),
+        focusImpPct: Math.round(h.focusImp/t*100),
+        headacheImpPct: Math.round(h.headacheImp/t*100),
+        satAvg: h.satCnt > 0 ? Math.round(h.satSum/h.satCnt*100)/100 : null
+      };
+    });
+    
+    return resp_(true, {
+      kpi: kpi, freqUsage: freqUsage, qol: qol, qolImpPct: qolImpPct,
+      fDays: fDaysTally, conditions: conditionTally,
+      reasons: reasonsCount, topReasons: topReasons,
+      hospHeatmap: hospHeatmap, rows: rows
+    });
+  } catch(e) { return resp_(false, null, e.message); }
+}
+
+function checkTestEligibility(cid) {
+  try {
+    var sh = ss_().getSheetByName(SH.SCR); var data = sh.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][SC.cid]).trim() === String(cid).trim()) {
+        var status = calcStatus_(data[i]);
+        if (status === 'abnormal' || status === 'referred' || status === 'glasses') 
+          return resp_(true, { eligible: true, student_name: String(data[i][SC.student_name]).trim(), school_name: String(data[i][SC.school_name]).trim(), school_class: String(data[i][SC.school_class]).trim(), age_years: String(data[i][SC.age_years]).trim(), tel: String(data[i][SC.aid]).trim() });
+        else return resp_(true, { eligible: false, student_name: String(data[i][SC.student_name]).trim() });
+      }
+    }
+    return resp_(false, null, 'ไม่พบข้อมูล หรือยังไม่ได้คัดกรองสายตา');
+  } catch (e) { return resp_(false, null, e.message); }
+}
+
+function checkFollowupEligibility(cid) {
+  try {
+    // Step 1: ต้องอยู่ในระบบคัดกรอง + เป็น 'ตัดแว่น' หรือ 'ส่งต่อ'
+    var scrSh = ss_().getSheetByName(SH.SCR); 
+    var scrData = scrSh.getDataRange().getValues();
+    var scrRow = null;
+    for (var i = 1; i < scrData.length; i++) {
+      if (String(scrData[i][SC.cid]).trim() === String(cid).trim()) { scrRow = scrData[i]; break; }
+    }
+    if (!scrRow) return resp_(true, { eligible: false, reason: '❌ ไม่พบข้อมูลในระบบคัดกรอง' });
+    
+    var status = calcStatus_(scrRow);
+    if (status !== 'glasses' && status !== 'referred') {
+      return resp_(true, { eligible: false, reason: '❌ ผู้รับการตรวจรายนี้ไม่ได้รับการวินิจฉัยให้ "ตัดแว่น" หรือ "ส่งต่อ"' });
+    }
+    
+    // Step 2: ต้องผ่าน Post-test
+    var postSh = ss_().getSheetByName(SH.POST);
+    var postData = postSh.getDataRange().getValues();
+    var hasPostTest = false;
+    for (var i = 1; i < postData.length; i++) {
+      if (String(postData[i][TP.cid]).trim() === String(cid).trim()) { hasPostTest = true; break; }
+    }
+    if (!hasPostTest) {
+      return resp_(true, { eligible: false, reason: '⚠️ ยังไม่ได้ทำ Post-test กรุณาทำแบบทดสอบหลังอบรมก่อน' });
+    }
+    
+    // ผ่านครบทุกเงื่อนไข
+    return resp_(true, {
+      eligible: true,
+      student_name: String(scrRow[SC.student_name] || '').trim(),
+      age_years: String(scrRow[SC.age_years] || '').trim(),
+      school_name: String(scrRow[SC.school_name] || '').trim(),
+      school_class: String(scrRow[SC.school_class] || '').trim(),
+      tel: String(scrRow[SC.aid] || '').trim(),
+      status: status
+    });
+  } catch (e) { return resp_(false, null, e.message); }
+}
+
+function saveScreeningData(d) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(15000)) return resp_(false, null, 'ระบบกำลังประมวลผล กรุณารอสักครู่');
+    var session = getSession_(); if (!session.loggedIn) return resp_(false, null, 'กรุณาเข้าสู่ระบบ');
+    if (session.role !== 'admin' && d.hospcode !== session.hospcode) return resp_(false, null, 'ไม่มีสิทธิ์บันทึกข้อมูลในชื่อของ รพ.สต. อื่น');
+    var cid = String(d.cid || '').trim(); if (!/^\d{13}$/.test(cid)) return resp_(false, null, 'เลขบัตรประชาชน 13 หลักเท่านั้น');
+    var sh = ss_().getSheetByName(SH.SCR); var existing = sh.getDataRange().getValues();
+    for (var i = 1; i < existing.length; i++) { if (String(existing[i][SC.cid]).trim() === cid) return resp_(false, null, 'มีข้อมูลเลขบัตรประชาชนนี้อยู่แล้ว (โปรดใช้ปุ่มแก้ไขรายบุคคล)'); }
+    var hcToSave = d.hospcode ? "'" + d.hospcode.replace(/^'/, '') : ''; var sCode = d.school_code || getSchoolCode_(d.school_name);
+    var row = new Array(SC_LEN).fill(''); // ตรวจสอบว่า SC_LEN ต้องเป็น 47
+    row[SC.level_edu] = d.level_edu || ''; row[SC.room] = d.room || ''; row[SC.cid] = cid;
+    row[SC.pname] = d.pname || ''; row[SC.fname] = d.fname || ''; row[SC.lname] = d.lname || ''; row[SC.student_name] = ((d.pname||'') + (d.fname||'') + ' ' + (d.lname||'')).trim();
+    row[SC.birthday] = d.birthday ? toBE_(d.birthday) : ''; row[SC.age_years] = d.age_years || ''; row[SC.sex] = d.sex || '';
+    row[SC.school_class] = String(d.level_edu || '').trim() + String(d.room || '').trim(); row[SC.school_name] = d.school_name || ''; row[SC.unit] = d.unit || ''; 
+    row[SC.screen_date] = d.screen_date ? toBE_(d.screen_date) : "'" + today_(); 
+    row[SC.hospcode] = hcToSave; row[SC.address] = d.address || ''; row[SC.moo] = d.moo || ''; row[SC.aid] = d.aid || '';
+    row[SC.hx_glasses] = d.hx_glasses ? 1 : 0; row[SC.hx_injury] = d.hx_injury ? 1 : 0; row[SC.hx_red_eye] = d.hx_red_eye ? 1 : 0; row[SC.hx_headache] = d.hx_headache ? 1 : 0; row[SC.hx_amblyopia] = d.hx_amblyopia ? 1 : 0; row[SC.hx_family] = d.hx_family ? 1 : 0;
+    row[SC.va_r_naked] = d.va_r_naked || ''; row[SC.va_l_naked] = d.va_l_naked || ''; row[SC.va_r_glasses] = d.va_r_glasses || ''; row[SC.va_l_glasses] = d.va_l_glasses || ''; row[SC.ph_r] = d.ph_r || ''; row[SC.ph_l] = d.ph_l || '';
+    row[SC.va_naked_OU] = d.va_naked_OU || ''; row[SC.va_glasses_OU] = d.va_glasses_OU || '';
+    row[SC.cover_test] = d.cover_test || ''; row[SC.hirschberg] = d.hirschberg || ''; row[SC.color_vision] = d.color_vision || ''; row[SC.stereopsis] = d.stereopsis || '';
+    row[SC.diagnosis] = (d.diagnosis === 'สายตาปกต') ? 'สายตาปกติ' : (d.diagnosis || ''); row[SC.referral] = d.referral || ''; row[SC.examiner] = d.examiner || ''; row[SC.position] = d.position || ''; 
+    row[SC.school_code] = sCode; row[SC.tambon] = d.tambon || ''; row[SC.amphoe] = d.amphoe || ''; row[SC.province] = d.province || 'สมุทรสาคร'; row[SC.remarks] = d.remarks || '';
+    var t = String(d.treatment || '').trim();
+// แปลงชื่อจากไฟล์ JHCIS/Excel ให้ตรงกับในระบบ
+if (t.indexOf('บัตรทอง') > -1) t = 'สิทธิบัตรทอง (30 บาท)';
+else if (t.indexOf('ประกันสังคม') > -1) t = 'สิทธิประกันสังคม';
+else if (t.indexOf('ข้าราชการ') > -1 && t.indexOf('กรมบัญชีกลาง') > -1) t = 'สิทธิข้าราชการ(กรมบัญชีกลาง)';
+else if (t.indexOf('ข้าราชการ') > -1 && t.indexOf('ท้องถิ่น') > -1) t = 'สิทธิข้าราชการ(ท้องถิ่น)';
+// ถ้าหาไม่เจอ ให้คงค่าเดิมไว้หรือเซ็ตเป็นค่าเริ่มต้น
+row[SC.treatment] = t;
+  // แก้ไขตรงนี้: ต้องมั่นใจว่าบันทึกลง Index 46
+    row[SC.nationality] = d.nationality || 'ไทย'; 
+  
+  
+  sh.appendRow(row);
+    if (d.school_name && (d.lat_s || d.lon_s)) {
+        var shSchool = ss_().getSheetByName(SH.SCHOOL); var sData = shSchool.getDataRange().getValues(); var foundS = false;
+        for (var s = 1; s < sData.length; s++) { if (String(sData[s][1]).trim() === String(d.school_name).trim()) { if(d.lat_s) shSchool.getRange(s+1, 5).setValue(d.lat_s); if(d.lon_s) shSchool.getRange(s+1, 6).setValue(d.lon_s); foundS = true; break; } }
+        if (!foundS) shSchool.appendRow([sCode || '', d.school_name, '', '', d.lat_s || '', d.lon_s || '']);
+    }
+
+    // แจ้งเตือนด่วนผ่าน LINE
+    if (d.referral === 'ส่งต่อด่วน (ภายใน 1 สัปดาห์)' || d.diagnosis === 'ความผิดปกติรุนแรงของการมองเห็น') {
+        var alertMsg = '🚨 แจ้งเตือนเคสตาฉุกเฉิน/ส่งต่อด่วน!\n' +
+                       'ชื่อ: ' + ((d.pname||'') + (d.fname||'') + ' ' + (d.lname||'')).trim() + '\n' +
+                       'อายุ: ' + (d.age_years || '-') + ' ปี (ชั้น ' + String(d.level_edu||'').trim() + String(d.room||'').trim() + ')\n' +
+                       'โรงเรียน: ' + (d.school_name || '-') + '\n' +
+                       'รพ.สต.: ' + (hcToSave.replace(/'/g,'') || '-') + '\n' +
+                       'ผลวินิจฉัย: ' + (d.diagnosis || '-') + '\n' +
+                       'VA (ตาเปล่า): ขวา ' + (d.va_r_naked || '-') + ' | ซ้าย ' + (d.va_l_naked || '-') + '\n' +
+                       'หมายเหตุ: ' + (d.remarks || '-');
+        sendLineMessageApi_(alertMsg); 
+    }
+
+    var status = calcStatus_(row);
+    SpreadsheetApp.flush(); return resp_(true, { cid: cid, status: status }, 'บันทึกข้อมูลสำเร็จ');
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function updateScreeningData(d) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(15000)) return resp_(false, null, 'ระบบกำลังประมวลผล กรุณารอสักครู่');
+    var session = getSession_(); if (!session.loggedIn) return resp_(false, null, 'กรุณาเข้าสู่ระบบ');
+    if (session.role !== 'admin' && d.hospcode !== session.hospcode) return resp_(false, null, 'ไม่มีสิทธิ์แก้ไขข้อมูลของ รพ.สต. อื่น');
+    var cid = String(d.cid || '').trim(); if (!/^\d{13}$/.test(cid)) return resp_(false, null, 'เลขบัตรประชาชน 13 หลักเท่านั้น');
+    var sh = ss_().getSheetByName(SH.SCR); var existing = sh.getDataRange().getValues(); var rowIndex = -1;
+    for (var i = 1; i < existing.length; i++) { if (String(existing[i][SC.cid]).trim() === cid) { rowIndex = i + 1; break; } }
+    if (rowIndex === -1) return resp_(false, null, 'ไม่พบข้อมูลที่ต้องการแก้ไข');
+    var hcToSave = d.hospcode ? "'" + d.hospcode.replace(/^'/, '') : ''; var sCode = d.school_code || getSchoolCode_(d.school_name);
+    var row = new Array(SC_LEN).fill('');
+    row[SC.level_edu] = d.level_edu || ''; row[SC.room] = d.room || ''; row[SC.cid] = cid;
+    row[SC.pname] = d.pname || ''; row[SC.fname] = d.fname || ''; row[SC.lname] = d.lname || ''; row[SC.student_name] = ((d.pname||'') + (d.fname||'') + ' ' + (d.lname||'')).trim();
+    row[SC.birthday] = d.birthday ? toBE_(d.birthday) : ''; row[SC.age_years] = d.age_years || ''; row[SC.sex] = d.sex || '';
+    row[SC.school_class] = String(d.level_edu || '').trim() + String(d.room || '').trim(); row[SC.school_name] = d.school_name || ''; row[SC.unit] = d.unit || ''; 
+    row[SC.screen_date] = d.screen_date ? toBE_(d.screen_date) : "'" + today_();
+    row[SC.hospcode] = hcToSave; row[SC.address] = d.address || ''; row[SC.moo] = d.moo || ''; row[SC.aid] = d.aid || '';
+    row[SC.hx_glasses] = d.hx_glasses ? 1 : 0; row[SC.hx_injury] = d.hx_injury ? 1 : 0; row[SC.hx_red_eye] = d.hx_red_eye ? 1 : 0; row[SC.hx_headache] = d.hx_headache ? 1 : 0; row[SC.hx_amblyopia] = d.hx_amblyopia ? 1 : 0; row[SC.hx_family] = d.hx_family ? 1 : 0;
+    row[SC.va_r_naked] = d.va_r_naked || ''; row[SC.va_l_naked] = d.va_l_naked || ''; row[SC.va_r_glasses] = d.va_r_glasses || ''; row[SC.va_l_glasses] = d.va_l_glasses || ''; row[SC.ph_r] = d.ph_r || ''; row[SC.ph_l] = d.ph_l || '';
+    row[SC.va_naked_OU] = d.va_naked_OU || ''; row[SC.va_glasses_OU] = d.va_glasses_OU || '';
+    row[SC.cover_test] = d.cover_test || ''; row[SC.hirschberg] = d.hirschberg || ''; row[SC.color_vision] = d.color_vision || ''; row[SC.stereopsis] = d.stereopsis || '';
+    row[SC.diagnosis] = (d.diagnosis === 'สายตาปกต') ? 'สายตาปกติ' : (d.diagnosis || ''); row[SC.referral] = d.referral || ''; row[SC.examiner] = d.examiner || ''; row[SC.position] = d.position || ''; 
+    row[SC.school_code] = sCode; row[SC.tambon] = d.tambon || ''; row[SC.amphoe] = d.amphoe || ''; row[SC.province] = d.province || 'สมุทรสาคร'; row[SC.remarks] = d.remarks || '';
+    var t = String(d.treatment || '').trim();
+// แปลงชื่อจากไฟล์ JHCIS/Excel ให้ตรงกับในระบบ
+if (t.indexOf('บัตรทอง') > -1) t = 'สิทธิบัตรทอง (30 บาท)';
+else if (t.indexOf('ประกันสังคม') > -1) t = 'สิทธิประกันสังคม';
+else if (t.indexOf('ข้าราชการ') > -1 && t.indexOf('กรมบัญชีกลาง') > -1) t = 'สิทธิข้าราชการ(กรมบัญชีกลาง)';
+else if (t.indexOf('ข้าราชการ') > -1 && t.indexOf('ท้องถิ่น') > -1) t = 'สิทธิข้าราชการ(ท้องถิ่น)';
+// ถ้าหาไม่เจอ ให้คงค่าเดิมไว้หรือเซ็ตเป็นค่าเริ่มต้น
+row[SC.treatment] = t;
+  // แก้ไขตรงนี้: ต้องเพิ่มบรรทัดนี้ลงไป
+  row[SC.nationality] = d.nationality || 'ไทย'; 
+  
+  sh.getRange(rowIndex, 1, 1, SC_LEN).setValues([row]);
+    if (d.referral === 'ส่งต่อด่วน (ภายใน 1 สัปดาห์)' || d.diagnosis === 'ความผิดปกติรุนแรงของการมองเห็น') {
+        var alertMsg = '🚨 แจ้งเตือนเคสตาฉุกเฉิน/ส่งต่อด่วน!\n' +
+                       'ชื่อ: ' + ((d.pname||'') + (d.fname||'') + ' ' + (d.lname||'')).trim() + '\n' +
+                       'อายุ: ' + (d.age_years || '-') + ' ปี (ชั้น ' + String(d.level_edu||'').trim() + String(d.room||'').trim() + ')\n' +
+                       'โรงเรียน: ' + (d.school_name || '-') + '\n' +
+                       'รพ.สต.: ' + (hcToSave.replace(/'/g,'') || '-') + '\n' +
+                       'ผลวินิจฉัย: ' + (d.diagnosis || '-') + '\n' +
+                       'VA (ตาเปล่า): ขวา ' + (d.va_r_naked || '-') + ' | ซ้าย ' + (d.va_l_naked || '-') + '\n' +
+                       'หมายเหตุ: ' + (d.remarks || '-');
+        sendLineMessageApi_(alertMsg); 
+    }
+    var status = calcStatus_(row);
+    SpreadsheetApp.flush(); return resp_(true, { cid: cid, status: status }, 'อัปเดตข้อมูลสำเร็จ');
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function importScreeningData(csvDataArray) {
+  var lock = LockService.getScriptLock();
+  try {
+     if(!lock.tryLock(20000)) return resp_(false, null, 'ระบบกำลังยุ่งอยู่ กรุณาลองใหม่ (Timeout)');
+     var session = getSession_(); if(!session.loggedIn) return resp_(false, null, 'กรุณาเข้าสู่ระบบ');
+     var sh = ss_().getSheetByName(SH.SCR); var existing = sh.getDataRange().getValues(); var existingCids = {};
+     for(var i=1; i<existing.length; i++) existingCids[String(existing[i][SC.cid]).trim()] = true;
+     var newRows = []; var added = 0; var skipDup = 0; var skipFormat = 0; var skipHosp = 0;
+     var sessionHc = String(session.hospcode).trim(); if(sessionHc && sessionHc !== 'all') { sessionHc = ("00000" + sessionHc).slice(-5); }
+     
+     for(var i=0; i<csvDataArray.length; i++) {
+        var d = csvDataArray[i]; var cid = String(d[SC.cid] || '').replace(/^[="']+|["']+$/g, '').replace(/\D/g, '').trim();
+        if(!/^\d{13}$/.test(cid)) { skipFormat++; continue; }
+        if(existingCids[cid]) { skipDup++; continue; }
+        var hc = String(d[SC.hospcode] || '').trim().replace(/^[="']+|["']+$/g, '');
+        if(hc) hc = ("00000" + hc).slice(-5);
+        if(session.role !== 'admin' && hc !== sessionHc) { skipHosp++; continue; } 
+        var row = new Array(SC_LEN).fill('');
+        for(var j=0; j<SC_LEN; j++) {
+           if (j === SC.cid) { row[j] = cid; } else if (j === SC.hospcode) { row[j] = hc ? "'" + hc : ''; } 
+           else if (j === SC.birthday || j === SC.screen_date) { row[j] = d[j] ? toBE_(d[j]) : ''; }
+           else { row[j] = String(d[j] || '').replace(/^[="']+|["']+$/g, '').trim(); }
+        }
+        if(!row[SC.school_code]) row[SC.school_code] = getSchoolCode_(row[SC.school_name]);
+        // ถ้าไม่มีสัญชาติ ให้ใส่ไทย
+        if(!row[SC.nationality]) row[SC.nationality] = 'ไทย';
+        newRows.push(row); existingCids[cid] = true; added++;
+     }
+     // Insert with batch for faster processing
+     if(newRows.length > 0) { sh.getRange(existing.length + 1, 1, newRows.length, SC_LEN).setValues(newRows); }
+     SpreadsheetApp.flush();
+     var msg = 'นำเข้าสำเร็จ ' + added + ' รายการ';
+     if (skipDup > 0 || skipFormat > 0 || skipHosp > 0) { msg += '\n(พบปัญหา: ข้อมูลซ้ำ ' + skipDup + ', เลขบัตรผิด ' + skipFormat + ', ผิด รพ.สต. ' + skipHosp + ')'; }
+     return resp_(true, null, msg);
+  } catch(e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function getScreeningRecord(cid) {
+  try {
+    var sh = ss_().getSheetByName(SH.SCR); var data = sh.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][SC.cid]).trim() === String(cid).trim()) {
+        var r = data[i]; var out = {};
+        for (var key in SC) { out[key] = String(r[SC[key]] || ''); }
+        out.hospcode = out.hospcode.replace(/^'/, ''); out.screen_date = formatDate_(r[SC.screen_date]); out.birthday = formatDate_(r[SC.birthday]);
+        out.nationality = r[SC.nationality] || 'ไทย';
+        return resp_(true, out, 'พบข้อมูล');
+      }
+    }
+    return resp_(false, null, 'ไม่พบข้อมูล');
+  } catch (e) { return resp_(false, null, e.message); }
+}
+
+function saveLinkData(d) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล กรุณารอสักครู่');
+    
+    var session = getSession_(); 
+    if (session.role !== 'admin') return resp_(false, null, 'ไม่มีสิทธิ์');
+    
+    var sh = ss_().getSheetByName(SH.LINKS);
+    if (!sh) { 
+      sh = ss_().insertSheet(SH.LINKS); 
+      sh.appendRow(['ID', 'Label', 'URL', 'IconURL', 'Order']); 
+    }
+    
+    var data = sh.getDataRange().getValues();
+    if (d.id) {
+      for(var i=1; i<data.length; i++) {
+        if(String(data[i][0]) === String(d.id)) { 
+          sh.getRange(i+1, 2, 1, 4).setValues([[d.label, d.url, d.icon, d.order || 0]]); 
+          SpreadsheetApp.flush();
+          return resp_(true, null, 'แก้ไขลิ้งก์สำเร็จ'); 
+        }
+      }
+    } else {
+      var newId = 'L' + Date.now(); 
+      sh.appendRow([newId, d.label, d.url, d.icon, d.order || 0]); 
+      SpreadsheetApp.flush();
+      return resp_(true, null, 'เพิ่มลิ้งก์สำเร็จ');
+    }
+    return resp_(false, null, 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+  } catch(e) { 
+    return resp_(false, null, e.message); 
+  } finally { 
+    lock.releaseLock(); 
+  }
+}
+
+function deleteLinkData(id) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล กรุณารอสักครู่');
+    
+    var session = getSession_(); 
+    if (session.role !== 'admin') return resp_(false, null, 'ไม่มีสิทธิ์');
+    
+    var sh = ss_().getSheetByName(SH.LINKS); 
+    if (!sh) return resp_(false, null, 'ไม่พบฐานข้อมูล');
+    
+    var data = sh.getDataRange().getValues();
+    for(var i=data.length-1; i>=1; i--) { 
+      if(String(data[i][0]) === String(id)) { 
+        sh.deleteRow(i+1); 
+        SpreadsheetApp.flush();
+        return resp_(true, null, 'ลบลิ้งก์สำเร็จ'); 
+      } 
+    }
+    return resp_(false, null, 'ไม่พบข้อมูล');
+  } catch(e) { 
+    return resp_(false, null, e.message); 
+  } finally { 
+    lock.releaseLock(); 
+  }
+}
+
+function getPrintData(cids) {
+  try {
+    var out = {}; cids.forEach(function(c) { out[c] = { scr: null, pre: null, post: null, sat: null, beh: null, fup: null }; });
+    var scrData = sheetData_(SH.SCR);
+    scrData.forEach(function(r) {
+      var c = String(r[SC.cid]).trim();
+      if (out[c]) {
+        var obj = {}; for (var k in SC) obj[k] = r[SC[k]] || '';
+        obj.birthday = formatDate_(obj.birthday); obj.screen_date = formatDate_(obj.screen_date); out[c].scr = obj;
+      }
+    });
+    sheetData_(SH.PRE).forEach(function(r) { var c = String(r[TP.cid]).trim(); if (out[c]) out[c].pre = { q1:r[1],q2:r[2],q3:r[3],q4:r[4],q5:r[5],q6:r[6],q7:r[7],q8:r[8],q9:r[9],q10:r[10],total:r[11] }; });
+    sheetData_(SH.POST).forEach(function(r) { var c = String(r[TP.cid]).trim(); if (out[c]) out[c].post = { q1:r[1],q2:r[2],q3:r[3],q4:r[4],q5:r[5],q6:r[6],q7:r[7],q8:r[8],q9:r[9],q10:r[10],total:r[11] }; });
+    sheetData_(SH.SAT).forEach(function(r) { var c = String(r[SA.cid] || '').trim(); if (c && out[c]) { out[c].sat = { q1:r[SA.q1],q2:r[SA.q2],q3:r[SA.q3],q4:r[SA.q4],q5:r[SA.q5],q6:r[SA.q6],q7:r[SA.q7],q8:r[SA.q8],q9:r[SA.q9],q10:r[SA.q10], comment_s:r[SA.comment_s], comment_i:r[SA.comment_i], recommend:r[SA.recommend] }; } });
+    sheetData_(SH.BEH).forEach(function(r) {
+      var c = String(r[0]).trim();
+      if (out[c]) out[c].beh = { q_device:r[1], q_purpose:r[2], q_time_wk_morn:r[3], q_time_wk_noon:r[4], q_time_wk_eve:r[5], q_time_we_morn:r[6], q_time_we_noon:r[7], q_time_we_eve:r[8], q_dist:r[9], q_rest:r[10], q_blue:r[11], q_symptom:r[12], comment:r[13] };
+    });
+    sheetData_(SH.FUP).forEach(function(r) {
+      var c = String(r[0]).trim();
+      if (out[c]) out[c].fup = { 
+        tel:r[1], duration:r[2], f_board:r[3], f_book:r[4], f_screen:r[5], f_sport:r[6], f_days:r[7],
+        c_status:r[8], c_clarity:r[9], q_board:r[10], q_focus:r[11], 
+        q_confidence:r[12]||'', q_headache:r[13]||'', reasons:r[14]||'', overall_sat:r[15]||'', comment:r[16]||''
+      };
+    });
+    var settings = {}; sheetData_(SH.SETTINGS).forEach(function (r) { if (r[0]) settings[String(r[0]).trim()] = r[1]; });
+    return resp_(true, { rows: out, logo_id: settings.logo_id || '' }, 'ดึงข้อมูลสำเร็จ');
+  } catch(e) { return resp_(false, null, e.message); }
+}
+
+function saveSatisfactionData(d) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล');
+    var session = getSession_(); if (session.loggedIn && session.role !== 'admin' && d.hospcode !== session.hospcode) return resp_(false, null, 'ไม่มีสิทธิ์ประเมินในชื่อ รพ.สต. อื่น');
+    var hcToSave = d.hospcode ? "'" + d.hospcode.replace(/^'/, '') : ''; var sh = ss_().getSheetByName(SH.SAT); var row = new Array(20).fill('');
+    row[SA.eval_sex]=d.eval_sex||''; row[SA.eval_age]=d.eval_age||''; row[SA.eval_class]=d.eval_class||'';
+    row[SA.q1]=Number(d.q1)||5; row[SA.q2]=Number(d.q2)||5; row[SA.q3]=Number(d.q3)||5; row[SA.q4]=Number(d.q4)||5; row[SA.q5]=Number(d.q5)||5; row[SA.q6]=Number(d.q6)||5; row[SA.q7]=Number(d.q7)||5; row[SA.q8]=Number(d.q8)||5; row[SA.q9]=Number(d.q9)||5; row[SA.q10]=Number(d.q10)||5;
+    row[SA.comment_s]=d.comment_s||''; row[SA.comment_i]=d.comment_i||''; row[SA.school_name]=d.school_name||''; row[SA.hospcode]=hcToSave; row[SA.recommend]=d.recommend||'';
+    row[SA.eval_type] = d.eval_type || ''; row[SA.cid] = d.cid || ''; 
+    sh.appendRow(row);
+    if (d.cid && String(d.eval_type) === 'นักเรียน') {
+       var shScr = ss_().getSheetByName(SH.SCR); var scrData = shScr.getDataRange().getValues();
+       for (var i = 1; i < scrData.length; i++) {
+         if (String(scrData[i][SC.cid]).trim() === String(d.cid).trim()) {
+            if(d.eval_age) shScr.getRange(i+1, SC.age_years+1).setValue(d.eval_age);
+            if(d.eval_sex) shScr.getRange(i+1, SC.sex+1).setValue(d.eval_sex);
+            if(d.eval_class) shScr.getRange(i+1, SC.school_class+1).setValue(d.eval_class);
+            if(d.school_name) shScr.getRange(i+1, SC.school_name+1).setValue(d.school_name);
+            break;
+         }
+       }
+    }
+    SpreadsheetApp.flush(); return resp_(true, null, 'บันทึกและอัปเดตข้อมูลสำเร็จ');
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function savePreTest(d) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบประมวลผลอยู่');
+    var sh = ss_().getSheetByName(SH.PRE); var ans = [d.q1,d.q2,d.q3,d.q4,d.q5,d.q6,d.q7,d.q8,d.q9,d.q10];
+    var total = calcTestScore_(ans); sh.appendRow([d.cid, d.q1,d.q2,d.q3,d.q4,d.q5,d.q6,d.q7,d.q8,d.q9,d.q10, total]);
+    SpreadsheetApp.flush(); return resp_(true, { total: total }, 'บันทึก Pre-test สำเร็จ');
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function savePostTest(d) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบประมวลผลอยู่');
+    var sh = ss_().getSheetByName(SH.POST); var ans = [d.q1,d.q2,d.q3,d.q4,d.q5,d.q6,d.q7,d.q8,d.q9,d.q10];
+    var total = calcTestScore_(ans); sh.appendRow([d.cid, d.q1,d.q2,d.q3,d.q4,d.q5,d.q6,d.q7,d.q8,d.q9,d.q10, total]);
+    SpreadsheetApp.flush(); return resp_(true, { total: total }, 'บันทึก Post-test สำเร็จ');
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function saveFollowupData(d) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบประมวลผลอยู่');
+    
+    // เช็คสิทธิ์ก่อนบันทึก (defense in depth)
+    var checkResult = JSON.parse(checkFollowupEligibility(d.cid));
+    if (!checkResult.ok || !checkResult.data.eligible) {
+      return resp_(false, null, checkResult.data ? checkResult.data.reason : 'ตรวจสอบสิทธิ์ไม่ผ่าน');
+    }
+    
+    var sh = ss_().getSheetByName(SH.FUP);
+    if (!sh) { 
+      sh = ss_().insertSheet(SH.FUP); 
+      sh.appendRow(['cid','tel','duration','f_board','f_book','f_screen','f_sport','f_days','c_status','c_clarity','q_board','q_focus','q_confidence','q_headache','reasons','overall_sat','comment','timestamp']); 
+    }
+    
+    var existing = sh.getDataRange().getValues(); 
+    var rowIndex = -1;
+    for(var i=1; i<existing.length; i++) { 
+      if(String(existing[i][0]).trim() === String(d.cid).trim()) { rowIndex = i+1; break; } 
+    }
+    
+    var row = [
+      d.cid, d.tel || '', d.duration || '', 
+      d.f_board || '', d.f_book || '', d.f_screen || '', d.f_sport || '', d.f_days || '',
+      d.c_status || '', d.c_clarity || '',
+      d.q_board || '', d.q_focus || '', d.q_confidence || '', d.q_headache || '',
+      d.reasons || '', d.overall_sat || '', d.comment || '',
+      "'" + today_()
+    ];
+    
+    if(rowIndex > -1) { sh.getRange(rowIndex, 1, 1, 18).setValues([row]); }
+    else { sh.appendRow(row); }
+    
+    SpreadsheetApp.flush(); 
+    return resp_(true, null, 'บันทึกแบบติดตามผลฯ สำเร็จ');
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function saveBehaviorData(d) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล');
+    var sh = ss_().getSheetByName(SH.BEH);
+    if(!sh) {
+        sh = ss_().insertSheet(SH.BEH);
+        sh.appendRow(['cid', 'q_device', 'q_purpose', 'q_time_wk_morn', 'q_time_wk_noon', 'q_time_wk_eve', 'q_time_we_morn', 'q_time_we_noon', 'q_time_we_eve', 'q_dist', 'q_rest', 'q_blue', 'q_symptom', 'q_comment', 'timestamp']);
+    }
+    var existing = sh.getDataRange().getValues();
+    var rowIndex = -1;
+    for(var i=1; i<existing.length; i++) {
+        if(String(existing[i][0]).trim() === String(d.cid).trim()) { rowIndex = i+1; break; }
+    }
+    var row = [d.cid, d.q_device, d.q_purpose, d.q_time_wk_morn, d.q_time_wk_noon, d.q_time_wk_eve, d.q_time_we_morn, d.q_time_we_noon, d.q_time_we_eve, d.q_dist, d.q_rest, d.q_blue, d.q_symptom, d.comment, "'" + today_()];
+    if(rowIndex > -1) {
+        sh.getRange(rowIndex, 1, 1, 15).setValues([row]);
+    } else {
+        sh.appendRow(row);
+    }
+    SpreadsheetApp.flush(); return resp_(true, null, 'บันทึกแบบสอบถามพฤติกรรมฯ สำเร็จ');
+  } catch(e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function deleteRecord(sheetName, cid) {
+  var session = getSession_(); if (!session.loggedIn) return resp_(false, null, 'กรุณาเข้าสู่ระบบ');
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(15000)) return resp_(false, null, 'ระบบกำลังประมวลผล');
+    var sh = ss_().getSheetByName(sheetName); var data = sh.getDataRange().getValues();
+    var cidCol = (sheetName === SH.SCR) ? SC.cid : TP.cid;
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (String(data[i][cidCol]).trim() === String(cid).trim()) {
+        if (sheetName === SH.SCR && session.role !== 'admin' && String(data[i][SC.hospcode]).trim().replace(/^'/, '') !== session.hospcode) return resp_(false, null, 'ไม่มีสิทธิ์');
+        sh.deleteRow(i + 1); SpreadsheetApp.flush(); return resp_(true, null, 'ลบข้อมูลสำเร็จ');
+      }
+    }
+    return resp_(false, null, 'ไม่พบข้อมูล');
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function updateHospLocation(d) {
+  var session = getSession_(); if (!session.loggedIn) return resp_(false, null, 'กรุณาเข้าสู่ระบบ');
+  var lock = LockService.getScriptLock();
+  try {
+      if (!lock.tryLock(15000)) return resp_(false, null, 'ระบบกำลังประมวลผลการอัปโหลด');
+      var sh = ss_().getSheetByName(SH.HOSP); var data = sh.getDataRange().getValues();
+      var hospcode = d.hospcode || session.hospcode;
+      if (session.role !== 'admin' && hospcode !== session.hospcode) return resp_(false, null, 'ไม่มีสิทธิ์จัดการข้อมูลของ รพ.สต. อื่น');
+      var picUrls = [];
+      if (d.pics && d.pics.length > 0) {
+        try {
+          for (var j = 0; j < d.pics.length; j++) {
+            var p = d.pics[j]; var blob = Utilities.newBlob(Utilities.base64Decode(p.data), p.mimeType, p.name);
+            var fileMetadata = { name: p.name, parents: [FOLDER_ID] }; var driveFile = Drive.Files.create(fileMetadata, blob, { fields: 'id' });
+            var fileId = driveFile.id; Drive.Permissions.create({ role: 'reader', type: 'anyone' }, fileId, { fields: 'id' });
+            picUrls.push('https://drive.google.com/file/d/' + fileId + '/view?usp=sharing');
+          }
+        } catch(apiErr) { return resp_(false, null, 'ข้อผิดพลาด: โปรดตรวจสอบว่าเปิดใช้ Drive API (v3) แล้วหรือไม่ (' + apiErr.message + ')'); }
+      }
+      for(var i=1; i<data.length; i++) {
+          if(String(data[i][0]).trim().replace(/^'/, '') === hospcode.replace(/^'/, '')) {
+              if(d.lat_h) sh.getRange(i+1, 6).setValue(d.lat_h);
+              if(d.lon_h) sh.getRange(i+1, 7).setValue(d.lon_h);
+              if (picUrls.length > 0) { var oldUrls = String(data[i][7] || '').trim(); var newUrls = oldUrls ? oldUrls + '\n' + picUrls.join('\n') : picUrls.join('\n'); sh.getRange(i+1, 8).setValue(newUrls); }
+              SpreadsheetApp.flush(); return resp_(true, null, 'บันทึกการเปลี่ยนแปลงสำเร็จ');
+          }
+      }
+      return resp_(false, null, 'ไม่พบรหัส รพ.สต. ' + hospcode);
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function deleteHospFileLink(hospcode, urlToRemove) {
+  var session = getSession_(); if (!session.loggedIn) return resp_(false, null, 'กรุณาเข้าสู่ระบบ');
+  if (session.role !== 'admin' && session.hospcode !== hospcode) return resp_(false, null, 'คุณไม่มีสิทธิ์ลบลิ้งก์ของ รพ.สต. อื่น');
+  var lock = LockService.getScriptLock();
+  try {
+      if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล กรุณารอสักครู่');
+      var sh = ss_().getSheetByName(SH.HOSP); var data = sh.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+          if (String(data[i][0]).trim().replace(/^'/, '') === hospcode.replace(/^'/, '')) {
+              var currentUrls = String(data[i][7] || '').trim(); if (!currentUrls) return resp_(false, null, 'ไม่พบลิ้งก์ที่ต้องการลบ');
+              var urlArray = currentUrls.split('\n').map(function(u){ return u.trim(); }).filter(Boolean);
+              var newUrlArray = urlArray.filter(function(u) { return u !== urlToRemove; });
+              if (urlArray.length === newUrlArray.length) return resp_(false, null, 'ไม่พบลิ้งก์ที่ตรงกันในระบบ');
+              sh.getRange(i + 1, 8).setValue(newUrlArray.join('\n')); SpreadsheetApp.flush();
+              try { var match = urlToRemove.match(/\/d\/([a-zA-Z0-9_-]+)/) || urlToRemove.match(/id=([a-zA-Z0-9_-]+)/); var fileId = match ? match[1] : ''; if (fileId) Drive.Files.remove(fileId); } catch(e) { }
+              return resp_(true, null, 'ลบลิ้งก์และไฟล์สำเร็จ');
+          }
+      }
+      return resp_(false, null, 'ไม่พบรหัส รพ.สต.');
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function saveVideoItem(d) {
+  var session = getSession_(); 
+  if (session.role !== 'admin') return resp_(false, null, 'ไม่มีสิทธิ์จัดการวิดีโอ');
+  var lock = LockService.getScriptLock();
+  try {
+      if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล กรุณารอสักครู่');
+      var sh = ss_().getSheetByName(SH.VIDEO);
+      if (!sh) { sh = ss_().insertSheet(SH.VIDEO); sh.appendRow(['ID', 'Label', 'URL', 'Order']); }
+      var data = sh.getDataRange().getValues();
+      if (d.id) {
+          for (var i = 1; i < data.length; i++) {
+              if (String(data[i][0]).trim() === String(d.id)) {
+                  sh.getRange(i + 1, 2, 1, 3).setValues([[d.label, d.url, d.order || 0]]); 
+                  return resp_(true, null, 'แก้ไขลิ้งก์วิดีโอสำเร็จ');
+              }
+          }
+          return resp_(false, null, 'ไม่พบวิดีโอที่ต้องการแก้ไข');
+      } else {
+          var newId = 'V' + Date.now();
+          sh.appendRow([newId, d.label, d.url, d.order || 0]); 
+          return resp_(true, null, 'เพิ่มลิ้งก์วิดีโอสำเร็จ');
+      }
+  } catch(e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function deleteVideoItem(id) {
+  var session = getSession_(); 
+  if (session.role !== 'admin') return resp_(false, null, 'ไม่มีสิทธิ์');
+  var lock = LockService.getScriptLock();
+  try {
+      if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล กรุณารอสักครู่');
+      var sh = ss_().getSheetByName(SH.VIDEO);
+      if (!sh) return resp_(false, null, 'ไม่พบฐานข้อมูลวิดีโอ');
+      var data = sh.getDataRange().getValues();
+      for(var i=data.length-1; i>=1; i--) { 
+          if(String(data[i][0]) === String(id)) { 
+              sh.deleteRow(i+1); 
+              return resp_(true, null, 'ลบวิดีโอสำเร็จ'); 
+          } 
+      }
+      return resp_(false, null, 'ไม่พบข้อมูล');
+  } catch(e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function changePassword(oldPwd, newPwd) {
+  var lock = LockService.getScriptLock();
+  try {
+    if(!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล กรุณารอสักครู่');
+    var session = getSession_();
+    if (!session.loggedIn) return resp_(false, null, 'กรุณาเข้าสู่ระบบ');
+    var sh = ss_().getSheetByName(SH.USER);
+    if (!sh) return resp_(false, null, 'ไม่พบฐานข้อมูลผู้ใช้');
+    var data = sh.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === session.user) {
+        if (String(data[i][1]).trim() !== String(oldPwd).trim()) {
+          return resp_(false, null, 'รหัสผ่านเดิมไม่ถูกต้อง');
+        }
+        sh.getRange(i + 1, 2).setValue(String(newPwd).trim());
+        return resp_(true, null, 'เปลี่ยนรหัสผ่านสำเร็จ');
+      }
+    }
+    return resp_(false, null, 'ไม่พบผู้ใช้นี้ในระบบ');
+  } catch(e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+// ========== ADD: Get/Delete สำหรับ Behavior & Followup (v6.2) ==========
+function getBehaviorRecord(cid) {
+  try {
+    var sh = ss_().getSheetByName(SH.BEH); 
+    if(!sh) return resp_(false, null, 'ไม่พบฐานข้อมูลพฤติกรรม');
+    var data = sh.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(cid).trim()) {
+        var r = data[i];
+        return resp_(true, {
+          cid: r[0], q_device: r[1], q_purpose: r[2],
+          q_time_wk_morn: r[3], q_time_wk_noon: r[4], q_time_wk_eve: r[5],
+          q_time_we_morn: r[6], q_time_we_noon: r[7], q_time_we_eve: r[8],
+          q_dist: r[9], q_rest: r[10], q_blue: r[11],
+          q_symptom: r[12], comment: r[13]
+        }, 'พบข้อมูล');
+      }
+    }
+    return resp_(false, null, 'ไม่พบข้อมูล');
+  } catch (e) { return resp_(false, null, e.message); }
+}
+
+function getFollowupRecord(cid) {
+  try {
+    var sh = ss_().getSheetByName(SH.FUP); 
+    if(!sh) return resp_(false, null, 'ไม่พบฐานข้อมูลติดตามผล');
+    var data = sh.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(cid).trim()) {
+        var r = data[i];
+        return resp_(true, {
+          cid: r[0], tel: r[1], duration: r[2],
+          f_board: r[3], f_book: r[4], f_screen: r[5], f_sport: r[6], f_days: r[7],
+          c_status: r[8], c_clarity: r[9],
+          q_board: r[10], q_focus: r[11], q_confidence: r[12], q_headache: r[13],
+          reasons: r[14], overall_sat: r[15], comment: r[16]
+        }, 'พบข้อมูล');
+      }
+    }
+    return resp_(false, null, 'ไม่พบข้อมูล');
+  } catch (e) { return resp_(false, null, e.message); }
+}
+
+function deleteBehaviorRecord(cid) {
+  var session = getSession_(); 
+  if (!session.loggedIn) return resp_(false, null, 'กรุณาเข้าสู่ระบบ');
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล');
+    var sh = ss_().getSheetByName(SH.BEH); 
+    if(!sh) return resp_(false, null, 'ไม่พบฐานข้อมูล');
+    var data = sh.getDataRange().getValues();
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (String(data[i][0]).trim() === String(cid).trim()) {
+        sh.deleteRow(i + 1); 
+        SpreadsheetApp.flush(); 
+        return resp_(true, null, 'ลบข้อมูลพฤติกรรมสำเร็จ');
+      }
+    }
+    return resp_(false, null, 'ไม่พบข้อมูล');
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function deleteFollowupRecord(cid) {
+  var session = getSession_(); 
+  if (!session.loggedIn) return resp_(false, null, 'กรุณาเข้าสู่ระบบ');
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล');
+    var sh = ss_().getSheetByName(SH.FUP); 
+    if(!sh) return resp_(false, null, 'ไม่พบฐานข้อมูล');
+    var data = sh.getDataRange().getValues();
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (String(data[i][0]).trim() === String(cid).trim()) {
+        sh.deleteRow(i + 1); 
+        SpreadsheetApp.flush(); 
+        return resp_(true, null, 'ลบข้อมูลติดตามผลสำเร็จ');
+      }
+    }
+    return resp_(false, null, 'ไม่พบข้อมูล');
+  } catch (e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function saveLineSettings(token, target) {
+  var lock = LockService.getScriptLock();
+  try {
+    if(!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล');
+    var session = getSession_(); if(session.role !== 'admin') return resp_(false, null, 'ไม่มีสิทธิ์');
+    var sh = ss_().getSheetByName(SH.SETTINGS); var data = sh.getDataRange().getValues();
+    var foundToken = false, foundTarget = false;
+    for(var i=1; i<data.length; i++) {
+      if(data[i][0] === 'LINE_TOKEN') { sh.getRange(i+1, 2).setValue(token); foundToken = true; }
+      if(data[i][0] === 'LINE_TARGET') { sh.getRange(i+1, 2).setValue(target); foundTarget = true; }
+    }
+    if(!foundToken) sh.appendRow(['LINE_TOKEN', token]);
+    if(!foundTarget) sh.appendRow(['LINE_TARGET', target]);
+    return resp_(true, null, 'บันทึกการตั้งค่า LINE สำเร็จ');
+  } catch(e) { return resp_(false, null, e.message); } finally { lock.releaseLock(); }
+}
+
+function testLineMsg() {
+  var s = getLineSettings_();
+  if(!s.LINE_TOKEN || !s.LINE_TARGET) return resp_(false, null, 'กรุณาตั้งค่า Token และ Target ID ก่อนทดสอบ');
+  sendLineMessageApi_('🟢 ทดสอบระบบแจ้งเตือน โครงการเด็กไทยสายตาดี\nการตั้งค่าของคุณถูกต้อง และพร้อมใช้งานแล้ว!');
+  return resp_(true, null, 'ส่งข้อความทดสอบสำเร็จ โปรดตรวจสอบใน LINE ของท่าน');
+}
+
+// ==========================================
+// 🚀 REST API ROUTER (สำหรับรับข้อมูลจาก GitHub Pages)
+// ==========================================
+// ==========================================
+// 🎨 ตกแต่งจอ: บันทึก/อ่านค่า settings (v6.4)
+// ==========================================
+function saveSetting(key, value) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(10000)) return resp_(false, null, 'ระบบกำลังประมวลผล');
+    var session = getSession_();
+    if (session.role !== 'admin') return resp_(false, null, 'ไม่มีสิทธิ์');
+    if (!key) return resp_(false, null, 'กรุณาระบุ key');
+    
+    var sh = ss_().getSheetByName(SH.SETTINGS);
+    if (!sh) { sh = ss_().insertSheet(SH.SETTINGS); sh.appendRow(['Key', 'Value']); }
+    
+    var data = sh.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(key).trim()) {
+        sh.getRange(i + 1, 2).setValue(value || '');
+        SpreadsheetApp.flush();
+        return resp_(true, { key: key, value: value }, 'อัปเดตการตั้งค่าสำเร็จ');
+      }
+    }
+    sh.appendRow([key, value || '']);
+    SpreadsheetApp.flush();
+    return resp_(true, { key: key, value: value }, 'เพิ่มการตั้งค่าสำเร็จ');
+  } catch (e) { 
+    return resp_(false, null, e.message); 
+  } finally { 
+    lock.releaseLock(); 
+  }
+}
+
+function doGet(e) { return ContentService.createTextOutput("✅ API is running. Please access via GitHub Pages.").setMimeType(ContentService.MimeType.TEXT); }
+
+function doPost(e) {
+  try {
+    var body = JSON.parse(e.postData.contents);
+    var action = body.action;
+    var data = body.data || {};
+    var result;
+
+    // --- ตรวจสอบว่าหน้าเว็บสั่งให้ฟังก์ชันไหนทำงาน ---
+    if (action === 'getInitData') result = getInitData();
+    else if (action === 'login') result = login(data.user, data.pass);
+    else if (action === 'logout') result = logout();
+    else if (action === 'getDashboardData') result = getDashboardData(data);
+    else if (action === 'getBehaviorDashboard') result = getBehaviorDashboard(data);
+    else if (action === 'getFollowupDashboard') result = getFollowupDashboard(data);
+    else if (action === 'saveScreeningData') result = saveScreeningData(data);
+    else if (action === 'updateScreeningData') result = updateScreeningData(data);
+    else if (action === 'importScreeningData') result = importScreeningData(data); // data is array
+    else if (action === 'getScreeningRecord') result = getScreeningRecord(data.cid);
+    else if (action === 'saveLinkData') result = saveLinkData(data);
+    else if (action === 'deleteLinkData') result = deleteLinkData(data.id);
+    else if (action === 'getPrintData') result = getPrintData(data); // data is array of cids
+    else if (action === 'saveSatisfactionData') result = saveSatisfactionData(data);
+    else if (action === 'savePreTest') result = savePreTest(data);
+    else if (action === 'savePostTest') result = savePostTest(data);
+    else if (action === 'saveFollowupData') result = saveFollowupData(data);
+    else if (action === 'saveBehaviorData') result = saveBehaviorData(data);
+    else if (action === 'deleteRecord') result = deleteRecord(data.sheetName, data.cid);
+    else if (action === 'updateHospLocation') result = updateHospLocation(data);
+    else if (action === 'deleteHospFileLink') result = deleteHospFileLink(data.hospcode, data.urlToRemove);
+    else if (action === 'saveVideoItem') result = saveVideoItem(data);
+    else if (action === 'deleteVideoItem') result = deleteVideoItem(data.id);
+    else if (action === 'changePassword') result = changePassword(data.oldPwd, data.newPwd);
+    else if (action === 'getBehaviorRecord') result = getBehaviorRecord(data.cid);
+    else if (action === 'getFollowupRecord') result = getFollowupRecord(data.cid);
+    else if (action === 'deleteBehaviorRecord') result = deleteBehaviorRecord(data.cid);
+    else if (action === 'deleteFollowupRecord') result = deleteFollowupRecord(data.cid);
+    else if (action === 'saveLineSettings') result = saveLineSettings(data.token, data.target);
+    else if (action === 'testLineMsg') result = testLineMsg();
+    else if (action === 'checkTestEligibility') result = checkTestEligibility(data.cid);
+    else if (action === 'checkFollowupEligibility') result = checkFollowupEligibility(data.cid);
+    // --- เพิ่มคำสั่งสำหรับ Health Calm UI API ---
+    else if (action === 'saveSetting') result = saveSetting(data.key, data.value, data.desc, data.extra);
+    else if (action === 'updateLinkOrder') result = updateLinkOrder(data);
+    else throw new Error("Action not found: " + action);
+
+    // ส่งผลลัพธ์กลับไปให้หน้าเว็บ
+    return ContentService.createTextOutput(result)
+                         .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, msg: err.message }))
+                         .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+...............................
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>เด็กไทยสายตาดี & Health Calm UI</title>
+    <title>เด็กไทยสายตาดี</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -62,7 +1321,6 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .link-grid { display:flex; flex-wrap:wrap; gap:10px; padding:10px; background:#fff; border-radius:12px; margin:0 8px 10px; border:1px solid var(--border); }
 .custom-btn { display:flex; align-items:center; gap:8px; padding:8px 15px; background:#f8faff; border:1px solid #dbeafe; border-radius:8px; text-decoration:none; color:var(--primary); font-weight:600; font-size:13px; transition:0.2s; position:relative; }
 .custom-btn:hover { background:#eef2ff; transform:translateY(-2px); box-shadow:var(--shadow); } .custom-btn img { width:22px; height:22px; object-fit:contain; }
-.link-mgr-item { display:grid; grid-template-columns:50px 1fr 1fr 100px; gap:10px; align-items:center; padding:10px; border-bottom:1px solid #eee; } .link-mgr-item img { width:40px; height:40px; border-radius:4px; border:1px solid #ddd; object-fit:contain; }
 
 .main{display:flex;flex:1;overflow:hidden}
 .sidebar{width:148px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);padding:10px 8px;overflow-y:auto;display:flex;flex-direction:column}
@@ -117,7 +1375,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .del-box{background:#fff;border-radius:14px;padding:26px 24px;width:310px;box-shadow:0 20px 50px rgba(0,0,0,.2)} .del-ttl{font-size:17px;font-weight:700;color:var(--red);text-align:center;margin-bottom:12px} .del-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px} .del-warn{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:6px;padding:6px 10px;text-align:center;margin-bottom:12px}
 .toast-wrap{position:fixed;bottom:18px;right:18px;z-index:500;display:flex;flex-direction:column;gap:6px} .toast{padding:10px 14px;border-radius:9px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-md);min-width:200px;max-width:340px;animation:slIn .28s ease;display:flex;align-items:center;gap:7px} .t-ok{background:#dcfce7;color:#14532d;border:1px solid #86efac} .t-err{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5} .t-inf{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd} @keyframes slIn{from{transform:translateX(110%);opacity:0}to{transform:none;opacity:1}} .sp{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0} @keyframes spin{to{transform:rotate(360deg)}}
 
-/* === CSS เสริมจาก Health Calm UI === */
+/* === CSS เสริม === */
 .marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; box-sizing: border-box; }
 .marquee-content { display: inline-block; padding-left: 100%; animation: marquee 25s linear infinite; }
 @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
@@ -252,7 +1510,6 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 </head>
 <body>
 <audio id="bg-audio" loop></audio>
-<img id="floating-img-element" class="hidden fixed top-0 left-0 z-[60] pointer-events-none opacity-70 max-w-[200px] max-h-[80px] object-contain drop-shadow-md" src="" alt="floating">
 <div id="app">
 <header class="hdr">
   <div class="hdr-logo" id="logoWrap">👁</div>
@@ -295,6 +1552,33 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
 <div class="main">
   <aside class="sidebar">
+    <div class="sb-title">🔍 กรองข้อมูล</div>
+    <div class="fl">อำเภอ</div><select class="fsel" id="fAmp" onchange="onAmpChange()"><option value="">ทั้งหมด</option></select>
+    <div class="fl">รพ.สต.</div><select class="fsel" id="fHosp" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
+    <div class="fl">โรงเรียน</div><select class="fsel" id="fSch" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
+    <div class="fl">เพศ</div><select class="fsel" id="fSex" onchange="applyFilters()"><option value="">ทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
+    <div class="fl" style="display:none;">สถานะ</div><select class="fsel" id="fStat" onchange="applyFilters()" style="display:none;"><option value="">ทั้งหมด</option><option value="normal">ปกติ</option><option value="abnormal">ผิดปกติ(ทั้งหมด)</option><option value="referred">ส่งต่อ/ตัดแว่น</option><option value="glasses">ตัดแว่น</option></select>
+    <button class="btn-clr" onclick="clearFilters()">✕ ล้างตัวกรองทั้งหมด</button>
+    
+    <div class="add-sec" id="addSec" style="display:none">
+      <div class="sb-title">➕ บันทึกข้อมูล</div>
+      <button class="btn-form bf-scr" onclick="openPanel('scr')">📋 แบบประเมินสายตา</button>
+      <button class="btn-form bf-beh" onclick="openBehDashboard()">📱 พฤติกรรมหน้าจอ</button>
+      <button class="btn-form bf-fup" onclick="openFupDashboard()">👓 ติดตามแว่นตา</button>
+      <button class="btn-form bf-sat" onclick="openPanel('sat')">😊 แบบพึงพอใจ</button>
+      <button class="btn-form bf-pre" onclick="openPanel('pre')">📝 Pre-test</button>
+      <button class="btn-form bf-post" onclick="openPanel('post')">📝 Post-test</button>
+      <button class="btn-form bf-loc" id="btnLoc" onclick="openPanel('loc')" style="display:none;">📍 จัดการพิกัด/ภาพ รพ.สต.</button>
+      <button class="btn-form bf-conv" id="btnConv" onclick="openPanel('conv')" style="display:none;">🛠 แปลง & นำเข้าไฟล์</button>
+      <button class="btn-form bf-loc" style="background:#059669; margin-top:4px; display:none;" id="btnLineMgr" onclick="openLineMgr()">💬 ตั้งค่า LINE API</button>
+    </div>
+    
+    <div class="add-sec" id="addSecGuest">
+      <div class="sb-title" style="color:var(--muted)">👤 สำหรับบุคคลทั่วไป</div>
+      <button class="btn-form bf-beh" onclick="openBehDashboard()">📱 พฤติกรรมหน้าจอ</button>
+      <button class="btn-form bf-fup" onclick="openFupDashboard()">👓 ติดตามแว่นตา</button>
+      <button class="btn-form bf-sat" onclick="openPanel('sat')">😊 แบบพึงพอใจ</button>
+    </div>
   </aside>
 
   <div class="content">
@@ -729,61 +2013,6 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   </div>
 </div>
 
-<div class="ov" id="ov-fupdash" onclick="closePanel('fupdash')"></div>
-<div class="panel beh-panel" id="panel-fupdash">
-  <div class="ph" style="background:#ec4899">
-    <span class="ph-t">📊 Dashboard ติดตามผลการใช้แว่นตา</span>
-    <button class="ph-x" onclick="closePanel('fupdash')">✕</button>
-  </div>
-  <div class="pb">
-    <div class="beh-filter" style="background:#fdf2f8; border-color:#fbcfe8; grid-template-columns: repeat(4, 1fr);">
-      <select id="fdf-amphoe" onchange="onFupAmpChange()" style="border-color:#f9a8d4;"><option value="">อำเภอ ทั้งหมด</option></select>
-      <select id="fdf-hosp" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
-      <select id="fdf-school" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">โรงเรียนทั้งหมด</option></select>
-      <select id="fdf-sex" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
-    </div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <select id="fdf-class" onchange="loadFupDashboard()" style="padding:6px 8px; border:1px solid #f9a8d4; border-radius:6px; font-size:12px; background:#fff; width:24%;"><option value="">ชั้นทั้งหมด</option></select>
-      <button class="btn-clr" style="margin:0; padding:4px 15px; border-color:#fbcfe8; color:#be185d;" onclick="clearFupFilters()">✕ ล้างตัวกรองติดตามแว่น</button>
-    </div>
-
-    <div class="beh-kpi" style="grid-template-columns: repeat(4,1fr);">
-      <div class="beh-k" style="border-color:#fbcfe8; border-top-color:#ec4899;"><div class="beh-k-l" style="color:#be185d;">👥 ผู้ตอบ</div><div class="beh-k-v" id="fk-total" style="color:#db2777;">—</div><div class="beh-k-s">รายคน</div></div>
-      <div class="beh-k" style="border-color:#fbcfe8; border-top-color:#16A34A;"><div class="beh-k-l" style="color:#be185d;">👓 ใส่แว่นทุกวัน</div><div class="beh-k-v" id="fk-daily" style="color:#16A34A;">—</div><div class="beh-k-s">% (6-7 วัน/สัปดาห์)</div></div>
-      <div class="beh-k" style="border-color:#fbcfe8; border-top-color:#0d9488;"><div class="beh-k-l" style="color:#be185d;">✨ สภาพแว่นดี</div><div class="beh-k-v" id="fk-cond" style="color:#0d9488;">—</div><div class="beh-k-s">%</div></div>
-      <div class="beh-k" style="border-color:#fbcfe8; border-top-color:#7c3aed;"><div class="beh-k-l" style="color:#be185d;">⭐ ความพึงพอใจ</div><div class="beh-k-v" id="fk-sat" style="color:#7c3aed;">—</div><div class="beh-k-s">/5.00</div></div>
-    </div>
-
-    <div class="beh-grid beh-row-2" style="margin-bottom:10px;">
-      <div class="beh-card"><div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">📊 อัตราการใส่แว่นแต่ละสถานการณ์</div><div style="height:240px;"><canvas id="fupFreqChart"></canvas></div></div>
-      <div class="beh-card"><div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">📈 การมองเห็น/สมาธิ/ปวดหัว ดีขึ้น</div><div style="height:240px;"><canvas id="fupQolChart"></canvas></div></div>
-    </div>
-
-    <div class="beh-grid beh-row-2" style="margin-bottom:10px;">
-      <div class="beh-card"><div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">📅 ความถี่การใส่แว่น/สัปดาห์</div><div style="height:200px;"><canvas id="fupDaysChart"></canvas></div></div>
-      <div class="beh-card"><div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">🚫 สาเหตุที่ไม่ใส่แว่น (Top 5)</div><div style="height:200px;"><canvas id="fupReasonChart"></canvas></div></div>
-    </div>
-
-    <div class="beh-card" style="margin-bottom:10px;">
-      <div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">🌡️ เปรียบเทียบเทียบราย รพ.สต. (Heatmap)</div>
-      <div id="fupHeatmapWrap" style="overflow-x:auto; max-height:320px; overflow-y:auto;"></div>
-    </div>
-
-    <div class="beh-card" id="fupTblWrapper" style="display:none;">
-      <div class="beh-card-t" style="color:#db2777; border-color:#fbcfe8;">📋 รายละเอียดผู้ตอบ <button class="btn-exp" style="margin-left:auto;" onclick="exportFupCSV()">📥 Export CSV</button></div>
-      <div style="max-height:300px; overflow:auto;">
-        <table class="beh-tbl" id="fupTbl" style="border-color:#fbcfe8;">
-          <thead style="background:#fdf2f8;"><tr><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">#</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">เลขบัตร</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">ชื่อ-สกุล</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">ชั้น</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">รพ.สต.</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">ระยะใส่</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">สภาพแว่น</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">มอง</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">สมาธิ</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">มั่นใจ</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">ปวดหัว</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">พึงพอใจ</th><th style="background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;">⚙</th></tr></thead>
-          <tbody id="fupTblBody"></tbody>
-        </table>
-      </div>
-    </div>
-    <div id="fupGuestMsg" style="text-align:center; padding:30px; color:var(--muted); display:none;">
-      <p>🔒 กรุณาเข้าสู่ระบบ เพื่อดูตารางรายละเอียดผู้ตอบแบบสอบถามรายบุคคล</p>
-    </div>
-  </div>  <!-- ⬅️ ปิด .pb -->
-</div>  <!-- ⬅️ ปิด .panel -->
-
 <div class="ov" id="ov-behdash" onclick="closePanel('behdash')"></div>
 <div class="panel beh-panel" id="panel-behdash">
   <div class="ph" style="background:#d97706">
@@ -846,7 +2075,6 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   </div>
 </div>
 
-<div class="ph" style="background:#6366f1"><span class="ph-t">🔗 จัดการปุ่มลิ้งก์ (เมนูทางลัด)</span><button class="ph-x" onclick="closePanel('link')">✕</button></div><div class="pb"><div class="fs"><div class="fs-t">เพิ่ม/แก้ไขลิ้งก์</div><input type="hidden" id="link-id"><div class="fg" style="margin-bottom:8px;"><label>ชื่อปุ่ม *</label><input type="text" id="link-label" placeholder="เช่น เว็บไซต์ อบจ."></div><div class="fg" style="margin-bottom:8px;"><label>URL ลิ้งก์ปลายทาง *</label><input type="text" id="link-url" placeholder="https://..."></div><div class="fg" style="margin-bottom:8px;"><label>ลิ้งก์รูปภาพไอคอน (ใส่ได้ทั้ง .png, .jpg หรือลิ้งก์จาก Drive)</label><input type="text" id="link-icon" placeholder="https://.../icon.png"></div><button class="btn-p" id="btnSaveLink" style="width:100%; justify-content:center; background:#6366f1;" onclick="saveLink()">💾 บันทึกปุ่ม</button></div><div class="fs"><div class="fs-t">ปุ่มทั้งหมดในระบบ</div><div id="linkList"></div></div></div></div>
 <div class="ov" id="ov-line" onclick="closePanel('line')"></div>
 <div class="panel" id="panel-line">
   <div class="ph" style="background:#059669"><span class="ph-t">💬 ตั้งค่า LINE Messaging API</span><button class="ph-x" onclick="closePanel('line')">✕</button></div>
@@ -862,7 +2090,8 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     </div>
   </div>
 </div>
-<div class="ov" id="ov-manual" onclick="closePanel('manual')"></div><div class="panel" id="panel-manual"><div class="ph" style="background:var(--primary)"><span class="ph-t">📖 คู่มือการใช้งานระบบ</span><button class="ph-x" onclick="closePanel('manual')">✕</button></div><div class="pb" style="line-height:1.7; color:var(--text); font-size:13px;"><h3 style="color:var(--accent); margin-bottom:8px; border-bottom:1px solid #dbeafe; padding-bottom:5px;">1. การค้นหาและการกรองข้อมูล (Instant Filter)</h3><p style="margin-bottom:10px;">ท่านสามารถใช้เมนู <b>"กรองข้อมูล"</b> ด้านซ้ายมือ หรือคลิกที่แท่งกราฟเพื่อทำการกรองข้อมูล ข้อมูลในตารางและตัวเลขสรุปจะ <b>อัปเดตทันที (Instant)</b> โดยไม่ต้องรอโหลดหน้าจอใหม่ หากต้องการยกเลิกให้กด "ล้างตัวกรอง"</p><h3 style="color:var(--teal); margin-bottom:8px; border-bottom:1px solid #ccfbf1; padding-bottom:5px;">2. การนำเข้าและแปลงไฟล์ข้อมูล (Smart Parser)</h3><ul style="margin-bottom:10px; padding-left:20px;"><li>กดปุ่ม <b>"🛠 แปลง & นำเข้าไฟล์"</b> ระบบจะสามารถอ่านไฟล์ดิบ 18 คอลัมน์ (.txt) หรือ CSV 47 คอลัมน์ ได้ทันที โดยแยกคอลัมน์ให้อัตโนมัติและจัดเรียงให้ใหม่</li><li>ปัญหา <b>เลขบัตรประชาชนกลายเป็น E+12 ใน Excel</b> ถูกแก้ไขแล้ว! หากคุณกด <b>"🔄 แปลงเป็น Template ใหม่"</b> ระบบจะใส่สูตรป้องกันให้เลขบัตรคงอยู่ครบ 13 หลักเมื่อเปิดใน Excel</li><li>หลังจากกรอกข้อมูลเสร็จแล้ว ให้นำไฟล์มาอัปโหลดและกดปุ่ม <b style="color:#0d9488;">"⬇️ นำเข้าข้อมูล (Import)"</b> ระบบจะลบสูตรออกและจัด 47 คอลัมน์ลงฐานข้อมูลให้อัตโนมัติ</li></ul><h3 style="color:var(--purple); margin-bottom:8px; border-bottom:1px solid #ede9fe; padding-bottom:5px;">3. การทำแบบประเมินความพึงพอใจรายบุคคล</h3><p style="margin-bottom:10px;">ผู้ใช้งานสามารถเลือก <b>"ประเภทผู้ประเมิน"</b> ได้แล้ว หากเป็นนักเรียน (ผู้รับการตรวจ) ระบบจะให้ค้นหาด้วยเลขบัตรประชาชนเพื่อให้ข้อมูลเชื่อมโยงกันรายบุคคลอย่างสมบูรณ์แบบ (เวลา Print จะโชว์คะแนนของคนนั้นๆ) แต่หากเป็น <b>ผู้ปกครอง, ครู หรือ เจ้าหน้าที่</b> สามารถเลือกประเภทและประเมินได้ทันทีโดยไม่ต้องใช้เลขบัตรประชาชนครับ!</p><h3 style="color:var(--orange); margin-bottom:8px; border-bottom:1px solid #ffedd5; padding-bottom:5px;">4. ระบบช่วยสรุปผลวินิจฉัย (Auto-Diagnose)</h3><p style="margin-bottom:10px;">ในหน้าบันทึกผลการคัดกรอง เมื่อผู้ตรวจกรอกข้อมูลประวัติสุขภาพตา (ส่วนที่ 2), การตรวจ VA (ส่วนที่ 3) และการตรวจตาเหล่ (ส่วนที่ 4) ระบบจะ <b>คำนวณและสรุปผลวินิจฉัยรวมถึงการส่งต่อให้ในส่วนที่ 5 อัตโนมัติ</b> เพื่อเป็นข้อเสนอแนะในการทำงาน (ผู้ตรวจสามารถแก้ไขผลลัพธ์นั้นได้ตามวิจารณญาณ)</p><h3 style="color:#6366f1; margin-bottom:8px; border-bottom:1px solid #e0e7ff; padding-bottom:5px;">5. ระบบจัดการปุ่มลิ้งก์และวิดีโอ (Admin)</h3><p style="margin-bottom:10px;">Admin สามารถเพิ่ม แก้ไข ลบปุ่มลิ้งก์ด่วน หรือ <b>จัดการเพลย์ลิสต์วิดีโอ</b> บน Dashboard ได้เองผ่านเมนูลัด เพื่อให้ผู้ใช้งานท่านอื่นเลือกดูสื่อวิดีโอที่กำหนดไว้ได้อย่างรวดเร็ว</p></div><div class="pf"><button class="btn-sec" style="width:100%; text-align:center;" onclick="closePanel('manual')">ปิดหน้าต่าง</button></div></div>
+
+<div class="ov" id="ov-manual" onclick="closePanel('manual')"></div><div class="panel" id="panel-manual"><div class="ph" style="background:var(--primary)"><span class="ph-t">📖 คู่มือการใช้งานระบบ</span><button class="ph-x" onclick="closePanel('manual')">✕</button></div><div class="pb" style="line-height:1.7; color:var(--text); font-size:13px;"><h3 style="color:var(--accent); margin-bottom:8px; border-bottom:1px solid #dbeafe; padding-bottom:5px;">1. การค้นหาและการกรองข้อมูล (Instant Filter)</h3><p style="margin-bottom:10px;">ท่านสามารถใช้เมนู <b>"กรองข้อมูล"</b> ด้านซ้ายมือ หรือคลิกที่แท่งกราฟเพื่อทำการกรองข้อมูล ข้อมูลในตารางและตัวเลขสรุปจะ <b>อัปเดตทันที (Instant)</b> โดยไม่ต้องรอโหลดหน้าจอใหม่ หากต้องการยกเลิกให้กด "ล้างตัวกรอง"</p><h3 style="color:var(--teal); margin-bottom:8px; border-bottom:1px solid #ccfbf1; padding-bottom:5px;">2. การนำเข้าและแปลงไฟล์ข้อมูล (Smart Parser)</h3><ul style="margin-bottom:10px; padding-left:20px;"><li>กดปุ่ม <b>"🛠 แปลง & นำเข้าไฟล์"</b> ระบบจะสามารถอ่านไฟล์ดิบ 18 คอลัมน์ (.txt) หรือ CSV 47 คอลัมน์ ได้ทันที โดยแยกคอลัมน์ให้อัตโนมัติและจัดเรียงให้ใหม่</li><li>ปัญหา <b>เลขบัตรประชาชนกลายเป็น E+12 ใน Excel</b> ถูกแก้ไขแล้ว! หากคุณกด <b>"🔄 แปลงเป็น Template ใหม่"</b> ระบบจะใส่สูตรป้องกันให้เลขบัตรคงอยู่ครบ 13 หลักเมื่อเปิดใน Excel</li><li>หลังจากกรอกข้อมูลเสร็จแล้ว ให้นำไฟล์มาอัปโหลดและกดปุ่ม <b style="color:#0d9488;">"⬇️ นำเข้าข้อมูล (Import)"</b> ระบบจะลบสูตรออกและจัด 47 คอลัมน์ลงฐานข้อมูลให้อัตโนมัติ</li></ul><h3 style="color:var(--purple); margin-bottom:8px; border-bottom:1px solid #ede9fe; padding-bottom:5px;">3. การทำแบบประเมินความพึงพอใจรายบุคคล</h3><p style="margin-bottom:10px;">ผู้ใช้งานสามารถเลือก <b>"ประเภทผู้ประเมิน"</b> ได้แล้ว หากเป็นนักเรียน (ผู้รับการตรวจ) ระบบจะให้ค้นหาด้วยเลขบัตรประชาชนเพื่อให้ข้อมูลเชื่อมโยงกันรายบุคคลอย่างสมบูรณ์แบบ (เวลา Print จะโชว์คะแนนของคนนั้นๆ) แต่หากเป็น <b>ผู้ปกครอง, ครู หรือ เจ้าหน้าที่</b> สามารถเลือกประเภทและประเมินได้ทันทีโดยไม่ต้องใช้เลขบัตรประชาชนครับ!</p><h3 style="color:var(--orange); margin-bottom:8px; border-bottom:1px solid #ffedd5; padding-bottom:5px;">4. ระบบช่วยสรุปผลวินิจฉัย (Auto-Diagnose)</h3><p style="margin-bottom:10px;">ในหน้าบันทึกผลการคัดกรอง เมื่อผู้ตรวจกรอกข้อมูลประวัติสุขภาพตา (ส่วนที่ 2), การตรวจ VA (ส่วนที่ 3) และการตรวจตาเหล่ (ส่วนที่ 4) ระบบจะ <b>คำนวณและสรุปผลวินิจฉัยรวมถึงการส่งต่อให้ในส่วนที่ 5 อัตโนมัติ</b> เพื่อเป็นข้อเสนอแนะในการทำงาน (ผู้ตรวจสามารถแก้ไขผลลัพธ์นั้นได้ตามวิจารณญาณ)</p><h3 style="color:#6366f1; margin-bottom:8px; border-bottom:1px solid #e0e7ff; padding-bottom:5px;">5. ระบบจัดการแผงควบคุม (Admin Panel)</h3><p style="margin-bottom:10px;">Admin สามารถเพิ่ม แก้ไข ลบปุ่มลิ้งก์ด่วน หรือ <b>จัดการเพลย์ลิสต์วิดีโอ</b> รวมถึงจัดการรูปภาพวิ่ง ข้อความประกาศ และเปิดเพลงพื้นหลังได้ที่ <b>"แผงควบคุมตกแต่งระบบ"</b> มุมขวาบน</p></div><div class="pf"><button class="btn-sec" style="width:100%; text-align:center;" onclick="closePanel('manual')">ปิดหน้าต่าง</button></div></div>
 <div class="ov" id="ov-scr" onclick="closePanel('scr')"></div>
 <div class="panel" id="panel-scr">
   <div class="ph" style="background:var(--primary)">
@@ -1040,6 +2269,8 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <div class="mov" id="pwdMov"><div class="mbox" style="width:360px; padding:25px;"><div class="m-ttl" style="color:var(--accent); margin-bottom:5px;">🔑 เปลี่ยนรหัสผ่าน</div><div class="m-sub">กรุณากรอกรหัสผ่านเดิมเพื่อยืนยันการเปลี่ยนแปลง</div><div class="lf"><label>รหัสผ่านเดิม</label><input type="password" id="pwdOld" placeholder="รหัสผ่านเดิม"></div><div class="lf"><label>รหัสผ่านใหม่</label><input type="password" id="pwdNew" placeholder="รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)"></div><div class="lf"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="pwdConfirm" placeholder="ยืนยันรหัสผ่านใหม่อีกครั้ง"></div><div class="lerr" id="pwdErr"></div><button class="btn-lgn" id="btnChangePwd" onclick="doChangePwd()">💾 เปลี่ยนรหัสผ่าน</button><button class="btn-guest" onclick="closePwdMgr()">ยกเลิก</button></div></div>
 
 <div class="mov" id="delMov"><div class="del-box"><div class="del-ttl">🗑 ยืนยันการลบข้อมูล</div><div class="del-sub">CID: <strong id="delCidShow"></strong></div><div class="del-warn">⚠ ข้อมูลที่ลบจะไม่สามารถกู้คืนได้</div><div style="display:flex;gap:8px;margin-top:4px"><button style="flex:1;padding:10px;background:var(--red);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px" onclick="confirmDel()">ยืนยันลบ</button><button style="flex:1;padding:10px;background:#f1f5f9;border:1px solid var(--border);border-radius:8px;font-size:12px" onclick="closeDel()">ยกเลิก</button></div><div class="lerr" id="delErr"></div></div></div>
+
+<!-- ========= แผงควบคุมตกแต่งระบบ (Admin Panel) ========= -->
 <div id="admin-panel" class="fixed top-0 right-0 bottom-0 w-[420px] bg-white flex flex-col border-l shadow-2xl z-[2500]">
   <div class="h-[60px] border-b p-4 flex justify-between items-center" style="background:linear-gradient(90deg,#1E7145,#0d9488);">
     <h3 class="font-bold text-sm text-white"><i class="fas fa-cog"></i> แผงควบคุมตกแต่งระบบ</h3>
@@ -1052,7 +2283,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
       🔒 กรุณาเข้าสู่ระบบในฐานะ Admin เพื่อใช้งานส่วนนี้
     </div>
 
-    <!-- ========= แถบแท็บ 3 ปุ่ม ========= -->
+    <!-- แถบแท็บ 3 ปุ่ม -->
     <div id="admin-tabs-menu" class="hidden flex bg-white p-1 rounded mb-4 shadow-sm border">
       <button onclick="switchAdminTab('links')" id="tab-links" 
         class="flex-1 py-2 text-[11px] font-bold rounded bg-[#1E7145] text-white shadow-sm">
