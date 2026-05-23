@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -296,43 +295,6 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
 <div class="main">
   <aside class="sidebar">
-    <div id="sidebar-strategic-links" class="mb-4 space-y-1"></div>
-    <div class="sb-title">🔍 กรองข้อมูล</div>
-    <div class="fl">อำเภอ</div><select class="fsel" id="fAmp" onchange="onAmpChange()"><option value="">ทั้งหมด</option></select>
-    <div class="fl">รพ.สต.</div><select class="fsel" id="fHosp" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
-    <div class="fl">โรงเรียน</div><select class="fsel" id="fSch" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
-    <div class="fl">สถานะ</div><select class="fsel" id="fStat" onchange="applyFilters()"><option value="">ทั้งหมด</option><option value="normal">ปกติ</option><option value="abnormal">ผิดปกติ</option><option value="referred">ส่งต่อ</option><option value="glasses">ตัดแว่น</option></select>
-    <div class="fl">เพศ</div><select class="fsel" id="fSex" onchange="applyFilters()"><option value="">ทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
-    <button class="btn-clr" onclick="clearFilters()">✕ ล้างตัวกรอง</button>
-    <div class="add-sec" id="addSec" style="display:none">
-  <div class="sb-title">➕ บันทึกข้อมูล</div>
-  <button class="btn-form bf-scr" id="btnScr" onclick="openPanel('scr')">📋 คัดกรองสายตา</button>
-  <button class="btn-form bf-beh" id="btnBeh" onclick="openPanel('beh')">📱 พฤติกรรมหน้าจอ</button>
-  <button class="btn-form bf-fup" id="btnFup" onclick="openPanel('fup')">👓 ติดตามผลแว่นตา</button>
-  <button class="btn-form" id="btnBehDash" style="background:#d97706; margin-top:4px;" onclick="openBehDashboard()">📊 Dashboard พฤติกรรมฯ</button>
-  <button class="btn-form" id="btnFupDash" style="background:#ec4899; margin-top:4px;" onclick="openFupDashboard()">📊 Dashboard ติดตามแว่นตา</button>
-  <button class="btn-form bf-sat" id="btnSat" onclick="openPanel('sat')">😊 ความพึงพอใจ</button>
-  <button class="btn-form bf-pre" id="btnPre" onclick="openPanel('pre')">📝 Pre-test</button>
-  <button class="btn-form bf-post" id="btnPost" onclick="openPanel('post')">📝 Post-test</button>
-  <button class="btn-form bf-loc" id="btnLoc" onclick="openEditHosp('')" style="display:none">📍พิกัด/ภาพผลงาน</button>
-  <button class="btn-form bf-conv" id="btnConv" onclick="openPanel('conv')" style="display:none">🛠 แปลง & นำเข้าไฟล์</button>
-  <button class="btn-form bf-loc" style="background:#dc2626; margin-top:10px; display:none;" id="btnVidMgr" onclick="openVideoMgrPanel()">📺จัดการลิสต์วิดีโอ</button>
-<button class="btn-form bf-loc" style="background:#6366f1; margin-top:4px; display:none;" id="btnLinkMgr" onclick="openLinkMgr()">🔗 จัดการปุ่มลิ้งก์</button>
-<button class="btn-form bf-loc" style="background:#059669; margin-top:4px; display:none;" id="btnLineMgr" onclick="openLineMgr()">💬 ตั้งค่า LINE API</button>
-</div>
-
-<div class="add-sec" id="addSecGuest" style="display:none">
-  <div class="sb-title">➕ ทำแบบประเมิน / ดูข้อมูล</div>
-  <button class="btn-form bf-beh" onclick="openPanel('beh')">📱 พฤติกรรมหน้าจอ</button>
-  <button class="btn-form bf-fup" onclick="openPanel('fup')">👓 ติดตามผลแว่นตา</button>
-  <button class="btn-form" style="background:#d97706; margin-top:4px;" onclick="openBehDashboard()">📊 Dashboard พฤติกรรมฯ</button>
-  <button class="btn-form" style="background:#ec4899; margin-top:4px;" onclick="openFupDashboard()">📊 Dashboard ติดตามแว่นตา</button>
-  <button class="btn-form bf-sat" onclick="openPanel('sat')" style="margin-top:10px;">😊 ความพึงพอใจ</button>
-  <button class="btn-form bf-pre" onclick="openPanel('pre')">📝 Pre-test</button>
-  <button class="btn-form bf-post" onclick="openPanel('post')">📝 Post-test</button>
-</div>
-<div id="sidebar-general-links" class="mt-4 pt-4 border-t border-sysborder space-y-1"></div>
-    <button onclick="closeIframe(); forceRefresh();" id="btnHome" class="hidden w-full mt-4 py-2 bg-white border text-[#4B5563] rounded flex items-center justify-center gap-2 text-xs font-bold"><i class="fas fa-home"></i> กลับหน้าแรก</button>
   </aside>
 
   <div class="content">
@@ -356,15 +318,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
       </table>
     </div>
 
-    <div id="iframe-view" style="display:none; position:absolute; inset:0; background:#fff; z-index:50; flex-direction:column;">
-      <div class="flex items-center justify-between p-2 bg-gray-50" style="border-bottom:1px solid var(--border);">
-        <div class="text-sm font-bold text-[#1E7145] px-2" id="iframe-title">กำลังเปิดเว็บ...</div>
-        <button onclick="closeIframe()" class="p-1 px-3 bg-red-500 text-white rounded text-xs hover:bg-red-600">ปิด ✕</button>
-      </div>
-      <iframe id="content-iframe" class="w-full border-0 bg-white" style="flex:1;"></iframe>
-    </div>
-
-    <div class="charts-row" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 7px; padding-bottom: 0; border: none;">
+      <div class="charts-row" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 7px; padding-bottom: 0; border: none;">
       <div class="chart-card" id="mapCard" style="margin: 0; display: flex; flex-direction: column; height: 420px; min-width: 0;">
           <div class="chart-ttl">🗺️ แผนที่แสดงพิกัด รพ.สต. (สีเขียว) และโรงเรียน (สีน้ำเงิน)</div>
           <div id="mainMap" style="flex: 1; width: 100%; border-radius: 6px; z-index: 1;"></div>
@@ -892,25 +846,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   </div>
 </div>
 
-<div class="ov" id="ov-vidmgr" onclick="closePanel('vidmgr')"></div>
-<div class="panel" id="panel-vidmgr">
-  <div class="ph" style="background:#dc2626"><span class="ph-t">📺 จัดการเพลย์ลิสต์วิดีโอ</span><button class="ph-x" onclick="closePanel('vidmgr')">✕</button></div>
-  <div class="pb">
-    <div class="fs">
-      <div class="fs-t">เพิ่ม/แก้ไขวิดีโอ</div>
-      <input type="hidden" id="vidmgr-id">
-      <div class="fg" style="margin-bottom:8px;"><label>ชื่อวิดีโอ *</label><input type="text" id="vidmgr-label" placeholder="เช่น วิธีการดูแลสายตา"></div>
-      <div class="fg" style="margin-bottom:8px;"><label>URL วิดีโอ (YouTube หรือ mp4) *</label><input type="text" id="vidmgr-url" placeholder="https://www.youtube.com/watch?v=..."></div>
-      <button class="btn-p" id="btnSaveVidMgr" style="width:100%; justify-content:center; background:#dc2626;" onclick="saveVideoFromMgr()">💾 บันทึกวิดีโอ</button>
-    </div>
-    <div class="fs">
-      <div class="fs-t">วิดีโอทั้งหมดในระบบ</div>
-      <div id="vidmgrList"></div>
-    </div>
-  </div>
-</div>
-
-<div class="ov" id="ov-link" onclick="closePanel('link')"></div><div class="panel" id="panel-link"><div class="ph" style="background:#6366f1"><span class="ph-t">🔗 จัดการปุ่มลิ้งก์ (เมนูทางลัด)</span><button class="ph-x" onclick="closePanel('link')">✕</button></div><div class="pb"><div class="fs"><div class="fs-t">เพิ่ม/แก้ไขลิ้งก์</div><input type="hidden" id="link-id"><div class="fg" style="margin-bottom:8px;"><label>ชื่อปุ่ม *</label><input type="text" id="link-label" placeholder="เช่น เว็บไซต์ อบจ."></div><div class="fg" style="margin-bottom:8px;"><label>URL ลิ้งก์ปลายทาง *</label><input type="text" id="link-url" placeholder="https://..."></div><div class="fg" style="margin-bottom:8px;"><label>ลิ้งก์รูปภาพไอคอน (ใส่ได้ทั้ง .png, .jpg หรือลิ้งก์จาก Drive)</label><input type="text" id="link-icon" placeholder="https://.../icon.png"></div><button class="btn-p" id="btnSaveLink" style="width:100%; justify-content:center; background:#6366f1;" onclick="saveLink()">💾 บันทึกปุ่ม</button></div><div class="fs"><div class="fs-t">ปุ่มทั้งหมดในระบบ</div><div id="linkList"></div></div></div></div>
+<div class="ph" style="background:#6366f1"><span class="ph-t">🔗 จัดการปุ่มลิ้งก์ (เมนูทางลัด)</span><button class="ph-x" onclick="closePanel('link')">✕</button></div><div class="pb"><div class="fs"><div class="fs-t">เพิ่ม/แก้ไขลิ้งก์</div><input type="hidden" id="link-id"><div class="fg" style="margin-bottom:8px;"><label>ชื่อปุ่ม *</label><input type="text" id="link-label" placeholder="เช่น เว็บไซต์ อบจ."></div><div class="fg" style="margin-bottom:8px;"><label>URL ลิ้งก์ปลายทาง *</label><input type="text" id="link-url" placeholder="https://..."></div><div class="fg" style="margin-bottom:8px;"><label>ลิ้งก์รูปภาพไอคอน (ใส่ได้ทั้ง .png, .jpg หรือลิ้งก์จาก Drive)</label><input type="text" id="link-icon" placeholder="https://.../icon.png"></div><button class="btn-p" id="btnSaveLink" style="width:100%; justify-content:center; background:#6366f1;" onclick="saveLink()">💾 บันทึกปุ่ม</button></div><div class="fs"><div class="fs-t">ปุ่มทั้งหมดในระบบ</div><div id="linkList"></div></div></div></div>
 <div class="ov" id="ov-line" onclick="closePanel('line')"></div>
 <div class="panel" id="panel-line">
   <div class="ph" style="background:#059669"><span class="ph-t">💬 ตั้งค่า LINE Messaging API</span><button class="ph-x" onclick="closePanel('line')">✕</button></div>
@@ -1104,57 +1040,166 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <div class="mov" id="pwdMov"><div class="mbox" style="width:360px; padding:25px;"><div class="m-ttl" style="color:var(--accent); margin-bottom:5px;">🔑 เปลี่ยนรหัสผ่าน</div><div class="m-sub">กรุณากรอกรหัสผ่านเดิมเพื่อยืนยันการเปลี่ยนแปลง</div><div class="lf"><label>รหัสผ่านเดิม</label><input type="password" id="pwdOld" placeholder="รหัสผ่านเดิม"></div><div class="lf"><label>รหัสผ่านใหม่</label><input type="password" id="pwdNew" placeholder="รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)"></div><div class="lf"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="pwdConfirm" placeholder="ยืนยันรหัสผ่านใหม่อีกครั้ง"></div><div class="lerr" id="pwdErr"></div><button class="btn-lgn" id="btnChangePwd" onclick="doChangePwd()">💾 เปลี่ยนรหัสผ่าน</button><button class="btn-guest" onclick="closePwdMgr()">ยกเลิก</button></div></div>
 
 <div class="mov" id="delMov"><div class="del-box"><div class="del-ttl">🗑 ยืนยันการลบข้อมูล</div><div class="del-sub">CID: <strong id="delCidShow"></strong></div><div class="del-warn">⚠ ข้อมูลที่ลบจะไม่สามารถกู้คืนได้</div><div style="display:flex;gap:8px;margin-top:4px"><button style="flex:1;padding:10px;background:var(--red);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px" onclick="confirmDel()">ยืนยันลบ</button><button style="flex:1;padding:10px;background:#f1f5f9;border:1px solid var(--border);border-radius:8px;font-size:12px" onclick="closeDel()">ยกเลิก</button></div><div class="lerr" id="delErr"></div></div></div>
-<div id="admin-panel" class="fixed top-0 right-0 bottom-0 w-[350px] bg-white flex flex-col border-l shadow-2xl z-[2500]">
-  <div class="h-[60px] border-b p-4 flex justify-between items-center bg-gray-50">
-      <h3 class="font-bold text-sm text-[#1E7145]"><i class="fas fa-cog"></i> แผงควบคุมตกแต่งระบบ</h3>
-      <button onclick="toggleAdminPanel()"><i class="fas fa-times text-gray-500 text-lg"></i></button>
+<div id="admin-panel" class="fixed top-0 right-0 bottom-0 w-[420px] bg-white flex flex-col border-l shadow-2xl z-[2500]">
+  <div class="h-[60px] border-b p-4 flex justify-between items-center" style="background:linear-gradient(90deg,#1E7145,#0d9488);">
+    <h3 class="font-bold text-sm text-white"><i class="fas fa-cog"></i> แผงควบคุมตกแต่งระบบ</h3>
+    <button onclick="toggleAdminPanel()"><i class="fas fa-times text-white text-lg"></i></button>
   </div>
-  <div class="p-4 flex-1 overflow-y-auto bg-white">
-      <div id="admin-not-logged-in" class="hidden text-center p-4 bg-red-50 border border-red-200 rounded text-red-600 text-xs mb-4">เข้าสู่ระบบในฐานะ Admin เพื่อใช้งานส่วนนี้</div>
-      
-      <div id="admin-tabs-menu" class="hidden flex bg-gray-100 p-1 rounded mb-4">
-          <button onclick="switchAdminTab('links')" id="tab-links" class="flex-1 py-2 text-[11px] font-bold rounded bg-white text-[#1E7145] shadow-sm">เมนูลิงก์</button>
-          <button onclick="switchAdminTab('settings')" id="tab-settings" class="flex-1 py-2 text-[11px] font-bold rounded text-gray-500 hover:text-black">ตกแต่งจอ</button>
+
+  <div class="p-4 flex-1 overflow-y-auto bg-gray-50">
+
+    <div id="admin-not-logged-in" class="hidden text-center p-4 bg-red-50 border border-red-200 rounded text-red-600 text-xs mb-4">
+      🔒 กรุณาเข้าสู่ระบบในฐานะ Admin เพื่อใช้งานส่วนนี้
+    </div>
+
+    <!-- ========= แถบแท็บ 3 ปุ่ม ========= -->
+    <div id="admin-tabs-menu" class="hidden flex bg-white p-1 rounded mb-4 shadow-sm border">
+      <button onclick="switchAdminTab('links')" id="tab-links" 
+        class="flex-1 py-2 text-[11px] font-bold rounded bg-[#1E7145] text-white shadow-sm">
+        🔗 เมนูลิ้งก์
+      </button>
+      <button onclick="switchAdminTab('videos')" id="tab-videos" 
+        class="flex-1 py-2 text-[11px] font-bold rounded text-gray-500 hover:text-black">
+        📺 ลิสต์วิดีโอ
+      </button>
+      <button onclick="switchAdminTab('settings')" id="tab-settings" 
+        class="flex-1 py-2 text-[11px] font-bold rounded text-gray-500 hover:text-black">
+        🎨 ตกแต่งจอ
+      </button>
+    </div>
+
+    <!-- ========= แท็บ 1: เมนูลิ้งก์ ========= -->
+    <div id="section-links" class="hidden space-y-3">
+      <div class="bg-white p-4 rounded border shadow-sm space-y-2">
+        <div class="flex justify-between items-center border-b pb-2 mb-2">
+          <h4 id="title-link-form" class="text-xs font-bold text-[#6366f1]">
+            <i class="fas fa-plus-circle"></i> เพิ่มปุ่มลิ้งก์ใหม่
+          </h4>
+          <button id="btn-cancel-link" onclick="resetLinkForm()" 
+            class="hidden text-red-500 text-[10px] font-bold bg-gray-100 px-2 py-1 rounded border hover:bg-red-50">
+            ✕ ยกเลิก
+          </button>
+        </div>
+        <input type="hidden" id="link-id">
+        <label class="text-[10px] text-gray-500 font-bold">ชื่อปุ่ม *</label>
+        <input type="text" id="link-label" placeholder="เช่น เว็บไซต์ อบจ.สมุทรสาคร" 
+          class="w-full bg-white border rounded px-3 py-2 text-xs">
+        
+        <label class="text-[10px] text-gray-500 font-bold">URL ลิ้งก์ปลายทาง *</label>
+        <input type="text" id="link-url" placeholder="https://..." 
+          class="w-full bg-white border rounded px-3 py-2 text-xs">
+        
+        <label class="text-[10px] text-gray-500 font-bold">URL รูปไอคอน (ไม่บังคับ)</label>
+        <input type="text" id="link-icon" placeholder="https://.../icon.png" 
+          class="w-full bg-white border rounded px-3 py-2 text-xs">
+        
+        <label class="text-[10px] text-gray-500 font-bold">ลำดับการแสดงผล (ตัวเลข)</label>
+        <input type="number" id="link-order" placeholder="0" value="0" 
+          class="w-full bg-white border rounded px-3 py-2 text-xs">
+        
+        <button id="btnSaveLink" onclick="saveLink()" 
+          class="w-full bg-[#6366f1] text-white font-bold py-2 rounded text-xs mt-2 hover:bg-indigo-600">
+          💾 บันทึกปุ่มลิ้งก์
+        </button>
       </div>
 
-      <div id="section-links" class="hidden space-y-4">
-          <div class="bg-gray-50 border p-3 rounded flex flex-col gap-2">
-              <label class="text-xs font-bold cursor-pointer"><input type="checkbox" id="toggle-drag" onchange="toggleEditMode(this)"> เปิดจัดเรียงปุ่มซ้ายมือ</label>
-              <button id="save-order-btn" class="hidden w-full bg-[#1E7145] text-white py-2 rounded text-xs font-bold" onclick="saveLinkOrder()">บันทึกตำแหน่งใหม่</button>
-          </div>
-          <div class="bg-white p-4 rounded border space-y-3 relative shadow-sm">
-              <button id="btn-cancel-link" onclick="cancelEditLink()" class="hidden absolute top-3 right-3 text-red-500 text-[10px] font-bold bg-gray-100 px-2 py-1 rounded border">ยกเลิก</button>
-              <h4 id="title-link-form" class="text-xs font-bold text-[#1E7145] border-b pb-2"><i class="fas fa-plus"></i> เพิ่ม/แก้ไขลิงก์</h4>
-              <input type="hidden" id="l-id">
-              <select id="l-type" class="w-full bg-gray-50 border rounded px-2 py-2 text-xs font-bold mb-1"><option value="ทั่วไป">🔗 ลิงก์เมนูทั่วไป</option><option value="ดาวน์โหลด">📥 ปุ่มดาวน์โหลด</option></select>
-              <input type="text" id="l-name" placeholder="ชื่อหัวข้อ..." class="w-full bg-white border rounded px-3 py-2 text-xs">
-              <input type="text" id="l-url" placeholder="URL (https://...)" class="w-full bg-white border rounded px-3 py-2 text-xs">
-              <div class="grid grid-cols-2 gap-2 mt-1">
-                  <select id="l-po" class="w-full bg-white border rounded px-2 py-2 text-xs"><option value="บน">ส่วนบน</option><option value="ล่าง">ส่วนล่าง</option></select>
-                  <select id="l-target" class="w-full bg-white border rounded px-2 py-2 text-xs"><option value="ภายใน">เปิดในจอนี้</option><option value="ภายนอก">เปิดแท็บใหม่</option><option value="ไม่เปิด">แค่ปุ่มโชว์</option></select>
-              </div>
-              <label class="text-[10px] text-gray-500">สีพื้นหลังปุ่ม</label><input type="color" id="l-color" value="#ffffff" class="w-full h-8 cursor-pointer rounded border block mt-1">
-              <button id="btn-save-link2" onclick="saveLinkToSheet()" class="w-full bg-[#1E7145] text-white font-bold py-2 rounded text-xs mt-2">บันทึกข้อมูลลิงก์</button>
-          </div>
+      <div class="bg-white p-3 rounded border shadow-sm">
+        <h4 class="text-xs font-bold text-[#6366f1] border-b pb-2 mb-2">📋 ปุ่มทั้งหมดในระบบ</h4>
+        <div id="linkList" class="space-y-2 max-h-[400px] overflow-y-auto"></div>
+      </div>
+    </div>
+
+    <!-- ========= แท็บ 2: ลิสต์วิดีโอ ========= -->
+    <div id="section-videos" class="hidden space-y-3">
+      <div class="bg-white p-4 rounded border shadow-sm space-y-2">
+        <div class="flex justify-between items-center border-b pb-2 mb-2">
+          <h4 id="title-vid-form" class="text-xs font-bold text-[#dc2626]">
+            <i class="fas fa-plus-circle"></i> เพิ่มวิดีโอใหม่
+          </h4>
+          <button id="btn-cancel-vid" onclick="resetVidForm()" 
+            class="hidden text-red-500 text-[10px] font-bold bg-gray-100 px-2 py-1 rounded border hover:bg-red-50">
+            ✕ ยกเลิก
+          </button>
+        </div>
+        <input type="hidden" id="vid-id">
+        <label class="text-[10px] text-gray-500 font-bold">ชื่อวิดีโอ *</label>
+        <input type="text" id="vid-label" placeholder="เช่น วิธีการดูแลสายตา" 
+          class="w-full bg-white border rounded px-3 py-2 text-xs">
+        
+        <label class="text-[10px] text-gray-500 font-bold">URL วิดีโอ (YouTube หรือ .mp4) *</label>
+        <input type="text" id="vid-url" placeholder="https://www.youtube.com/watch?v=..." 
+          class="w-full bg-white border rounded px-3 py-2 text-xs">
+        
+        <label class="text-[10px] text-gray-500 font-bold">ลำดับการแสดงผล (ตัวเลข)</label>
+        <input type="number" id="vid-order" placeholder="0" value="0" 
+          class="w-full bg-white border rounded px-3 py-2 text-xs">
+        
+        <button id="btnSaveVid" onclick="saveVid()" 
+          class="w-full bg-[#dc2626] text-white font-bold py-2 rounded text-xs mt-2 hover:bg-red-700">
+          💾 บันทึกวิดีโอ
+        </button>
       </div>
 
-      <div id="section-settings" class="hidden space-y-4">
-          <div class="bg-white p-4 rounded border space-y-3 shadow-sm">
-              <h4 class="font-bold text-xs"><i class="fas fa-images"></i> ภาพวิ่ง (คั่นด้วย ,)</h4>
-              <input type="text" id="set-marquee-imgs" placeholder="URL ภาพ1, URL ภาพ2..." class="w-full bg-white border rounded px-3 py-2 text-xs">
-              <button onclick="saveHealthConfig('marquee_imgs', 'set-marquee-imgs', this)" class="w-full bg-gray-100 border font-bold py-2 rounded text-xs">อัปเดตภาพวิ่ง</button>
-          </div>
-          <div class="bg-white p-4 rounded border space-y-3 shadow-sm">
-              <h4 class="font-bold text-xs"><i class="fas fa-bullhorn"></i> ข้อความประกาศวิ่ง</h4>
-              <input type="text" id="set-marquee" placeholder="พิมพ์ข้อความที่นี่..." class="w-full bg-white border rounded px-3 py-2 text-xs">
-              <button onclick="saveHealthConfig('marquee_text', 'set-marquee', this)" class="w-full bg-gray-100 border font-bold py-2 rounded text-xs">อัปเดตข้อความ</button>
-          </div>
-          <div class="bg-white p-4 rounded border space-y-3 shadow-sm">
-              <h4 class="font-bold text-xs"><i class="fas fa-music"></i> เสียงเพลงพื้นหลัง</h4>
-              <input type="text" id="set-bg-music" placeholder="Drive URL ของไฟล์เพลง..." class="w-full bg-white border rounded px-3 py-2 text-xs">
-              <button onclick="saveHealthConfig('bg_music', 'set-bg-music', this)" class="w-full bg-gray-100 border font-bold py-2 rounded text-xs">อัปเดตเพลง</button>
-          </div>
+      <div class="bg-white p-3 rounded border shadow-sm">
+        <h4 class="text-xs font-bold text-[#dc2626] border-b pb-2 mb-2">🎬 วิดีโอทั้งหมดในเพลย์ลิสต์</h4>
+        <div id="vidList" class="space-y-2 max-h-[400px] overflow-y-auto"></div>
       </div>
+    </div>
+
+    <!-- ========= แท็บ 3: ตกแต่งจอ ========= -->
+    <div id="section-settings" class="hidden space-y-3">
+      <div class="bg-white p-4 rounded border shadow-sm space-y-2">
+        <h4 class="text-xs font-bold text-[#0d9488] border-b pb-2">
+          <i class="fas fa-images"></i> ภาพวิ่ง (Marquee Image)
+        </h4>
+        <p class="text-[10px] text-gray-500">ใส่ URL รูปภาพหลายภาพ คั่นด้วยเครื่องหมาย <b>,</b> (รองรับ Google Drive)</p>
+        <textarea id="set-marquee-imgs" rows="3" placeholder="https://drive.google.com/file/d/xxxx/view, https://..." 
+          class="w-full bg-white border rounded px-3 py-2 text-xs"></textarea>
+        <button onclick="saveSettingItem('marquee_imgs', 'set-marquee-imgs', this)" 
+          class="w-full bg-[#0d9488] text-white font-bold py-2 rounded text-xs hover:bg-teal-700">
+          📷 อัปเดตภาพวิ่ง
+        </button>
+      </div>
+
+      <div class="bg-white p-4 rounded border shadow-sm space-y-2">
+        <h4 class="text-xs font-bold text-[#ca8a04] border-b pb-2">
+          <i class="fas fa-bullhorn"></i> ข้อความประกาศวิ่ง
+        </h4>
+        <textarea id="set-marquee" rows="2" placeholder="พิมพ์ข้อความประกาศที่นี่..." 
+          class="w-full bg-white border rounded px-3 py-2 text-xs"></textarea>
+        <button onclick="saveSettingItem('marquee_text', 'set-marquee', this)" 
+          class="w-full bg-[#ca8a04] text-white font-bold py-2 rounded text-xs hover:bg-yellow-700">
+          📢 อัปเดตข้อความ
+        </button>
+      </div>
+
+      <div class="bg-white p-4 rounded border shadow-sm space-y-2">
+        <h4 class="text-xs font-bold text-[#7c3aed] border-b pb-2">
+          <i class="fas fa-music"></i> เสียงเพลงพื้นหลัง
+        </h4>
+        <p class="text-[10px] text-gray-500">รองรับ Google Drive Share Link หรือ URL ตรงไปยังไฟล์ .mp3</p>
+        <input type="text" id="set-bg-music" placeholder="https://drive.google.com/file/d/xxxx/view" 
+          class="w-full bg-white border rounded px-3 py-2 text-xs">
+        <button onclick="saveSettingItem('bg_music', 'set-bg-music', this)" 
+          class="w-full bg-[#7c3aed] text-white font-bold py-2 rounded text-xs hover:bg-purple-700">
+          🎵 อัปเดตเพลง
+        </button>
+      </div>
+
+      <div class="bg-white p-4 rounded border shadow-sm space-y-2">
+        <h4 class="text-xs font-bold text-[#1E3A5F] border-b pb-2">
+          <i class="fas fa-image"></i> โลโก้ระบบ (Google Drive ID)
+        </h4>
+        <p class="text-[10px] text-gray-500">ใส่เฉพาะ ID จาก Google Drive (ส่วนระหว่าง /d/ และ /view)</p>
+        <input type="text" id="set-logo-id" placeholder="1AbCdEfGhIjKlMnOpQrStUvWxYz" 
+          class="w-full bg-white border rounded px-3 py-2 text-xs">
+        <button onclick="saveSettingItem('logo_id', 'set-logo-id', this)" 
+          class="w-full bg-[#1E3A5F] text-white font-bold py-2 rounded text-xs hover:bg-slate-700">
+          🏥 อัปเดตโลโก้
+        </button>
+      </div>
+    </div>
+
   </div>
 </div>
 <div class="toast-wrap" id="toastWrap"></div>
@@ -2065,61 +2110,6 @@ function renderVideoPlaylist(videos) {
   area.innerHTML = html;
 }
 
-function openVideoMgrPanel() {
-  document.getElementById('vidmgr-id').value = ''; 
-  document.getElementById('vidmgr-label').value = ''; 
-  document.getElementById('vidmgr-url').value = ''; 
-  refreshVidMgrList(); 
-  openPanel('vidmgr');
-}
-
-function refreshVidMgrList() {
-  google.script.run.withSuccessHandler(function(r){
-    var d = JSON.parse(r); 
-    var list = document.getElementById('vidmgrList'); 
-    var html = '';
-    G.videos = d.data.videos || [];
-    G.videos.forEach(function(v){
-      html += '<div class="link-mgr-item" style="grid-template-columns:1fr 100px; padding:12px 10px; background:#f8faff; border-radius:8px; border:1px solid var(--border); margin-bottom:6px;"><div><b>'+e_(v.label)+'</b><br><span style="font-size:10px;color:gray; word-break:break-all;">'+v.url+'</span></div><div style="display:flex;gap:4px;align-items:center;justify-content:flex-end;"><button onclick="editVidMgr(\''+v.id+'\',\''+e_(v.label)+'\',\''+v.url+'\')" style="color:var(--blue); border:1px solid var(--blue); background:#fff; border-radius:4px; padding:3px 8px; font-size:12px;">✏️ แก้ไข</button><button onclick="delVidMgr(\''+v.id+'\')" style="color:var(--red); border:1px solid var(--red); background:#fff; border-radius:4px; padding:3px 8px; font-size:12px;">🗑 ลบ</button></div></div>';
-    });
-    list.innerHTML = html;
-    renderVideoPlaylist(G.videos);
-    if(G.videos.length > 0) { renderVideo(G.videos[0].url); } else { renderVideo(''); }
-  }).getInitData();
-}
-
-function saveVideoFromMgr() {
-  var btn = document.getElementById('btnSaveVidMgr');
-  var d = { id: document.getElementById('vidmgr-id').value, label: document.getElementById('vidmgr-label').value, url: document.getElementById('vidmgr-url').value };
-  if(!d.label || !d.url) { toast('กรุณากรอกชื่อและ URL ให้ครบถ้วน', 'err'); return; }
-  btn.disabled = true; btn.innerHTML = '⏳ กำลังบันทึก...';
-  google.script.run.withSuccessHandler(function(res){
-    btn.disabled = false; btn.innerHTML = '💾 บันทึกวิดีโอ'; var r = JSON.parse(res);
-    if(r.ok) { 
-        toast(r.msg, 'ok'); 
-        document.getElementById('vidmgr-id').value = ''; 
-        document.getElementById('vidmgr-label').value = ''; 
-        document.getElementById('vidmgr-url').value = ''; 
-        refreshVidMgrList(); 
-    } else { toast(r.msg, 'err'); }
-  }).saveVideoItem(d);
-}
-
-function delVidMgr(id) { 
-    if(!confirm('ยืนยันการลบวิดีโอนี้ออกจากเพลย์ลิสต์?')) return; 
-    google.script.run.withSuccessHandler(function(res){ 
-        var r = JSON.parse(res); 
-        if(r.ok) { toast(r.msg, 'ok'); refreshVidMgrList(); } 
-    }).deleteVideoItem(id); 
-}
-
-function editVidMgr(id, label, url) { 
-    document.getElementById('vidmgr-id').value = id; 
-    document.getElementById('vidmgr-label').value = label; 
-    document.getElementById('vidmgr-url').value = url; 
-}
-
-
 function openPwdMgr() {
     document.getElementById('pwdOld').value = '';
     document.getElementById('pwdNew').value = '';
@@ -2248,29 +2238,6 @@ function renderLinks(links) {
   area.innerHTML = html;
   area.style.display = (html === '') ? 'none' : 'flex';
 }
-
-function openLinkMgr() { document.getElementById('link-id').value = ''; document.getElementById('link-label').value = ''; document.getElementById('link-url').value = ''; document.getElementById('link-icon').value = ''; refreshLinkList(); openPanel('link'); }
-function refreshLinkList() {
-  google.script.run.withSuccessHandler(function(r){
-    var d = JSON.parse(r); var list = document.getElementById('linkList'); var html = '';
-    d.data.links.forEach(function(l){ html += '<div class="link-mgr-item"><img src="'+(l.icon||'')+'" onerror="this.style.display=\'none\'"><div><b>'+e_(l.label)+'</b></div><div style="font-size:10px; color:gray; overflow:hidden;">'+l.url+'</div><div style="display:flex;gap:4px;"><button onclick="editLinkData(\''+l.id+'\',\''+e_(l.label)+'\',\''+l.url+'\',\''+l.icon+'\')" style="color:blue">✏️</button><button onclick="delLinkData(\''+l.id+'\')" style="color:red">🗑</button></div></div>'; });
-    list.innerHTML = html; renderLinks(d.data.links); 
-  }).getInitData();
-}
-
-function saveLink() {
-  var btn = document.getElementById('btnSaveLink');
-  var d = { id: document.getElementById('link-id').value, label: document.getElementById('link-label').value, url: document.getElementById('link-url').value, icon: document.getElementById('link-icon').value };
-  if(!d.label || !d.url) { toast('กรุณากรอกชื่อและ URL', 'err'); return; }
-  btn.disabled = true; btn.innerHTML = '⏳ กำลังบันทึก...';
-  google.script.run.withSuccessHandler(function(res){ 
-    btn.disabled = false; btn.innerHTML = '💾 บันทึกปุ่ม'; var r = JSON.parse(res); 
-    if(r.ok) { toast(r.msg, 'ok'); document.getElementById('link-id').value = ''; document.getElementById('link-label').value = ''; document.getElementById('link-url').value = ''; document.getElementById('link-icon').value = ''; refreshLinkList(); } else { toast(r.msg, 'err'); }
-  }).withFailureHandler(function(e){ btn.disabled = false; btn.innerHTML = '💾 บันทึกปุ่ม'; toast('Error: ' + e.message, 'err'); }).saveLinkData(d);
-}
-
-function delLinkData(id) { if(!confirm('ยืนยันการลบปุ่มนี้?')) return; google.script.run.withSuccessHandler(function(res){ var r = JSON.parse(res); if(r.ok) { toast(r.msg, 'ok'); refreshLinkList(); } }).deleteLinkData(id); }
-function editLinkData(id, label, url, icon) { document.getElementById('link-id').value = id; document.getElementById('link-label').value = label; document.getElementById('link-url').value = url; document.getElementById('link-icon').value = icon; }
 
 function bindAutoDiagnose() {
     var ids = ['vr-n','vl-n','vr-g','vl-g','vr-p','vl-p','hx-r','hx-i','hx-a','hx-h'];
@@ -2528,10 +2495,10 @@ function onAmpChange() { var amp = document.getElementById('fAmp').value; var hS
 
 function updateAuthUI() {
   // [v6.3] Reset admin-only buttons ก่อนเสมอ ป้องกัน state ค้างจาก session เดิม
-  ['btnLineMgr', 'btnLinkMgr', 'btnVidMgr', 'btnLoc', 'btnConv'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
+  ['btnLineMgr', 'btnLoc', 'btnConv'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+});
   var s = G.session; var aa = document.getElementById('authArea'); var as = document.getElementById('addSec'); var asGuest = document.getElementById('addSecGuest');
   if (s.loggedIn) {
     var label = (s.role === 'admin') ? '⚙ Admin' : s.hospcode; 
@@ -2542,11 +2509,9 @@ function updateAuthUI() {
                    
     as.style.display = 'block'; asGuest.style.display = 'none'; document.getElementById('indvTableSec').style.display = 'flex'; document.getElementById('guestMsg').style.display = 'none'; document.getElementById('thManageHosp').style.display = 'table-cell'; document.getElementById('th-cid').style.display = 'table-cell';
     if(s.role === 'user' || s.role === 'admin') { document.getElementById('btnLoc').style.display = 'flex'; document.getElementById('btnConv').style.display = 'flex'; }
-    if(s.role === 'admin') { 
-        document.getElementById('btnLinkMgr').style.display = 'flex'; 
-        document.getElementById('btnVidMgr').style.display = 'flex';
-        document.getElementById('btnLineMgr').style.display = 'flex'; 
-    }
+    if (s.role === 'admin') {
+  document.getElementById('btnLineMgr').style.display = 'flex';
+}
     if (s.role !== 'admin' && s.hospcode !== 'all') { 
         document.getElementById('sat-hc').value = s.hospcode; 
         document.getElementById('s-hc').value = s.hospcode; 
@@ -4621,129 +4586,241 @@ function updateKpiActiveState() {
   });
 }
 // ==========================================
-// ส่วนเพิ่มเติม: JavaScript สำหรับเชื่อมระบบ Health Calm UI
+// 🎛️ Admin Panel — แผงควบคุมตกแต่งระบบ v6.4
 // ==========================================
-var G_healthData = { links: [] };
-var sortableTop, sortableBottom;
+var ADMIN_CURRENT_TAB = 'links';
 
-// applySettings ถูกรวมเข้าฟังก์ชันเดียวด้านบนแล้ว (ไม่ต้อง monkey-patch)
-
-function renderSidebarLinks(links) {
-    var topEl = document.getElementById('sidebar-strategic-links');
-    var botEl = document.getElementById('sidebar-general-links');
-    if(!topEl || !botEl) return;
-    topEl.innerHTML = ''; botEl.innerHTML = '';
-    
-    var isAdmin = (G.session && G.session.role === 'admin');
-    
-    links.forEach(function(l, i) {
-        var act = '';
-        if(l.target === 'ภายนอก') act = `window.open('${l.url}','_blank')`;
-        else if(l.target === 'ภายใน') act = `openIframe('${l.url}', '${e_(l.label)}')`;
-        
-        var btnColor = l.color || '#ffffff';
-        var hoverClass = act !== '' ? 'hover:brightness-95 cursor-pointer' : '';
-        var onClickEvent = act !== '' ? `onclick="if(!document.body.classList.contains('admin-mode-active')){ ${act} }"` : '';
-
-        var isDownload = l.type === 'ดาวน์โหลด';
-        var iconHTML = '';
-        if (l.target !== 'ไม่เปิด') {
-            if (isDownload) iconHTML = `<i class="fas fa-cloud-download-alt text-[14px] text-blue-600"></i>`;
-            else iconHTML = `<i class="fas ${l.target==='ภายนอก'?'fa-external-link-alt':'fa-chevron-right'} text-[10px] text-gray-500"></i>`;
-        }
-        var prefixIcon = isDownload ? `<i class="fas fa-file-download text-blue-600 mr-1.5"></i> ` : '';
-        
-        var adminBtns = isAdmin ? `<button onclick="editHealthLink(${i}, event)" class="admin-mode-item bg-white text-gray-500 p-1 rounded border hover:text-blue-500 z-10"><i class="fas fa-edit text-[10px]"></i></button><button onclick="delHealthLink('${i}', event)" class="admin-mode-item bg-white text-gray-500 p-1 rounded border hover:text-red-500 z-10"><i class="fas fa-trash text-[10px]"></i></button>` : '';
-
-        var html = `<div data-index="${i}" ${onClickEvent} class="w-full border p-2 mb-1.5 rounded text-xs font-medium flex justify-between items-center ${hoverClass} group relative shadow-sm" style="background-color: ${btnColor};"><span class="truncate flex items-center"><i class="fas fa-ellipsis-v mr-2 admin-mode-item text-gray-400 move-handle px-1 cursor-move"></i>${prefixIcon}${e_(l.label)}</span><div class="flex gap-1.5 items-center">${iconHTML}${adminBtns}</div></div>`;
-
-        if(l.po === 'บน') topEl.innerHTML += html;
-        else if(l.po === 'ล่าง') botEl.innerHTML += html;
-    });
-
-    var opt = { group: 'sidebar', handle: '.move-handle', animation: 150, disabled: !isAdmin };
-    if(sortableTop) sortableTop.destroy(); if(sortableBottom) sortableBottom.destroy();
-    sortableTop = Sortable.create(topEl, opt); sortableBottom = Sortable.create(botEl, opt);
+function toggleAdminPanel() {
+  if (!G.session || G.session.role !== 'admin') {
+    document.getElementById('admin-not-logged-in').classList.remove('hidden');
+    document.getElementById('admin-tabs-menu').classList.add('hidden');
+    document.getElementById('section-links').classList.add('hidden');
+    document.getElementById('section-videos').classList.add('hidden');
+    document.getElementById('section-settings').classList.add('hidden');
+  } else {
+    document.getElementById('admin-not-logged-in').classList.add('hidden');
+    document.getElementById('admin-tabs-menu').classList.remove('hidden');
+    switchAdminTab(ADMIN_CURRENT_TAB);
+    // โหลดค่าตกแต่งจอเสมอ
+    document.getElementById('set-marquee-imgs').value = G.settings.marquee_imgs || '';
+    document.getElementById('set-marquee').value = G.settings.marquee_text || '';
+    document.getElementById('set-bg-music').value = G.settings.bg_music || '';
+    document.getElementById('set-logo-id').value = G.settings.logo_id || '';
+  }
+  document.getElementById('admin-panel').classList.toggle('open');
 }
 
-function openIframe(url, title) {
-    var fv = document.getElementById('iframe-view');
-    fv.style.display = 'flex';
-    document.getElementById('iframe-title').innerText = title || url;
-    document.getElementById('content-iframe').src = url;
-    var btnHome = document.getElementById('btnHome');
-    if (btnHome) btnHome.classList.remove('hidden');
-}
-function closeIframe() {
-    var fv = document.getElementById('iframe-view');
-    fv.style.display = 'none';
-    document.getElementById('content-iframe').src = '';
-    var btnHome = document.getElementById('btnHome');
-    if (btnHome) btnHome.classList.add('hidden');
-}
-
-function toggleMusic() {
-    var audio = document.getElementById('bg-audio');
-    var btn = document.getElementById('btn-music');
-    if (audio.paused) {
-        audio.play().then(() => { btn.innerHTML = '<i class="fas fa-pause" style="color:#1E7145"></i>'; }).catch(err => { toast("เบราว์เซอร์บล็อกการเล่นเสียง", "err"); });
-    } else { audio.pause(); btn.innerHTML = '<i class="fas fa-music"></i>'; }
+function switchAdminTab(t) {
+  ADMIN_CURRENT_TAB = t;
+  ['links', 'videos', 'settings'].forEach(function(id) {
+    document.getElementById('section-' + id).classList.add('hidden');
+    var btn = document.getElementById('tab-' + id);
+    btn.className = "flex-1 py-2 text-[11px] font-bold rounded text-gray-500 hover:text-black";
+  });
+  document.getElementById('section-' + t).classList.remove('hidden');
+  var colorMap = { links: '#6366f1', videos: '#dc2626', settings: '#0d9488' };
+  document.getElementById('tab-' + t).className = "flex-1 py-2 text-[11px] font-bold rounded text-white shadow-sm";
+  document.getElementById('tab-' + t).style.background = colorMap[t];
+  
+  if (t === 'links') refreshLinkList();
+  else if (t === 'videos') refreshVidList();
 }
 
-function toggleAdminPanel() { 
-    if(!G.session || G.session.role !== 'admin') {
-        document.getElementById('admin-not-logged-in').classList.remove('hidden');
-        document.getElementById('admin-tabs-menu').classList.add('hidden');
-        document.getElementById('section-links').classList.add('hidden');
-        document.getElementById('section-settings').classList.add('hidden');
-        document.body.classList.remove('admin-mode-active');
+// ─────── 🔗 เมนูลิ้งก์ ───────
+function refreshLinkList() {
+  google.script.run.withSuccessHandler(function(r) {
+    var d = JSON.parse(r);
+    if (!d.ok) return;
+    G.links = d.data.links || [];
+    var list = document.getElementById('linkList');
+    if (G.links.length === 0) {
+      list.innerHTML = '<div class="text-center text-gray-400 text-xs py-4">ยังไม่มีปุ่มลิ้งก์</div>';
     } else {
-        document.getElementById('admin-not-logged-in').classList.add('hidden');
-        document.getElementById('admin-tabs-menu').classList.remove('hidden');
-        document.body.classList.add('admin-mode-active');
-        switchAdminTab('links'); renderSidebarLinks(G_healthData.links); 
+      var html = '';
+      G.links.forEach(function(l) {
+        var iconHtml = l.icon 
+          ? '<img src="' + l.icon + '" onerror="this.style.display=\'none\'" class="w-8 h-8 object-contain rounded border bg-white p-0.5">' 
+          : '<div class="w-8 h-8 flex items-center justify-center bg-gray-100 rounded border text-base">🔗</div>';
+        html += '<div class="flex items-center gap-2 p-2 bg-gray-50 rounded border hover:bg-gray-100">'
+          + iconHtml
+          + '<div class="flex-1 min-w-0">'
+          + '<div class="text-xs font-bold truncate">' + e_(l.label) + '</div>'
+          + '<div class="text-[10px] text-gray-500 truncate">' + e_(l.url) + '</div>'
+          + '</div>'
+          + '<div class="flex gap-1 shrink-0">'
+          + '<button onclick="editLink(\'' + l.id + '\')" class="text-blue-600 p-1 hover:bg-blue-50 rounded" title="แก้ไข"><i class="fas fa-edit text-[11px]"></i></button>'
+          + '<button onclick="delLink(\'' + l.id + '\')" class="text-red-600 p-1 hover:bg-red-50 rounded" title="ลบ"><i class="fas fa-trash text-[11px]"></i></button>'
+          + '</div></div>';
+      });
+      list.innerHTML = html;
     }
-    document.getElementById('admin-panel').classList.toggle('open'); 
+    // อัปเดตปุ่มในหน้าหลักด้วย
+    renderLinks(G.links);
+  }).getInitData();
 }
-function switchAdminTab(t) { 
-    ['links','settings'].forEach(id => { document.getElementById('section-'+id).classList.add('hidden'); document.getElementById('tab-'+id).className = "flex-1 py-2 text-[11px] font-bold rounded text-gray-500 hover:text-black transition"; }); 
-    document.getElementById('section-'+t).classList.remove('hidden'); document.getElementById('tab-'+t).className = "flex-1 py-2 text-[11px] font-bold rounded bg-white text-[#1E7145] shadow-sm border transition"; 
+
+function saveLink() {
+  var btn = document.getElementById('btnSaveLink');
+  var d = {
+    id: document.getElementById('link-id').value,
+    label: document.getElementById('link-label').value.trim(),
+    url: document.getElementById('link-url').value.trim(),
+    icon: document.getElementById('link-icon').value.trim(),
+    order: parseInt(document.getElementById('link-order').value, 10) || 0
+  };
+  if (!d.label || !d.url) { toast('กรุณากรอกชื่อและ URL', 'err'); return; }
+  btn.disabled = true; btn.innerHTML = '⏳ กำลังบันทึก...';
+  google.script.run.withSuccessHandler(function(res) {
+    btn.disabled = false; btn.innerHTML = '💾 บันทึกปุ่มลิ้งก์';
+    var r = JSON.parse(res);
+    if (r.ok) { toast(r.msg, 'ok'); resetLinkForm(); refreshLinkList(); }
+    else toast(r.msg, 'err');
+  }).withFailureHandler(function(e) {
+    btn.disabled = false; btn.innerHTML = '💾 บันทึกปุ่มลิ้งก์';
+    toast('Error: ' + e.message, 'err');
+  }).saveLinkData(d);
 }
-function saveHealthConfig(key, inputId, btn) {
-    var val = document.getElementById(inputId).value; var originalText = btn.innerHTML;
-    btn.innerHTML = 'บันทึก...'; btn.disabled = true;
-    google.script.run.withSuccessHandler(function(r) { 
-        btn.innerHTML = originalText; btn.disabled = false; var res = JSON.parse(r);
-        if(res.ok) { toast("บันทึกสำเร็จ", "ok"); forceRefresh(); } else toast(res.msg, "err"); 
-    }).saveSetting(key, val, "Theme Config", "");
+
+function editLink(id) {
+  var l = G.links.find(function(x) { return String(x.id) === String(id); });
+  if (!l) return;
+  document.getElementById('link-id').value = l.id;
+  document.getElementById('link-label').value = l.label || '';
+  document.getElementById('link-url').value = l.url || '';
+  document.getElementById('link-icon').value = l.icon || '';
+  document.getElementById('link-order').value = l.order || 0;
+  document.getElementById('title-link-form').innerHTML = '<i class="fas fa-edit"></i> แก้ไขปุ่มลิ้งก์';
+  document.getElementById('btn-cancel-link').classList.remove('hidden');
+  document.getElementById('btnSaveLink').innerHTML = '💾 อัปเดตปุ่มลิ้งก์';
 }
-function saveLinkToSheet() {
-    var d = { id: document.getElementById('l-id').value || '', type: document.getElementById('l-type').value, label: document.getElementById('l-name').value, url: document.getElementById('l-url').value || '#', po: document.getElementById('l-po').value, target: document.getElementById('l-target').value, color: document.getElementById('l-color').value };
-    if(!d.label) { toast("กรุณาใส่ชื่อหัวข้อ", "err"); return; }
-    var btn = document.getElementById('btn-save-link2'); btn.disabled = true; btn.innerHTML = 'กำลังบันทึก...';
-    google.script.run.withSuccessHandler(function(r) {
-        btn.disabled = false; btn.innerHTML = 'บันทึกข้อมูลลิงก์'; var res = JSON.parse(r);
-        if(res.ok) { toast(res.msg, "ok"); cancelEditLink(); forceRefresh(); } else toast(res.msg, "err");
-    }).saveLinkData(d);
+
+function resetLinkForm() {
+  document.getElementById('link-id').value = '';
+  document.getElementById('link-label').value = '';
+  document.getElementById('link-url').value = '';
+  document.getElementById('link-icon').value = '';
+  document.getElementById('link-order').value = 0;
+  document.getElementById('title-link-form').innerHTML = '<i class="fas fa-plus-circle"></i> เพิ่มปุ่มลิ้งก์ใหม่';
+  document.getElementById('btn-cancel-link').classList.add('hidden');
+  document.getElementById('btnSaveLink').innerHTML = '💾 บันทึกปุ่มลิ้งก์';
 }
-function editHealthLink(idx, event) {
-    if(event) event.stopPropagation(); var l = G_healthData.links[idx]; if(!l) return;
-    document.getElementById('l-id').value = idx; document.getElementById('l-type').value = l.type || 'ทั่วไป'; document.getElementById('l-name').value = l.label || ''; document.getElementById('l-url').value = l.url || ''; document.getElementById('l-po').value = l.po || 'บน'; document.getElementById('l-target').value = l.target || 'ภายใน'; document.getElementById('l-color').value = l.color || '#ffffff';
-    document.getElementById('btn-cancel-link').classList.remove('hidden'); document.getElementById('title-link-form').innerHTML = '<i class="fas fa-edit"></i> แก้ไขลิงก์'; document.getElementById('btn-save-link2').innerHTML = 'อัปเดตลิงก์';
+
+function delLink(id) {
+  if (!confirm('ยืนยันการลบปุ่มลิ้งก์นี้?')) return;
+  google.script.run.withSuccessHandler(function(res) {
+    var r = JSON.parse(res);
+    if (r.ok) { toast(r.msg, 'ok'); refreshLinkList(); }
+    else toast(r.msg, 'err');
+  }).deleteLinkData(id);
 }
-function cancelEditLink() { 
-    document.getElementById('l-id').value = ''; document.getElementById('l-type').value = 'ทั่วไป'; document.getElementById('l-name').value=''; document.getElementById('l-url').value=''; document.getElementById('l-color').value='#ffffff'; 
-    document.getElementById('btn-cancel-link').classList.add('hidden'); document.getElementById('title-link-form').innerHTML = '<i class="fas fa-plus"></i> เพิ่ม/แก้ไขลิงก์'; document.getElementById('btn-save-link2').innerHTML = 'บันทึกข้อมูลลิงก์';
+
+// ─────── 📺 ลิสต์วิดีโอ ───────
+function refreshVidList() {
+  google.script.run.withSuccessHandler(function(r) {
+    var d = JSON.parse(r);
+    if (!d.ok) return;
+    G.videos = d.data.videos || [];
+    var list = document.getElementById('vidList');
+    if (G.videos.length === 0) {
+      list.innerHTML = '<div class="text-center text-gray-400 text-xs py-4">ยังไม่มีวิดีโอ</div>';
+    } else {
+      var html = '';
+      G.videos.forEach(function(v) {
+        html += '<div class="flex items-center gap-2 p-2 bg-gray-50 rounded border hover:bg-gray-100">'
+          + '<div class="w-8 h-8 flex items-center justify-center bg-red-100 rounded border text-base text-red-600"><i class="fas fa-play"></i></div>'
+          + '<div class="flex-1 min-w-0">'
+          + '<div class="text-xs font-bold truncate">' + e_(v.label) + '</div>'
+          + '<div class="text-[10px] text-gray-500 truncate">' + e_(v.url) + '</div>'
+          + '</div>'
+          + '<div class="flex gap-1 shrink-0">'
+          + '<button onclick="editVid(\'' + v.id + '\')" class="text-blue-600 p-1 hover:bg-blue-50 rounded" title="แก้ไข"><i class="fas fa-edit text-[11px]"></i></button>'
+          + '<button onclick="delVid(\'' + v.id + '\')" class="text-red-600 p-1 hover:bg-red-50 rounded" title="ลบ"><i class="fas fa-trash text-[11px]"></i></button>'
+          + '</div></div>';
+      });
+      list.innerHTML = html;
+    }
+    // อัปเดต playlist หน้าหลักด้วย
+    renderVideoPlaylist(G.videos);
+    if (G.videos.length > 0) renderVideo(G.videos[0].url);
+  }).getInitData();
 }
-function delHealthLink(idx, event) {
-    if(event) event.stopPropagation(); if(!confirm("ยืนยันการลบลิงก์นี้?")) return;
-    google.script.run.withSuccessHandler(function(r) { var res = JSON.parse(r); if(res.ok) { toast(res.msg, "ok"); forceRefresh(); } else toast(res.msg, "err"); }).deleteLinkData(idx);
+
+function saveVid() {
+  var btn = document.getElementById('btnSaveVid');
+  var d = {
+    id: document.getElementById('vid-id').value,
+    label: document.getElementById('vid-label').value.trim(),
+    url: document.getElementById('vid-url').value.trim(),
+    order: parseInt(document.getElementById('vid-order').value, 10) || 0
+  };
+  if (!d.label || !d.url) { toast('กรุณากรอกชื่อและ URL', 'err'); return; }
+  btn.disabled = true; btn.innerHTML = '⏳ กำลังบันทึก...';
+  google.script.run.withSuccessHandler(function(res) {
+    btn.disabled = false; btn.innerHTML = '💾 บันทึกวิดีโอ';
+    var r = JSON.parse(res);
+    if (r.ok) { toast(r.msg, 'ok'); resetVidForm(); refreshVidList(); }
+    else toast(r.msg, 'err');
+  }).withFailureHandler(function(e) {
+    btn.disabled = false; btn.innerHTML = '💾 บันทึกวิดีโอ';
+    toast('Error: ' + e.message, 'err');
+  }).saveVideoItem(d);
 }
-function toggleEditMode(cb) { 
-    document.getElementById('save-order-btn').classList.toggle('hidden', !cb.checked); 
-    if(sortableTop) sortableTop.option("disabled", !cb.checked); 
-    if(sortableBottom) sortableBottom.option("disabled", !cb.checked); 
+
+function editVid(id) {
+  var v = G.videos.find(function(x) { return String(x.id) === String(id); });
+  if (!v) return;
+  document.getElementById('vid-id').value = v.id;
+  document.getElementById('vid-label').value = v.label || '';
+  document.getElementById('vid-url').value = v.url || '';
+  document.getElementById('vid-order').value = v.order || 0;
+  document.getElementById('title-vid-form').innerHTML = '<i class="fas fa-edit"></i> แก้ไขวิดีโอ';
+  document.getElementById('btn-cancel-vid').classList.remove('hidden');
+  document.getElementById('btnSaveVid').innerHTML = '💾 อัปเดตวิดีโอ';
 }
+
+function resetVidForm() {
+  document.getElementById('vid-id').value = '';
+  document.getElementById('vid-label').value = '';
+  document.getElementById('vid-url').value = '';
+  document.getElementById('vid-order').value = 0;
+  document.getElementById('title-vid-form').innerHTML = '<i class="fas fa-plus-circle"></i> เพิ่มวิดีโอใหม่';
+  document.getElementById('btn-cancel-vid').classList.add('hidden');
+  document.getElementById('btnSaveVid').innerHTML = '💾 บันทึกวิดีโอ';
+}
+
+function delVid(id) {
+  if (!confirm('ยืนยันการลบวิดีโอนี้?')) return;
+  google.script.run.withSuccessHandler(function(res) {
+    var r = JSON.parse(res);
+    if (r.ok) { toast(r.msg, 'ok'); refreshVidList(); }
+    else toast(r.msg, 'err');
+  }).deleteVideoItem(id);
+}
+
+// ─────── 🎨 ตกแต่งจอ ───────
+function saveSettingItem(key, inputId, btn) {
+  var val = document.getElementById(inputId).value;
+  var originalText = btn.innerHTML;
+  btn.innerHTML = '⏳ กำลังบันทึก...';
+  btn.disabled = true;
+  google.script.run.withSuccessHandler(function(r) {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    var res = JSON.parse(r);
+    if (res.ok) {
+      toast('✅ ' + res.msg, 'ok');
+      G.settings[key] = val;
+      applySettings(); // รีเฟรชหน้าจอ
+    } else {
+      toast('❌ ' + res.msg, 'err');
+    }
+  }).withFailureHandler(function(e) {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    toast('Error: ' + e.message, 'err');
+  }).saveSetting(key, val);
+}
+
 function saveLinkOrder() {
     var btn = document.getElementById('save-order-btn'); btn.innerHTML = "กำลังบันทึก..."; btn.disabled = true;
     var newOrder = [];
