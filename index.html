@@ -710,6 +710,30 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <button class="btn-sec" onclick="closePanel('fup')">ยกเลิก</button>
   </div>
 </div>
+<!-- ==================== PANEL นำเข้า CSV ==================== -->
+<div class="ov" id="ov-conv" onclick="closePanel('conv')"></div>
+<div class="panel" id="panel-conv" style="width:580px; max-width:92vw;">
+  <div class="ph" style="background:#475569">
+    <span class="ph-t">🛠 นำเข้าข้อมูลจากไฟล์ CSV</span>
+    <button class="ph-x" onclick="closePanel('conv')">✕</button>
+  </div>
+  <div class="pb">
+    <div class="fs">
+      <div class="fs-t">เลือกไฟล์ CSV สำหรับนำเข้าข้อมูลคัดกรอง</div>
+      <input type="file" id="csvFileInput" accept=".csv" 
+             onchange="handleImportFile(this.files)" 
+             style="width:100%; padding:10px; border:2px dashed #94a3b8; border-radius:8px; background:#f8fafc;">
+      <small style="color:var(--muted); display:block; margin-top:6px;">
+        รองรับไฟล์จาก Excel / Google Sheets (ต้องมีคอลัมน์ตรงกับระบบ)
+      </small>
+    </div>
+
+    <div id="importStatus" style="margin:15px 0; min-height:48px; font-size:13px;"></div>
+  </div>
+  <div class="pf">
+    <button class="btn-sec" onclick="closePanel('conv')">ปิดหน้าต่าง</button>
+  </div>
+</div>
 
 <div class="ov" id="ov-beh" onclick="closePanel('beh')"></div>
 <div class="panel" id="panel-beh">
@@ -3196,22 +3220,25 @@ window.viewScreeningFullDetails = function(cid) {
   }
 };
 
-function openPanel(id) { 
-  if(id === 'scr') { 
-      _editMode = false; 
-      document.getElementById('scrPanelTitle').innerHTML = '📋 แบบตรวจ/ประเมินสายตา — Vision Screening'; 
-      document.getElementById('btnSScr').innerHTML = '💾 บันทึก'; 
-      document.getElementById('s-cid').removeAttribute('readonly'); 
-  } 
-  if(id === 'sat') { 
-      document.getElementById('sat-type').value = 'นักเรียน'; 
-      if (!G.session.loggedIn || G.session.role === 'admin') {
-          document.getElementById('sat-hc').value = '';
-      }
-      onSatTypeChange(); 
-  } 
-  document.getElementById('ov-'+id).classList.add('open'); 
-  document.getElementById('panel-'+id).classList.add('open'); 
+function openPanel(panelId) {
+  // ปิด panel อื่นก่อน
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.ov').forEach(ov => ov.classList.remove('open'));
+
+  const panel = document.getElementById('panel-' + panelId);
+  const overlay = document.getElementById('ov-' + panelId);
+
+  if (panel) {
+    panel.classList.add('open');
+    if (overlay) overlay.classList.add('open');
+  }
+
+  // ถ้าเปิด panel conv ให้ reset input
+  if (panelId === 'conv') {
+    const fileInput = document.getElementById('csvFileInput');
+    if (fileInput) fileInput.value = '';
+    document.getElementById('importStatus').innerHTML = '';
+  }
 }
 function closePanel(id) { document.getElementById('ov-'+id).classList.remove('open'); document.getElementById('panel-'+id).classList.remove('open'); }
 function openLogin() { document.getElementById('lgErr').textContent = ''; document.getElementById('loginMov').classList.add('open'); document.getElementById('lgUser').focus(); }
@@ -4790,34 +4817,33 @@ function handleImportFile(files) {
     return;
   }
 
-  document.getElementById('importStatus').innerHTML = 
-    `<span style="color:var(--accent);">กำลังอ่านไฟล์ ${file.name} ...</span>`;
+  const statusEl = document.getElementById('importStatus');
+  statusEl.innerHTML = `<span style="color:var(--accent);">กำลังอ่านไฟล์ ${file.name} (${(file.size/1024).toFixed(1)} KB) ...</span>`;
 
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
-      const csv = e.target.result;
-      const data = parseCSVToArray(csv);
-      
+      const data = parseCSVToArray(e.target.result);
       if (data.length === 0) {
-        toast('ไม่พบข้อมูลในไฟล์ CSV', 'err');
+        toast('ไม่พบข้อมูลในไฟล์', 'err');
+        statusEl.innerHTML = '';
         return;
       }
 
       currentImportData = data;
-      
-      toast(`พบ ${data.length} แถว กำลังวิเคราะห์...`, 'inf');
-      
+      toast(`พบ ${data.length} แถว กำลังตรวจสอบ...`, 'inf');
+
       google.script.run
         .withSuccessHandler(onPreviewSuccess)
-        .withFailureHandler((err) => {
+        .withFailureHandler(err => {
           toast('เกิดข้อผิดพลาด: ' + err.message, 'err');
-          document.getElementById('importStatus').innerHTML = '';
+          statusEl.innerHTML = '';
         })
         .previewImportScreeningData(data);
 
     } catch (err) {
-      toast('ไม่สามารถอ่านไฟล์ได้: ' + err.message, 'err');
+      toast('ไม่สามารถประมวลผลไฟล์ได้: ' + err.message, 'err');
+      statusEl.innerHTML = '';
     }
   };
   reader.readAsText(file);
@@ -4881,44 +4907,40 @@ function closePreviewModal() {
   currentImportData = null;
 }
 
-// ====================== PARSE CSV ======================
 function parseCSVToArray(csvString) {
   const lines = csvString.trim().split(/\r?\n/);
-  if (lines.length === 0) return [];
+  if (lines.length < 1) return [];
 
-  // แยก Header
   const headers = parseCSVLine(lines[0]);
-
   const data = [];
+
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue;
-    
     const values = parseCSVLine(lines[i]);
     const row = {};
-    
+
     headers.forEach((header, index) => {
-      let key = String(header || `col${index}`).trim();
-      row[key] = values[index] !== undefined ? String(values[index]).trim() : '';
+      let key = String(header || `col${index}`).trim()
+                    .replace(/[^a-zA-Z0-9_]/g, '_'); // ป้องกัน key ผิด
+      row[key] = values[index] !== undefined ? 
+                 String(values[index]).trim() : '';
     });
-    
     data.push(row);
   }
   return data;
 }
 
-// ช่วยแยก CSV Line รองรับเครื่องหมาย " และ comma ภายในช่อง
 function parseCSVLine(line) {
   const result = [];
   let current = '';
   let inQuotes = false;
-  
+
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
-    
     if (char === '"' && !inQuotes) {
       inQuotes = true;
     } else if (char === '"' && inQuotes) {
-      if (line[i + 1] === '"') { // escaped quote
+      if (line[i+1] === '"') {
         current += '"';
         i++;
       } else {
@@ -4933,6 +4955,21 @@ function parseCSVLine(line) {
   }
   result.push(current);
   return result;
+}
+
+function destroyAllCharts() {
+  const charts = ['barInst','pieInst','lineInst','hospInst','schoolInst',
+                  'satBreakdownInst','satTypePieInst','behRiskChart',
+                  'behDevChart','behPurChart','behTimeChart','behDistChart',
+                  'behRestChart','behBlueChart','behSymChart','behHospChart',
+                  'fupFreqChart','fupQolChart','fupDaysChart','fupReasonChart'];
+  
+  charts.forEach(id => {
+    if (window[id] && typeof window[id].destroy === 'function') {
+      try { window[id].destroy(); } catch(e){}
+      window[id] = null;
+    }
+  });
 }
 </script>
 </body>
