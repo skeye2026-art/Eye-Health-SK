@@ -1110,19 +1110,28 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <div class="mov" id="delMov"><div class="del-box"><div class="del-ttl">🗑 ยืนยันการลบข้อมูล</div><div class="del-sub">CID: <strong id="delCidShow"></strong></div><div class="del-warn">⚠ ข้อมูลที่ลบจะไม่สามารถกู้คืนได้</div><div style="display:flex;gap:8px;margin-top:4px"><button style="flex:1;padding:10px;background:var(--red);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px" onclick="confirmDel()">ยืนยันลบ</button><button style="flex:1;padding:10px;background:#f1f5f9;border:1px solid var(--border);border-radius:8px;font-size:12px" onclick="closeDel()">ยกเลิก</button></div><div class="lerr" id="delErr"></div></div></div>
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="ov" id="ov-error-report" onclick="closePanel('error-report')"></div>
-<div class="panel beh-panel" id="panel-error-report">
-  <div class="ph" style="background:var(--red)"><span class="ph-t">⚠️ รายการที่นำเข้าไม่สำเร็จ</span><button class="ph-x" onclick="closePanel('error-report')">✕</button></div>
+<div class="ov" id="ov-error-report" onclick="closePanel('error-report')"></div>
+<div class="panel" id="panel-error-report" style="width:600px; right:-620px;">
+  <div class="ph" style="background:var(--red)">
+      <span class="ph-t">⚠️ รายการที่นำเข้าไม่สำเร็จ</span>
+      <button class="ph-x" onclick="closePanel('error-report')">✕</button>
+  </div>
   <div class="pb">
-    <div class="tbl-wrap" style="max-height: 400px;">
+    <div style="margin-bottom:10px; font-size:12px; color:var(--muted); line-height:1.5;">
+       รายการด้านล่างนี้ไม่สามารถนำเข้าฐานข้อมูลได้เนื่องจาก "เลขบัตรซ้ำ", "เลขบัตรไม่ถูกต้อง" หรือ "ไม่มีสิทธิ์"<br>
+       ท่านสามารถดาวน์โหลดไฟล์เพื่อนำไปตรวจสอบ แก้ไข และทำการอัปโหลดนำเข้าใหม่อีกครั้ง
+    </div>
+    <div class="tbl-wrap" style="max-height: 400px; overflow: auto;">
         <table class="dtbl" id="error-dtbl">
-            <thead><tr><th>เหตุผลที่ไม่ผ่าน</th><th>เลขบัตร</th><th>ชื่อ-สกุล</th></tr></thead>
+            <thead><tr><th>เหตุผลที่ไม่ผ่าน</th><th>เลขบัตร ปชช.</th><th>ชื่อ-สกุล</th><th>รพ.สต.</th></tr></thead>
             <tbody id="errorBody"></tbody>
         </table>
     </div>
   </div>
-  <div class="pf">
-    <button class="btn-p" style="background:var(--red);" onclick="downloadErrorCSV()">📥 ดาวน์โหลดรายการที่ผิดพลาด</button>
-    <button class="btn-sec" onclick="closePanel('error-report')">ปิด</button>
+  <div class="pf" style="display:flex; gap:10px;">
+    <button class="btn-p" style="background:var(--red); flex:1; justify-content:center;" onclick="downloadErrorData('csv')">📥 ดาวน์โหลด (.csv)</button>
+    <button class="btn-p" style="background:#ca8a04; flex:1; justify-content:center;" onclick="downloadErrorData('txt')">📥 ดาวน์โหลด (.txt)</button>
+    <button class="btn-sec" onclick="closePanel('error-report')">ปิดหน้าต่าง</button>
   </div>
 </div>
 
@@ -1957,30 +1966,76 @@ function importCSV() {
     reader.readAsText(file, encoding);
 }
 
-// เพิ่มฟังก์ชันแสดงตารางและดาวน์โหลด
+// ==========================================
+// การจัดการข้อมูลที่ไม่สามารถนำเข้าได้ (Failed Data)
+// ==========================================
 var G_failedData = [];
+
 function renderErrorTable(failedData) {
     G_failedData = failedData;
     var body = document.getElementById('errorBody');
-    body.innerHTML = failedData.map(item => `
-        <tr>
-            <td style="color:var(--red); font-weight:bold;">${item.reason}</td>
-            <td>${item.row[2] || '-'}</td>
-            <td>${item.row[6] || '-'}</td>
-        </tr>
-    `).join('');
+    body.innerHTML = failedData.map(function(item) {
+        return '<tr>' +
+            '<td style="color:var(--red); font-weight:bold;">' + e_(item.reason) + '</td>' +
+            '<td>' + e_(item.row[2] || '-') + '</td>' +
+            '<td>' + e_(item.row[6] || '-') + '</td>' +
+            '<td>' + e_(item.row[14] || '-') + '</td>' +
+        '</tr>';
+    }).join('');
 }
 
-function downloadErrorCSV() {
-    if(!G_failedData.length) return;
-    var csvContent = "\uFEFFเหตุผลที่ไม่ผ่าน," + "ข้อมูลทุกคอลัมน์ (join ด้วยช่องว่าง)\n";
-    G_failedData.forEach(item => {
-        csvContent += '"' + item.reason + '","' + item.row.join(' ') + '"\n';
+// โหลดข้อมูลที่ผิดพลาดออกมาเป็น .csv หรือ .txt (โครงสร้าง 47 คอลัมน์) เพื่อแก้แล้วนำเข้าใหม่ได้ทันที
+function downloadErrorData(type) {
+    if(!G_failedData || !G_failedData.length) {
+        toast('ไม่มีข้อมูลที่ผิดพลาดให้ดาวน์โหลด', 'err');
+        return;
+    }
+
+    var headers = [ 
+      "เหตุผลที่ทำให้ไม่ผ่าน", // คอลัมน์ที่เพิ่มขึ้นมาให้ User ทราบ
+      "ระดับชั้น", "ห้อง", "เลขบัตรประชาชน_13หลัก", "คำนำหน้า", "ชื่อ", "นามสกุล", 
+      "ชื่อ-สกุลเต็ม", "วันเกิด_dd/mm/yyyy", "อายุ_ปี", "เพศ_1ชาย_2หญิง", "ชั้นเรียน", 
+      "ชื่อโรงเรียน", "หน่วยวัด_F_M", "วันที่ตรวจ_dd/mm/yyyy", "รหัสรพสต", "บ้านเลขที่", 
+      "หมู่", "รหัสพื้นที่_aid", "ประวัติสวมแว่น", "ประวัติบาดเจ็บตา", "ตาแดงเรื้อรัง", 
+      "ปวดศีรษะบ่อย", "ตาเหล่_ตาขี้เกียจ", "ครอบครัวสวมแว่น", "VAขวา_ตาเปล่า", 
+      "VAซ้าย_ตาเปล่า", "VAขวา_ใส่แว่น", "VAซ้าย_ใส่แว่น", "PHขวา", "PHซ้าย", 
+      "VA_OU_ตาเปล่า", "VA_OU_ใส่แว่น", "Cover_Test", "Hirschberg", "Color_Vision", 
+      "Stereopsis", "วินิจฉัย", "การส่งต่อ", "ผู้ตรวจ", "ตำแหน่ง", "รหัสโรงเรียน", 
+      "ตำบล", "อำเภอ", "จังหวัด", "หมายเหตุ", "สิทธิการรักษา", "สัญชาติ"
+    ];
+
+    var content = "\uFEFF"; 
+    var delimiter = (type === 'csv') ? ',' : '\t'; // ถ้าเป็น csv คั่นด้วยลูกน้ำ, ถ้าเป็น txt คั่นด้วย tab
+
+    content += headers.join(delimiter) + "\n";
+
+    G_failedData.forEach(function(item) {
+        // นำเหตุผลมาต่อข้างหน้า Row ข้อมูล 47 คอลัมน์
+        var rowArray = [item.reason].concat(item.row);
+        
+        var rowStr = rowArray.map(function(c, idx) {
+            if (type === 'csv') {
+               // ถ้าเป็น CSV ต้องล็อคเซลล์เลขบัตรและรหัสรพสต. ให้ Excel อ่านแล้วเลขไม่เพี้ยนเป็น E+12
+               if (idx === 3 || idx === 15) return '="'+String(c||'')+'"'; 
+               return '"' + String(c||'').replace(/"/g, '""') + '"';
+            } else {
+               // ถ้าเป็น TXT แค่ส่งออกแบบ string ตรงๆ จะเปิดแก้ไขด้วย Notepad หรือ Excel ได้เลย
+               return String(c||'').replace(/\t/g, ' '); 
+            }
+        }).join(delimiter);
+
+        content += rowStr + "\n";
     });
-    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    var mimeType = type === 'csv' ? 'text/csv' : 'text/plain';
+    var blob = new Blob([content], { type: mimeType + ';charset=utf-8;' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = url; a.download = 'Failed_Import_Data.csv'; a.click();
+    a.href = url; 
+    a.download = 'Failed_Screening_Data.' + type; 
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 function dlTemplate() {
