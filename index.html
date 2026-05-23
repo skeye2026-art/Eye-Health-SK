@@ -120,12 +120,15 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 /* =========================================
    Marquee Text & Image (ข้อความและภาพวิ่ง)
 ========================================= */
-/* 1. ข้อความวิ่ง */
+/* 1. ข้อความวิ่ง (ตั้งให้เลื่อนจากซ้ายไปขวา) */
 .marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; }
-.marquee-content { display: inline-block; animation: text-marquee 30s linear infinite; padding-left: 100%; }
-@keyframes text-marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-100%); }
+.marquee-content { 
+    display: inline-block; 
+    animation: text-marquee-ltr 15s linear infinite; 
+}
+@keyframes text-marquee-ltr {
+    0% { transform: translateX(-100%); } /* เริ่มจากซ่อนอยู่ฝั่งซ้ายสุด */
+    100% { transform: translateX(350px); } /* เลื่อนไปจนสุดฝั่งขวา */
 }
 
 /* 2. ภาพวิ่ง */
@@ -136,7 +139,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
 @keyframes marquee {
     0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); } /* เลื่อนภาพไปทางซ้าย */
+    100% { transform: translateX(-50%); } 
 }
 
 /* Modal for Image */
@@ -269,13 +272,18 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <img id="floating-img-element" class="hidden" src="" alt="floating">
 <div id="app">
 <header class="hdr">
-  <div id="marquee-container" class="hidden" style="width: 100%; max-width: 300px; color: #fff; margin-left: 10px;">
-            <div class="marquee-wrapper">
-                <div id="disp-marquee" class="marquee-content" style="font-size: 13px; font-weight: bold;"></div>
-            </div>
-        </div>
   <div class="hdr-logo" id="logoWrap">👁</div>
-  <div class="hdr-text"><div class="sys-name" id="sysName">โครงการเด็กไทยสายตาดี</div><div class="org-name" id="orgName">องค์การบริหารส่วนจังหวัดสมุทรสาคร</div></div>
+  <div class="hdr-text">
+    <div class="sys-name" id="sysName">โครงการเด็กไทยสายตาดี</div>
+    <div class="org-name" id="orgName">องค์การบริหารส่วนจังหวัดสมุทรสาคร</div>
+  </div>
+  
+  <div id="marquee-container" class="hidden" style="flex:1; max-width: 300px; color: #fff; margin: 0 15px;">
+    <div class="marquee-wrapper">
+        <div id="disp-marquee" class="marquee-content" style="font-size: 13px; font-weight: bold;"></div>
+    </div>
+  </div>
+
   <div class="hdr-right">
     <div class="date-txt" id="dateTxt"></div>
     <button class="btn-hdr btn-hdr-manual" onclick="openPanel('manual')">📖 คู่มือ</button>
@@ -4620,7 +4628,7 @@ function renderImageMarquee(imageUrlsString) {
     const container = document.getElementById('img-marquee-body');
     const wrapper = document.querySelector('.img-marquee-container');
     
-    // แปลง boolean เป็น string ก่อนเทียบ ป้องกันบักจาก Google Sheets
+    // แปลง boolean เป็น string ก่อนเทียบ
     if (String(G.settings.enable_img_marquee).toLowerCase() !== "true" || !imageUrlsString || imageUrlsString.trim() === '') {
         wrapper.style.display = 'none';
         return;
@@ -4630,15 +4638,21 @@ function renderImageMarquee(imageUrlsString) {
     const urls = imageUrlsString.split(',').map(url => url.trim()).filter(url => url !== '');
     container.innerHTML = '';
     
-    // เพิ่มรูป 2-3 รอบเพื่อให้วิ่งต่อเนื่องไม่ขาดช่วง และสัมพันธ์กับ translateX(-50%) ใน CSS
+    // เพิ่มรูป 3-4 รอบเพื่อให้วิ่งต่อเนื่องไม่ขาดช่วง
     [...urls, ...urls, ...urls, ...urls].forEach(url => {
         const img = document.createElement('img');
         
-        // ตรวจสอบและดึงรูปจาก Google Drive อัตโนมัติถ้าใส่เป็นลิ้งก์แชร์
         var imgSrc = url;
-        var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/); 
-        if (match && match[1]) { 
-            imgSrc = 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w500'; 
+        // ตรวจสอบว่าเป็น ID หรือลิงก์เต็ม
+        if (!url.startsWith('http')) {
+            // ถ้าใส่มาเป็นรหัส ID อย่างเดียว
+            imgSrc = 'https://drive.google.com/thumbnail?id=' + url + '&sz=w500';
+        } else {
+            // ถ้าใส่มาเป็นลิงก์เต็มๆ ให้ดึงแค่ ID ออกมา
+            var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/); 
+            if (match && match[1]) { 
+                imgSrc = 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w500'; 
+            }
         }
         
         img.src = imgSrc;
