@@ -121,22 +121,16 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
    Marquee Text & Image (ข้อความและภาพวิ่ง)
 ========================================= */
 /* 1. ข้อความวิ่ง (ตั้งให้เลื่อนจากซ้ายไปขวา) */
-.marquee-wrapper { 
-  width: 100%; 
-  overflow: hidden; 
-  white-space: nowrap; 
-  display: flex; /* เพิ่มเพื่อให้จัดการตำแหน่งง่ายขึ้น */
-}
-
+.marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; }
 .marquee-content { 
-  display: inline-block; 
-  /* ใช้การเลื่อนจากตำแหน่งเริ่มต้น 0 (ชิดซ้ายสุด) ไปยังตำแหน่งที่กำหนด */
-  animation: text-marquee-ltr 30s linear infinite; 
+    display: inline-block; 
+    animation: text-marquee-ltr 30s linear infinite; 
+    padding-left: 0; /* เปลี่ยนจาก 100% เป็น 0 เพื่อให้เริ่มที่ขอบซ้าย */
 }
 
 @keyframes text-marquee-ltr {
-  0% { transform: translateX(0%); } /* เริ่มจากขอบซ้ายสุด */
-  100% { transform: translateX(100%); } /* วิ่งไปสุดหน้าจอทางขวา */
+    0% { transform: translateX(-100%); } /* เริ่มจากนอกจอฝั่งซ้าย */
+    100% { transform: translateX(100vw); } /* วิ่งไปจนสุดจอฝั่งขวา */
 }
 
 /* 2. ภาพวิ่ง */
