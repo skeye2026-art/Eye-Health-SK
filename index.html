@@ -117,11 +117,27 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .toast-wrap{position:fixed;bottom:18px;right:18px;z-index:500;display:flex;flex-direction:column;gap:6px} .toast{padding:10px 14px;border-radius:9px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-md);min-width:200px;max-width:340px;animation:slIn .28s ease;display:flex;align-items:center;gap:7px} .t-ok{background:#dcfce7;color:#14532d;border:1px solid #86efac} .t-err{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5} .t-inf{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd} @keyframes slIn{from{transform:translateX(110%);opacity:0}to{transform:none;opacity:1}} .sp{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0} @keyframes spin{to{transform:rotate(360deg)}}
 .hidden { display: none !important; }
 
-/* Marquee Text - แก้ไขให้วิ่งสมูท */
+/* =========================================
+   Marquee Text & Image (ข้อความและภาพวิ่ง)
+========================================= */
+/* 1. ข้อความวิ่ง */
+.marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; }
+.marquee-content { display: inline-block; animation: text-marquee 15s linear infinite; padding-left: 100%; }
+@keyframes text-marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+
+/* 2. ภาพวิ่ง */
 .img-marquee-container { width: 100%; overflow: hidden; background: #fff; border-radius: 8px; border: 1px solid var(--border); margin: 10px 8px; }
-    .img-marquee-wrapper { display: flex; white-space: nowrap; animation: marquee 30s linear infinite; }
-    .img-marquee-wrapper img { height: 120px; margin: 5px; border-radius: 6px; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+.img-marquee-wrapper { display: flex; white-space: nowrap; animation: marquee 30s linear infinite; }
+.img-marquee-wrapper img { height: 120px; margin: 5px; border-radius: 6px; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
 .img-marquee-wrapper img:hover { transform: scale(1.05); }
+
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); } /* เลื่อนภาพไปทางซ้าย */
+}
 
 /* Modal for Image */
 .modal-overlay { 
@@ -4583,8 +4599,16 @@ function applySettings() {
     var s = G.settings;
     if (s.sys_name) document.getElementById('sysName').textContent = s.sys_name;
     
-    // ตั้งค่าข้อความวิ่ง (Text Marquee)
-    if (s.enable_text_marquee === "true" && s.marquee_text) {
+    // 1. นำโลโก้มาแสดงผล
+    if (s.logo_id) {
+        document.getElementById('logoWrap').innerHTML = '<img src="https://drive.google.com/thumbnail?id=' + s.logo_id + '&sz=w200" alt="Logo">';
+    } else {
+        document.getElementById('logoWrap').innerHTML = '👁'; // ค่าเริ่มต้นถ้าไม่มีโลโก้
+    }
+    
+    // 2. ตั้งค่าข้อความวิ่ง (Text Marquee)
+    // แปลงเป็น String และ toLowerCase เพื่อป้องกันข้อผิดพลาดที่ Sheets ส่งมาเป็น Boolean แบบเจาะจง
+    if (String(s.enable_text_marquee).toLowerCase() === "true" && s.marquee_text) {
         document.getElementById('disp-marquee').innerText = s.marquee_text;
         document.getElementById('marquee-container').classList.remove('hidden');
     } else {
@@ -4592,12 +4616,12 @@ function applySettings() {
     }
 }
 
-// อัปเดตฟังก์ชัน renderImageMarquee (แก้บัคการวนภาพ)
 function renderImageMarquee(imageUrlsString) {
     const container = document.getElementById('img-marquee-body');
     const wrapper = document.querySelector('.img-marquee-container');
     
-    if (G.settings.enable_img_marquee !== "true" || !imageUrlsString || imageUrlsString.trim() === '') {
+    // แปลง boolean เป็น string ก่อนเทียบ ป้องกันบักจาก Google Sheets
+    if (String(G.settings.enable_img_marquee).toLowerCase() !== "true" || !imageUrlsString || imageUrlsString.trim() === '') {
         wrapper.style.display = 'none';
         return;
     }
@@ -4606,10 +4630,18 @@ function renderImageMarquee(imageUrlsString) {
     const urls = imageUrlsString.split(',').map(url => url.trim()).filter(url => url !== '');
     container.innerHTML = '';
     
-    // เพิ่มรูป 3 รอบเพื่อให้วิ่งต่อเนื่องไม่ขาดช่วง
-    [...urls, ...urls, ...urls].forEach(url => {
+    // เพิ่มรูป 2-3 รอบเพื่อให้วิ่งต่อเนื่องไม่ขาดช่วง และสัมพันธ์กับ translateX(-50%) ใน CSS
+    [...urls, ...urls, ...urls, ...urls].forEach(url => {
         const img = document.createElement('img');
-        img.src = url;
+        
+        // ตรวจสอบและดึงรูปจาก Google Drive อัตโนมัติถ้าใส่เป็นลิ้งก์แชร์
+        var imgSrc = url;
+        var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/); 
+        if (match && match[1]) { 
+            imgSrc = 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w500'; 
+        }
+        
+        img.src = imgSrc;
         img.onerror = function() { this.style.display = 'none'; };
         img.onclick = () => showExpandedImage(url);
         container.appendChild(img);
