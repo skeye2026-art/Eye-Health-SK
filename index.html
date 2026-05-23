@@ -2651,21 +2651,26 @@ function loadDashboard(params) {
   }).getDashboardData(params);
 }
 
+// เปลี่ยนชื่อฟังก์ชันจาก showExpandedImage เป็น showImg เพื่อให้ตรงกับที่เรียกใน renderSummaryTable
 function showImg(url) { 
     var imgSrc = url; 
+    // ตรวจสอบว่าใส่มาเป็น Link หรือ ID
     var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/); 
     if (match && match[1]) { 
         imgSrc = 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000'; 
     } 
-    const modal = document.getElementById('imgmodal');
+    
+    // แก้ไขให้ตรงกับ ID ใน HTML (imgModal)
+    const modal = document.getElementById('imgModal');
     const img = document.getElementById('modal-img');
     img.src = imgSrc;
     modal.classList.add('open');
 }
 
-// แก้ไขฟังก์ชัน closeImg ให้ตรงกัน
+// ฟังก์ชันปิด Modal
 function closeImg() { 
-    document.getElementById('imgModal').classList.remove('open'); 
+    const modal = document.getElementById('imgModal');
+    modal.classList.remove('open'); 
     setTimeout(function(){ document.getElementById('modal-img').src = ''; }, 250); 
 }
 
