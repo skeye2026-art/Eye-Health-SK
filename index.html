@@ -1227,18 +1227,17 @@ function startFloatingImage(imgUrl) {
     animate();
 }
 
+// 1. ปรับฟังก์ชัน initVisualSettings ให้ทำงานได้ถูกต้อง
 function initVisualSettings() {
-    let s = G.settings; // ดึงค่าจากตัวแปร G
-    
-    // Marquee ข้อความ
-    if(s.marquee_text) {
-        document.getElementById('disp-marquee').innerText = s.marquee_text + "        " + s.marquee_text;
-        document.getElementById('marquee-container').classList.remove('hidden');
-    }
-    
+let s = G.settings; // ใช้ตัวแปร s ให้สอดคล้อง
+if(s.marquee_text) {
+// ใช้ s.marquee_text
+document.getElementById('disp-marquee').innerText = s.marquee_text + "       " + s.marquee_text;
+document.getElementById('marquee-container').classList.remove('hidden');
+}
     // Floating Image
-    if(s.floating_img) {
-        startFloatingImage(s.floating_img);
+    if(settings.floating_img) {
+        startFloatingImage(settings.floating_img);
     }
 }
 
