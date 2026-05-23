@@ -4548,6 +4548,44 @@ function renderImageMarquee(imageUrlsString) {
         container.appendChild(img);
     });
 }
+function mapCsvToRowDynamic(headers, cols) {
+    var out = new Array(47).fill('');
+    // สร้าง Mapping พื้นฐานที่ระบบคาดหวังตาม Template
+    var mapRule = {
+        "เลขบัตรประชาชน_13หลัก": 2,
+        "ชื่อ": 4,
+        "นามสกุล": 5,
+        "วันเกิด_dd/mm/yyyy": 7,
+        "อายุ_ปี": 8,
+        "เพศ_1ชาย_2หญิง": 9,
+        "ชั้นเรียน": 10,
+        "ชื่อโรงเรียน": 11,
+        "รหัสรพสต": 14,
+        "วินิจฉัย": 36,
+        "การส่งต่อ": 37,
+        "สิทธิการรักษา": 45,
+        "สัญชาติ": 46
+    };
+
+    for (var i = 0; i < headers.length; i++) {
+        var h = String(headers[i]).trim();
+        var val = String(cols[i] || '').replace(/^"|"$/g, '').trim();
+        
+        // ถ้าคอลัมน์ตรงกับกฏที่ตั้งไว้ ให้นำค่าไปใส่ใน Index ที่ถูกต้อง
+        if (mapRule[h] !== undefined) {
+            var targetIndex = mapRule[h];
+            if (targetIndex === 2) val = val.replace(/\D/g, ''); // เลขบัตรเอาเฉพาะตัวเลข
+            out[targetIndex] = val;
+        }
+    }
+    
+    // ตั้งค่า Default พื้นฐานหากข้อมูลบางอย่างแหว่งไป
+    if (!out[46]) out[46] = 'ไทย';
+    if (!out[36]) out[36] = 'สายตาปกติ';
+    if (!out[37]) out[37] = 'ไม่จำเป็นต้องส่งต่อ';
+    
+    return out;
+}
 </script>
 </body>
 </html>
