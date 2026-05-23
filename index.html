@@ -293,7 +293,11 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     </div>
 
     <div class="hdr-right">
-        </div>
+        <div class="date-txt" id="dateTxt"></div>
+        <button class="btn-hdr btn-hdr-manual" onclick="openPanel('manual')">📖 คู่มือ</button>
+        <button class="btn-hdr btn-hdr-refresh" onclick="hardReload()">🔄 โหลดใหม่</button>
+        <div id="authArea"><button class="btn-hdr btn-hdr-login" onclick="openLogin()">🔐 เข้าสู่ระบบ</button></div>
+    </div>
 </header>
 
 <div id="linkArea" class="link-grid" style="display:none;"></div>
