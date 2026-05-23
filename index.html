@@ -1111,26 +1111,34 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="ov" id="ov-error-report" onclick="closePanel('error-report')"></div>
 <div class="ov" id="ov-error-report" onclick="closePanel('error-report')"></div>
-<div class="panel" id="panel-error-report" style="width:600px; right:-620px;">
+<div class="ov" id="ov-error-report" onclick="closePanel('error-report')"></div>
+<div class="panel" id="panel-error-report" style="width:650px; right:-670px;">
   <div class="ph" style="background:var(--red)">
       <span class="ph-t">⚠️ รายการที่นำเข้าไม่สำเร็จ</span>
       <button class="ph-x" onclick="closePanel('error-report')">✕</button>
   </div>
   <div class="pb">
-    <div style="margin-bottom:10px; font-size:12px; color:var(--muted); line-height:1.5;">
-       รายการด้านล่างนี้ไม่สามารถนำเข้าฐานข้อมูลได้เนื่องจาก "เลขบัตรซ้ำ", "เลขบัตรไม่ถูกต้อง" หรือ "ไม่มีสิทธิ์"<br>
-       ท่านสามารถดาวน์โหลดไฟล์เพื่อนำไปตรวจสอบ แก้ไข และทำการอัปโหลดนำเข้าใหม่อีกครั้ง
+    <div style="margin-bottom:10px; font-size:12.5px; color:var(--muted); line-height:1.6; background:#fff1f2; padding:10px; border-radius:8px; border:1px solid #fecdd3;">
+       <b>ไม่สามารถนำเข้าข้อมูลด้านล่างได้ เนื่องจาก:</b> "เลขบัตรซ้ำในระบบ", "ซ้ำในไฟล์อัปโหลด", "เลขบัตรไม่ครบ 13 หลัก" หรือ "รหัส รพ.สต. ไม่ตรงกับสิทธิ์"<br>
+       ท่านสามารถดาวน์โหลดไฟล์เพื่อนำไปตรวจสอบแก้ไข และทำการอัปโหลดใหม่อีกครั้ง
     </div>
     <div class="tbl-wrap" style="max-height: 400px; overflow: auto;">
         <table class="dtbl" id="error-dtbl">
-            <thead><tr><th>เหตุผลที่ไม่ผ่าน</th><th>เลขบัตร ปชช.</th><th>ชื่อ-สกุล</th><th>รพ.สต.</th></tr></thead>
+            <thead>
+               <tr>
+                 <th style="background:#fee2e2; color:#991b1b;">เหตุผลที่ไม่ผ่าน</th>
+                 <th>เลขบัตร ปชช.</th>
+                 <th>ชื่อ-สกุล</th>
+                 <th>รพ.สต.</th>
+               </tr>
+            </thead>
             <tbody id="errorBody"></tbody>
         </table>
     </div>
   </div>
   <div class="pf" style="display:flex; gap:10px;">
-    <button class="btn-p" style="background:var(--red); flex:1; justify-content:center;" onclick="downloadErrorData('csv')">📥 ดาวน์โหลด (.csv)</button>
-    <button class="btn-p" style="background:#ca8a04; flex:1; justify-content:center;" onclick="downloadErrorData('txt')">📥 ดาวน์โหลด (.txt)</button>
+    <button class="btn-p" style="background:var(--red); flex:1; justify-content:center;" onclick="downloadErrorData('csv')">📥 ดาวน์โหลดกลับเป็น (.csv)</button>
+    <button class="btn-p" style="background:#ca8a04; flex:1; justify-content:center;" onclick="downloadErrorData('txt')">📥 ดาวน์โหลดกลับเป็น (.txt)</button>
     <button class="btn-sec" onclick="closePanel('error-report')">ปิดหน้าต่าง</button>
   </div>
 </div>
@@ -1921,54 +1929,125 @@ function mapCsvToRowDynamic(headers, cols) {
 }
 
 function importCSV() {
-    var fileInput = document.getElementById('convFile'); if (!fileInput.files.length) { toast('กรุณาเลือกไฟล์ก่อนครับ', 'err'); return; }
-    var file = fileInput.files[0]; var reader = new FileReader(); var encoding = document.getElementById('fileEncoding') ? document.getElementById('fileEncoding').value : 'UTF-8';
+    var fileInput = document.getElementById('convFile'); 
+    if (!fileInput.files.length) { toast('กรุณาเลือกไฟล์ก่อนครับ', 'err'); return; }
+    var file = fileInput.files[0]; 
+    var reader = new FileReader(); 
+    var encoding = document.getElementById('fileEncoding') ? document.getElementById('fileEncoding').value : 'UTF-8';
+    
     reader.onload = function(e) {
-        var text = e.target.result; var lines = text.split(/\r\n|\n|\r/); var processedRows = [];
+        var text = e.target.result; 
+        var lines = text.split(/\r\n|\n|\r/); 
+        var processedRows = [];
         var headers = [];
         
         for (var i = 0; i < lines.length; i++) { 
-            var line = lines[i].trim(); if (!line) continue; 
-            var delimiter = ','; if (line.indexOf('\t') !== -1) delimiter = '\t'; else if (line.indexOf('|') !== -1) delimiter = '|'; else if (line.indexOf(';') !== -1) delimiter = ';'; 
+            var line = lines[i].trim(); 
+            if (!line) continue; 
+            var delimiter = ','; 
+            if (line.indexOf('\t') !== -1) delimiter = '\t'; 
+            else if (line.indexOf('|') !== -1) delimiter = '|'; 
+            else if (line.indexOf(';') !== -1) delimiter = ';'; 
+            
             var cols = smartParseCSVLine(line, delimiter); 
             
-            // 🛠️ FIX HEADER DETECTION: ป้องกันการลบข้อมูลบรรทัดแรกทิ้ง
             var isHeader = (line.indexOf('ระดับชั้น') > -1 || line.toLowerCase().indexOf('cid') > -1 || line.indexOf('เลขบัตร') > -1 || line.toLowerCase().indexOf('level_edu') > -1);
             if (i === 0 && isHeader) {
                 headers = cols; continue; 
             } else if (i === 0 && !isHeader) {
-                headers = []; // ถ้าบรรทัดแรกไม่ใช่ Header ให้เว้นว่างไว้เพื่อเข้า smartProcessRow
+                headers = []; 
             }
-            if (i > 0 && isHeader) { headers = cols; continue; } // ป้องกันกรณีหัวตารางแทรกอยู่กลางไฟล์
+            if (i > 0 && isHeader) { headers = cols; continue; } 
             
             var mapped = (headers.length > 0) ? mapCsvToRowDynamic(headers, cols) : smartProcessRow(cols); 
             if (mapped) processedRows.push(mapped); 
         }
         
         if(processedRows.length === 0) { toast('ไม่พบข้อมูลในไฟล์ หรือข้อมูลไม่ถูกต้อง', 'err'); return; } 
-        var btn = document.getElementById('btnImport'); btn.disabled = true; btn.innerHTML = '⏳ กำลังนำเข้า...';
-        google.script.run.withSuccessHandler(function(res) { 
-    btn.disabled = false; btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; 
-    var r = JSON.parse(res); 
-    if(r.ok) {
-        toast(r.msg, 'ok');
-        if (r.data.failed && r.data.failed.length > 0) {
-            renderErrorTable(r.data.failed);
-            openPanel('error-report');
-        } else {
-            closePanel('conv'); 
-            fileInput.value = ''; 
-            forceRefresh();
+        
+        // --- 🛡️ การตรวจสอบข้อมูลฝั่งหน้าเว็บ (Frontend Validation) ---
+        // 1. ดึงเลขบัตรที่มีอยู่ในระบบปัจจุบันมาเก็บไว้เทียบ
+        var existingCids = {};
+        if (G && G.allRows) {
+            G.allRows.forEach(function(r) {
+                if (r.cid) existingCids[String(r.cid).trim()] = true;
+            });
         }
-    } else { toast(r.msg, 'err'); } 
-}).importScreeningData(processedRows);
+        
+        var validRows = [];
+        var failedRows = [];
+        var importCids = {}; // เก็บเลขบัตรในไฟล์เพื่อเช็คซ้ำกันเอง
+        
+        var sessionHc = '';
+        if (G.session && G.session.hospcode && G.session.hospcode !== 'all') {
+            sessionHc = ("00000" + String(G.session.hospcode).trim()).slice(-5);
+        }
+
+        // 2. คัดแยกรายการที่ผ่านและไม่ผ่าน
+        processedRows.forEach(function(r) {
+            var cid = String(r[2] || '').replace(/^[="']+|["']+$/g, '').replace(/\D/g, '').trim();
+            var hc = String(r[14] || '').replace(/^[="']+|["']+$/g, '').trim();
+            if(hc) hc = ("00000" + hc).slice(-5);
+            
+            var reason = "";
+            
+            if (!/^\d{13}$/.test(cid)) {
+                reason = "เลขบัตร ปชช. ไม่ครบ 13 หลัก";
+            } else if (existingCids[cid]) {
+                reason = "เลขบัตรซ้ำกับในระบบ";
+            } else if (importCids[cid]) {
+                reason = "เลขบัตรซ้ำซ้อนภายในไฟล์อัปโหลด";
+            } else if (G.session && G.session.role !== 'admin' && hc !== sessionHc) {
+                reason = "รหัส รพ.สต. ไม่ตรงกับสิทธิ์ผู้ใช้";
+            }
+            
+            r[2] = cid; // อัปเดตข้อมูลให้คลีน
+            r[14] = hc; // อัปเดตข้อมูลให้คลีน
+
+            if (reason !== "") {
+                failedRows.push({ row: r, reason: reason });
+            } else {
+                importCids[cid] = true;
+                validRows.push(r);
+            }
+        });
+        
+        // 3. แสดง Modal หากมีข้อมูลที่ไม่ผ่าน
+        if (failedRows.length > 0) {
+            renderErrorTable(failedRows);
+            openPanel('error-report');
+        }
+        
+        // 4. ถ้าไม่มีข้อมูลที่ผ่านเลยให้หยุดการทำงาน
+        if (validRows.length === 0) {
+            toast('ไม่มีข้อมูลที่สามารถนำเข้าได้ (ติดเงื่อนไขทั้งหมด)', 'err');
+            return;
+        }
+
+        // 5. ส่งเฉพาะข้อมูลที่ "ผ่าน" เข้าไปบันทึก
+        var btn = document.getElementById('btnImport'); 
+        btn.disabled = true; 
+        btn.innerHTML = '⏳ กำลังนำเข้า... (' + validRows.length + ' รายการ)';
+        
+        google.script.run.withSuccessHandler(function(res) { 
+            btn.disabled = false; 
+            btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; 
+            var r = JSON.parse(res); 
+            if(r.ok) {
+                toast("นำเข้าสำเร็จ " + validRows.length + " รายการ", 'ok');
+                if (failedRows.length === 0) {
+                    closePanel('conv'); 
+                }
+                fileInput.value = ''; 
+                forceRefresh();
+            } else { 
+                toast(r.msg, 'err'); 
+            } 
+        }).importScreeningData(validRows);
     }; 
     reader.readAsText(file, encoding);
 }
 
-// ==========================================
-// การจัดการข้อมูลที่ไม่สามารถนำเข้าได้ (Failed Data)
-// ==========================================
 var G_failedData = [];
 
 function renderErrorTable(failedData) {
@@ -1977,14 +2056,13 @@ function renderErrorTable(failedData) {
     body.innerHTML = failedData.map(function(item) {
         return '<tr>' +
             '<td style="color:var(--red); font-weight:bold;">' + e_(item.reason) + '</td>' +
-            '<td>' + e_(item.row[2] || '-') + '</td>' +
+            '<td style="font-weight:600;">' + e_(item.row[2] || '-') + '</td>' +
             '<td>' + e_(item.row[6] || '-') + '</td>' +
             '<td>' + e_(item.row[14] || '-') + '</td>' +
         '</tr>';
     }).join('');
 }
 
-// โหลดข้อมูลที่ผิดพลาดออกมาเป็น .csv หรือ .txt (โครงสร้าง 47 คอลัมน์) เพื่อแก้แล้วนำเข้าใหม่ได้ทันที
 function downloadErrorData(type) {
     if(!G_failedData || !G_failedData.length) {
         toast('ไม่มีข้อมูลที่ผิดพลาดให้ดาวน์โหลด', 'err');
@@ -1992,7 +2070,7 @@ function downloadErrorData(type) {
     }
 
     var headers = [ 
-      "เหตุผลที่ทำให้ไม่ผ่าน", // คอลัมน์ที่เพิ่มขึ้นมาให้ User ทราบ
+      "เหตุผลที่ไม่ผ่าน", 
       "ระดับชั้น", "ห้อง", "เลขบัตรประชาชน_13หลัก", "คำนำหน้า", "ชื่อ", "นามสกุล", 
       "ชื่อ-สกุลเต็ม", "วันเกิด_dd/mm/yyyy", "อายุ_ปี", "เพศ_1ชาย_2หญิง", "ชั้นเรียน", 
       "ชื่อโรงเรียน", "หน่วยวัด_F_M", "วันที่ตรวจ_dd/mm/yyyy", "รหัสรพสต", "บ้านเลขที่", 
@@ -2005,22 +2083,21 @@ function downloadErrorData(type) {
     ];
 
     var content = "\uFEFF"; 
-    var delimiter = (type === 'csv') ? ',' : '\t'; // ถ้าเป็น csv คั่นด้วยลูกน้ำ, ถ้าเป็น txt คั่นด้วย tab
+    var delimiter = (type === 'csv') ? ',' : '\t'; 
 
     content += headers.join(delimiter) + "\n";
 
     G_failedData.forEach(function(item) {
-        // นำเหตุผลมาต่อข้างหน้า Row ข้อมูล 47 คอลัมน์
         var rowArray = [item.reason].concat(item.row);
         
         var rowStr = rowArray.map(function(c, idx) {
+            var val = String(c || '');
             if (type === 'csv') {
-               // ถ้าเป็น CSV ต้องล็อคเซลล์เลขบัตรและรหัสรพสต. ให้ Excel อ่านแล้วเลขไม่เพี้ยนเป็น E+12
-               if (idx === 3 || idx === 15) return '="'+String(c||'')+'"'; 
-               return '"' + String(c||'').replace(/"/g, '""') + '"';
+               // ล็อคคอลัมน์ที่เป็นเลขเพื่อป้องกันการแสดงเป็น E+12 บน Excel (คอลัมน์ 3 คือ เลขบัตร, 15 คือ รพ.สต.)
+               if (idx === 3 || idx === 15) return '="'+val+'"'; 
+               return '"' + val.replace(/"/g, '""') + '"';
             } else {
-               // ถ้าเป็น TXT แค่ส่งออกแบบ string ตรงๆ จะเปิดแก้ไขด้วย Notepad หรือ Excel ได้เลย
-               return String(c||'').replace(/\t/g, ' '); 
+               return val.replace(/\t/g, ' '); 
             }
         }).join(delimiter);
 
@@ -2032,7 +2109,7 @@ function downloadErrorData(type) {
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url; 
-    a.download = 'Failed_Screening_Data.' + type; 
+    a.download = 'Failed_Screening_Data_' + new Date().getTime() + '.' + type; 
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
