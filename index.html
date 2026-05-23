@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>เด็กไทยสายตาดี</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>เด็กไทยสายตาดี & Health Calm UI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
 :root {
@@ -72,7 +74,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .btn-form{width:100%;margin-top:4px;padding:6px 6px;border:none;border-radius:6px;font-size:11px;font-weight:600;color:#fff;text-align:left;display:flex;align-items:center;gap:5px;transition:.12s;opacity:.92;cursor:pointer;} .btn-form:hover{opacity:1;transform:translateX(1px)}
 .bf-scr{background:var(--accent)} .bf-beh{background:#f59e0b} .bf-sat{background:var(--purple)} .bf-pre{background:var(--teal)} .bf-post{background:#0891b2} .bf-fup{background:#ec4899} .bf-loc{background:#ea580c; margin-top:10px;} .bf-conv{background:#475569; margin-top:4px;}
 
-.content{flex:1;display:flex;flex-direction:column;overflow:hidden;overflow-y:auto;}
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden;overflow-y:auto;position:relative;}
 .sum-tbl-wrap{margin:7px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow);display:block;max-height:220px;overflow-y:auto; flex-shrink: 0;}
 .sum-tbl{width:100%;border-collapse:collapse;font-size:11px;} .sum-tbl th{background:#eef2ff;padding:6px 8px;text-align:center;font-weight:700;color:var(--primary);border-bottom:1px solid #c7d4f0;position:sticky;top:0;z-index:2;} .sum-tbl td{padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center;} .sum-tbl td:first-child{text-align:left;} .sum-tbl tr:hover td{background:#f5f8ff;} .tr-active td{background:#eef2ff!important;font-weight:700;color:var(--primary);}
 
@@ -115,6 +117,21 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .mov{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s} .mov.open{opacity:1;pointer-events:all} .mbox{background:#fff;border-radius:18px;padding:30px 28px;width:360px;box-shadow:0 25px 60px rgba(0,0,0,.2);position:relative} .m-ico{text-align:center;font-size:44px;margin-bottom:6px} .m-ttl{font-size:20px;font-weight:800;color:var(--primary);text-align:center;margin-bottom:2px} .m-sub{font-size:11.5px;color:var(--muted2);text-align:center;margin-bottom:22px} .lf{margin-bottom:13px} .lf label{font-size:11.5px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px} .lf input{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;outline:none;transition:.15s;background:#f8faff} .lf input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.12)} .btn-lgn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;margin-top:6px;transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px} .btn-lgn:hover{background:var(--accent-d)} .btn-lgn:disabled{background:#93bbf9;cursor:not-allowed} .btn-guest{width:100%;padding:9px;background:none;color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:12px;margin-top:7px;transition:.15s} .btn-guest:hover{background:#f1f5f9} .lerr{color:var(--red);font-size:12px;text-align:center;margin-top:8px;min-height:16px}
 .del-box{background:#fff;border-radius:14px;padding:26px 24px;width:310px;box-shadow:0 20px 50px rgba(0,0,0,.2)} .del-ttl{font-size:17px;font-weight:700;color:var(--red);text-align:center;margin-bottom:12px} .del-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px} .del-warn{font-size:11.5px;color:var(--red);background:var(--red-bg);border-radius:6px;padding:6px 10px;text-align:center;margin-bottom:12px}
 .toast-wrap{position:fixed;bottom:18px;right:18px;z-index:500;display:flex;flex-direction:column;gap:6px} .toast{padding:10px 14px;border-radius:9px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-md);min-width:200px;max-width:340px;animation:slIn .28s ease;display:flex;align-items:center;gap:7px} .t-ok{background:#dcfce7;color:#14532d;border:1px solid #86efac} .t-err{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5} .t-inf{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd} @keyframes slIn{from{transform:translateX(110%);opacity:0}to{transform:none;opacity:1}} .sp{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0} @keyframes spin{to{transform:rotate(360deg)}}
+
+/* === CSS เสริมจาก Health Calm UI === */
+.marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; box-sizing: border-box; }
+.marquee-content { display: inline-block; padding-left: 100%; animation: marquee 25s linear infinite; }
+@keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
+.img-marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; box-sizing: border-box; }
+.img-marquee-content { display: inline-block; padding-left: 100%; animation: imgMarquee 35s linear infinite; }
+@keyframes imgMarquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+.img-marquee-content:hover { animation-play-state: paused; }
+
+#admin-panel { transition: transform 0.3s ease-in-out; transform: translateX(100%); z-index: 2500; }
+#admin-panel.open { transform: translateX(0); }
+.admin-mode-item { display: none; }
+.admin-mode-active .admin-mode-item { display: flex; }
 
 /* === Image Modal Popup (v6.3) === */
 #imgModal { 
@@ -235,14 +252,29 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 </style>
 </head>
 <body>
+<audio id="bg-audio" loop></audio>
+<img id="floating-img-element" class="hidden fixed top-0 left-0 z-[60] pointer-events-none opacity-70 max-w-[200px] max-h-[80px] object-contain drop-shadow-md" src="" alt="floating">
 <div id="app">
 <header class="hdr">
   <div class="hdr-logo" id="logoWrap">👁</div>
-  <div class="hdr-text"><div class="sys-name" id="sysName">โครงการเด็กไทยสายตาดี</div><div class="org-name" id="orgName">องค์การบริหารส่วนจังหวัดสมุทรสาคร</div></div>
+  <div class="hdr-text">
+    <div class="sys-name" id="sysName">โครงการเด็กไทยสายตาดี</div>
+    <div class="org-name" id="orgName">องค์การบริหารส่วนจังหวัดสมุทรสาคร</div>
+  </div>
+  <div id="marquee-container" class="hidden flex-1 min-w-[200px] max-w-lg mx-4 bg-[#1E7145] border border-[#155633] rounded px-3 py-1 flex items-center shadow-md">
+    <div class="z-10 pr-2 shrink-0 flex items-center">
+      <i class="fas fa-bullhorn text-[#D97706] text-sm animate-pulse"></i>
+    </div>
+    <div class="marquee-wrapper flex-1">
+      <div id="disp-marquee" class="marquee-content text-xs font-bold text-white tracking-wide"></div>
+    </div>
+  </div>
   <div class="hdr-right">
     <div class="date-txt" id="dateTxt"></div>
+    <button id="btn-music" onclick="toggleMusic()" class="hidden btn-hdr" style="background:#fff; color:var(--muted);" title="เปิด/ปิดเพลง"><i class="fas fa-music"></i></button>
     <button class="btn-hdr btn-hdr-manual" onclick="openPanel('manual')">📖 คู่มือ</button>
-    <button class="btn-hdr btn-hdr-refresh" onclick="hardReload()" title="ล้างแคชและโหลดระบบใหม่ทั้งหมด">🔄 โหลดใหม่ (Clear Cache)</button>
+    <button class="btn-hdr btn-hdr-refresh" onclick="hardReload()" title="ล้างแคชและโหลดระบบใหม่ทั้งหมด">🔄 โหลดใหม่</button>
+    <button class="btn-hdr" style="background:#1E7145; color:#fff;" onclick="toggleAdminPanel()" title="ตั้งค่าระบบเพิ่มเติม"><i class="fas fa-cogs"></i></button>
     <div id="authArea"><button class="btn-hdr btn-hdr-login" onclick="openLogin()">🔐 เข้าสู่ระบบ</button></div>
   </div>
 </header>
@@ -264,6 +296,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
 <div class="main">
   <aside class="sidebar">
+    <div id="sidebar-strategic-links" class="mb-4 space-y-1"></div>
     <div class="sb-title">🔍 กรองข้อมูล</div>
     <div class="fl">อำเภอ</div><select class="fsel" id="fAmp" onchange="onAmpChange()"><option value="">ทั้งหมด</option></select>
     <div class="fl">รพ.สต.</div><select class="fsel" id="fHosp" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
@@ -298,9 +331,17 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   <button class="btn-form bf-pre" onclick="openPanel('pre')">📝 Pre-test</button>
   <button class="btn-form bf-post" onclick="openPanel('post')">📝 Post-test</button>
 </div>
+<div id="sidebar-general-links" class="mt-4 pt-4 border-t border-sysborder space-y-1"></div>
+    <button onclick="closeIframe(); forceRefresh();" id="btnHome" class="hidden w-full mt-4 py-2 bg-white border text-[#4B5563] rounded flex items-center justify-center gap-2 text-xs font-bold"><i class="fas fa-home"></i> กลับหน้าแรก</button>
   </aside>
 
   <div class="content">
+    <div id="img-marquee-container" class="hidden w-full overflow-hidden bg-white border-b border-sysborder p-2 shrink-0">
+        <div class="flex items-center gap-2 mb-1 px-1">
+            <i class="fas fa-images text-[#1E7145] text-sm"></i><h4 class="text-xs font-bold text-[#111827]">ภาพกิจกรรม / ประชาสัมพันธ์</h4>
+        </div>
+        <div class="img-marquee-wrapper py-1"><div class="img-marquee-content gap-3 flex items-center pr-3" id="disp-img-marquee"></div></div>
+    </div>
     <div class="sum-tbl-wrap">
       <table class="sum-tbl">
         <thead>
@@ -313,6 +354,14 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
         </thead>
         <tbody id="hospSumBody"></tbody>
       </table>
+    </div>
+
+    <div id="iframe-view" style="display:none; position:absolute; inset:0; background:#fff; z-index:50; flex-direction:column;">
+      <div class="flex items-center justify-between p-2 bg-gray-50" style="border-bottom:1px solid var(--border);">
+        <div class="text-sm font-bold text-[#1E7145] px-2" id="iframe-title">กำลังเปิดเว็บ...</div>
+        <button onclick="closeIframe()" class="p-1 px-3 bg-red-500 text-white rounded text-xs hover:bg-red-600">ปิด ✕</button>
+      </div>
+      <iframe id="content-iframe" class="w-full border-0 bg-white" style="flex:1;"></iframe>
     </div>
 
     <div class="charts-row" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 7px; padding-bottom: 0; border: none;">
@@ -840,6 +889,8 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <div id="behGuestMsg" style="text-align:center; padding:30px; color:var(--muted); display:none;">
       <p>🔒 กรุณาเข้าสู่ระบบ เพื่อดูตารางรายละเอียดผู้ตอบแบบสอบถามรายบุคคล</p>
     </div>
+  </div>
+</div>
 
 <div class="ov" id="ov-vidmgr" onclick="closePanel('vidmgr')"></div>
 <div class="panel" id="panel-vidmgr">
@@ -904,7 +955,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
       <div class="fr">
         <div class="fg"><label>ระดับชั้น</label>
           <select id="s-lev">
-            <option>อ.1</option><option>อ.2</option><option>อ.3</option>
+            <option>ก่อนอนุบาล(ศูนย์เด็กเล็ก)</option><option>อ.1</option><option>อ.2</option><option>อ.3</option>
             <option>ป.1</option><option>ป.2</option><option selected>ป.3</option><option>ป.4</option><option>ป.5</option><option>ป.6</option>
             <option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option>
           </select>
@@ -1053,6 +1104,59 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <div class="mov" id="pwdMov"><div class="mbox" style="width:360px; padding:25px;"><div class="m-ttl" style="color:var(--accent); margin-bottom:5px;">🔑 เปลี่ยนรหัสผ่าน</div><div class="m-sub">กรุณากรอกรหัสผ่านเดิมเพื่อยืนยันการเปลี่ยนแปลง</div><div class="lf"><label>รหัสผ่านเดิม</label><input type="password" id="pwdOld" placeholder="รหัสผ่านเดิม"></div><div class="lf"><label>รหัสผ่านใหม่</label><input type="password" id="pwdNew" placeholder="รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)"></div><div class="lf"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="pwdConfirm" placeholder="ยืนยันรหัสผ่านใหม่อีกครั้ง"></div><div class="lerr" id="pwdErr"></div><button class="btn-lgn" id="btnChangePwd" onclick="doChangePwd()">💾 เปลี่ยนรหัสผ่าน</button><button class="btn-guest" onclick="closePwdMgr()">ยกเลิก</button></div></div>
 
 <div class="mov" id="delMov"><div class="del-box"><div class="del-ttl">🗑 ยืนยันการลบข้อมูล</div><div class="del-sub">CID: <strong id="delCidShow"></strong></div><div class="del-warn">⚠ ข้อมูลที่ลบจะไม่สามารถกู้คืนได้</div><div style="display:flex;gap:8px;margin-top:4px"><button style="flex:1;padding:10px;background:var(--red);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px" onclick="confirmDel()">ยืนยันลบ</button><button style="flex:1;padding:10px;background:#f1f5f9;border:1px solid var(--border);border-radius:8px;font-size:12px" onclick="closeDel()">ยกเลิก</button></div><div class="lerr" id="delErr"></div></div></div>
+<div id="admin-panel" class="fixed top-0 right-0 bottom-0 w-[350px] bg-white flex flex-col border-l shadow-2xl z-[2500]">
+  <div class="h-[60px] border-b p-4 flex justify-between items-center bg-gray-50">
+      <h3 class="font-bold text-sm text-[#1E7145]"><i class="fas fa-cog"></i> แผงควบคุมตกแต่งระบบ</h3>
+      <button onclick="toggleAdminPanel()"><i class="fas fa-times text-gray-500 text-lg"></i></button>
+  </div>
+  <div class="p-4 flex-1 overflow-y-auto bg-white">
+      <div id="admin-not-logged-in" class="hidden text-center p-4 bg-red-50 border border-red-200 rounded text-red-600 text-xs mb-4">เข้าสู่ระบบในฐานะ Admin เพื่อใช้งานส่วนนี้</div>
+      
+      <div id="admin-tabs-menu" class="hidden flex bg-gray-100 p-1 rounded mb-4">
+          <button onclick="switchAdminTab('links')" id="tab-links" class="flex-1 py-2 text-[11px] font-bold rounded bg-white text-[#1E7145] shadow-sm">เมนูลิงก์</button>
+          <button onclick="switchAdminTab('settings')" id="tab-settings" class="flex-1 py-2 text-[11px] font-bold rounded text-gray-500 hover:text-black">ตกแต่งจอ</button>
+      </div>
+
+      <div id="section-links" class="hidden space-y-4">
+          <div class="bg-gray-50 border p-3 rounded flex flex-col gap-2">
+              <label class="text-xs font-bold cursor-pointer"><input type="checkbox" id="toggle-drag" onchange="toggleEditMode(this)"> เปิดจัดเรียงปุ่มซ้ายมือ</label>
+              <button id="save-order-btn" class="hidden w-full bg-[#1E7145] text-white py-2 rounded text-xs font-bold" onclick="saveLinkOrder()">บันทึกตำแหน่งใหม่</button>
+          </div>
+          <div class="bg-white p-4 rounded border space-y-3 relative shadow-sm">
+              <button id="btn-cancel-link" onclick="cancelEditLink()" class="hidden absolute top-3 right-3 text-red-500 text-[10px] font-bold bg-gray-100 px-2 py-1 rounded border">ยกเลิก</button>
+              <h4 id="title-link-form" class="text-xs font-bold text-[#1E7145] border-b pb-2"><i class="fas fa-plus"></i> เพิ่ม/แก้ไขลิงก์</h4>
+              <input type="hidden" id="l-id">
+              <select id="l-type" class="w-full bg-gray-50 border rounded px-2 py-2 text-xs font-bold mb-1"><option value="ทั่วไป">🔗 ลิงก์เมนูทั่วไป</option><option value="ดาวน์โหลด">📥 ปุ่มดาวน์โหลด</option></select>
+              <input type="text" id="l-name" placeholder="ชื่อหัวข้อ..." class="w-full bg-white border rounded px-3 py-2 text-xs">
+              <input type="text" id="l-url" placeholder="URL (https://...)" class="w-full bg-white border rounded px-3 py-2 text-xs">
+              <div class="grid grid-cols-2 gap-2 mt-1">
+                  <select id="l-po" class="w-full bg-white border rounded px-2 py-2 text-xs"><option value="บน">ส่วนบน</option><option value="ล่าง">ส่วนล่าง</option></select>
+                  <select id="l-target" class="w-full bg-white border rounded px-2 py-2 text-xs"><option value="ภายใน">เปิดในจอนี้</option><option value="ภายนอก">เปิดแท็บใหม่</option><option value="ไม่เปิด">แค่ปุ่มโชว์</option></select>
+              </div>
+              <label class="text-[10px] text-gray-500">สีพื้นหลังปุ่ม</label><input type="color" id="l-color" value="#ffffff" class="w-full h-8 cursor-pointer rounded border block mt-1">
+              <button id="btn-save-link2" onclick="saveLinkToSheet()" class="w-full bg-[#1E7145] text-white font-bold py-2 rounded text-xs mt-2">บันทึกข้อมูลลิงก์</button>
+          </div>
+      </div>
+
+      <div id="section-settings" class="hidden space-y-4">
+          <div class="bg-white p-4 rounded border space-y-3 shadow-sm">
+              <h4 class="font-bold text-xs"><i class="fas fa-images"></i> ภาพวิ่ง (คั่นด้วย ,)</h4>
+              <input type="text" id="set-marquee-imgs" placeholder="URL ภาพ1, URL ภาพ2..." class="w-full bg-white border rounded px-3 py-2 text-xs">
+              <button onclick="saveHealthConfig('marquee_imgs', 'set-marquee-imgs', this)" class="w-full bg-gray-100 border font-bold py-2 rounded text-xs">อัปเดตภาพวิ่ง</button>
+          </div>
+          <div class="bg-white p-4 rounded border space-y-3 shadow-sm">
+              <h4 class="font-bold text-xs"><i class="fas fa-bullhorn"></i> ข้อความประกาศวิ่ง</h4>
+              <input type="text" id="set-marquee" placeholder="พิมพ์ข้อความที่นี่..." class="w-full bg-white border rounded px-3 py-2 text-xs">
+              <button onclick="saveHealthConfig('marquee_text', 'set-marquee', this)" class="w-full bg-gray-100 border font-bold py-2 rounded text-xs">อัปเดตข้อความ</button>
+          </div>
+          <div class="bg-white p-4 rounded border space-y-3 shadow-sm">
+              <h4 class="font-bold text-xs"><i class="fas fa-music"></i> เสียงเพลงพื้นหลัง</h4>
+              <input type="text" id="set-bg-music" placeholder="Drive URL ของไฟล์เพลง..." class="w-full bg-white border rounded px-3 py-2 text-xs">
+              <button onclick="saveHealthConfig('bg_music', 'set-bg-music', this)" class="w-full bg-gray-100 border font-bold py-2 rounded text-xs">อัปเดตเพลง</button>
+          </div>
+      </div>
+  </div>
+</div>
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
@@ -1234,7 +1338,7 @@ function getDiagSeverityForRow(r) {
   var diagStr = String(r.diagnosis || '').trim();
   if (/ปกติ|เฝ้าระวัง/.test(diagStr) || diagStr === '') return 'ปกติ/เฝ้าระวัง';
   if (/สงสัยสายตาผิดปกติ/.test(diagStr)) return 'ผิดปกติ(น้อย-ปานกลาง)';
-  if (/ตาขี้เกียจ|รุนแรง/.test(diagStr) && !/ผิดปกติรุนแรง/.test(diagStr)) return 'รุนแรง/ตาขี้เกียจ';
+  if (/ตาขี้เกียจ|รุนแรง/.test(diagStr) && !/ความผิดปกติรุนแรง/.test(diagStr)) return 'รุนแรง/ตาขี้เกียจ';
   if (/ความผิดปกติรุนแรง/.test(diagStr) || /อื่นๆ/.test(diagStr)) return 'ฉุกเฉิน';
   return 'ปกติ/เฝ้าระวัง';
 }
@@ -2304,13 +2408,87 @@ function setDate() {
 
 function applySettings() {
   var s = G.settings;
+  
+  // === ข้อมูลพื้นฐาน ===
   if (s.sys_name) document.getElementById('sysName').textContent = s.sys_name;
   if (s.org_name) document.getElementById('orgName').textContent = s.org_name;
   if (s.sys_name) document.getElementById('loginSub').textContent = s.sys_name;
   if (s.logo_id) {
-    var img = document.createElement('img'); img.src = 'https://drive.google.com/thumbnail?id=' + s.logo_id + '&sz=w80';
-    img.onerror = function() { if (this.src.indexOf('thumbnail') > -1) { this.src = 'https://lh3.googleusercontent.com/d/' + s.logo_id; } else { this.parentElement.textContent = '👁'; } };
-    var lw = document.getElementById('logoWrap'); lw.innerHTML = ''; lw.appendChild(img);
+    var img = document.createElement('img');
+    img.src = 'https://drive.google.com/thumbnail?id=' + s.logo_id + '&sz=w80';
+    img.onerror = function() {
+      if (this.src.indexOf('thumbnail') > -1) {
+        this.src = 'https://lh3.googleusercontent.com/d/' + s.logo_id;
+      } else {
+        this.parentElement.textContent = '👁';
+      }
+    };
+    var lw = document.getElementById('logoWrap');
+    lw.innerHTML = '';
+    lw.appendChild(img);
+  }
+
+  // === เพลงพื้นหลัง ===
+  var btnMusic = document.getElementById('btn-music');
+  if (s.bg_music) {
+    var audioSrc = s.bg_music;
+    if (s.bg_music.indexOf('drive.google.com') > -1) {
+      var matchId = s.bg_music.match(/[-\w]{25,}/);
+      if (matchId) audioSrc = 'https://drive.google.com/uc?export=download&id=' + matchId[0];
+    }
+    var audio = document.getElementById('bg-audio');
+    audio.src = audioSrc;
+    audio.load();
+    if (btnMusic) btnMusic.classList.remove('hidden');
+  } else {
+    if (btnMusic) btnMusic.classList.add('hidden');
+  }
+
+  // === ภาพวิ่ง (Marquee Image) ===
+  var imgMarqueeContainer = document.getElementById('img-marquee-container');
+  if (s.marquee_imgs && String(s.marquee_imgs).trim() !== '') {
+    var urls = String(s.marquee_imgs).split(',');
+    var dImgMarquee = document.getElementById('disp-img-marquee');
+    var imgHtml = '';
+    urls.forEach(function(url) {
+      var cleanUrl = url.trim();
+      if (cleanUrl) {
+        var imgSrc = cleanUrl;
+        if (cleanUrl.indexOf('drive.google.com') > -1) {
+          var m = cleanUrl.match(/[-\w]{25,}/);
+          if (m) imgSrc = 'https://drive.google.com/thumbnail?id=' + m[0] + '&sz=w1000';
+        }
+        imgHtml += '<img src="' + imgSrc + '" onclick="showImg(this.src)" class="h-16 w-auto min-w-[100px] object-cover rounded border shadow-sm bg-white p-1 inline-block cursor-pointer hover:scale-105">';
+      }
+    });
+    if (imgHtml !== '') dImgMarquee.innerHTML = imgHtml + imgHtml; // ทำซ้ำเพื่อให้ marquee วนไม่สะดุด
+    if (imgMarqueeContainer) imgMarqueeContainer.classList.remove('hidden');
+  } else {
+    if (imgMarqueeContainer) imgMarqueeContainer.classList.add('hidden');
+  }
+
+  // === ข้อความวิ่ง ===
+  var marqueeContainer = document.getElementById('marquee-container');
+  if (s.marquee_text) {
+    var dp = document.getElementById('disp-marquee');
+    if (dp) dp.innerText = s.marquee_text;
+    if (marqueeContainer) marqueeContainer.classList.remove('hidden');
+  } else {
+    if (marqueeContainer) marqueeContainer.classList.add('hidden');
+  }
+
+  // === เติมข้อมูลลงฟอร์มใน Admin Panel ===
+  var setMq = document.getElementById('set-marquee');
+  if (setMq) setMq.value = s.marquee_text || '';
+  var setMqImg = document.getElementById('set-marquee-imgs');
+  if (setMqImg) setMqImg.value = s.marquee_imgs || '';
+  var setBgM = document.getElementById('set-bg-music');
+  if (setBgM) setBgM.value = s.bg_music || '';
+
+  // === โหลดลิงก์ Sidebar (เฉพาะของ Health Calm UI) ===
+  if (G.links && G.links.length > 0) {
+    G_healthData.links = G.links;
+    renderSidebarLinks(G_healthData.links);
   }
 }
 
@@ -4441,6 +4619,186 @@ function updateKpiActiveState() {
       el.classList.remove('active');
     }
   });
+}
+// ==========================================
+// ส่วนเพิ่มเติม: JavaScript สำหรับเชื่อมระบบ Health Calm UI
+// ==========================================
+var G_healthData = { links: [] };
+var sortableTop, sortableBottom;
+
+// ฟังก์ชันแทนที่การดึงข้อมูลตอนเริ่มต้น (ปรับเปลี่ยนเพื่อให้ดึงการตั้งค่า)
+const oldApplySettings = applySettings;
+applySettings = function() {
+    oldApplySettings(); // เรียกของเดิมให้ทำงานก่อน
+    var s = G.settings;
+    
+    // ตั้งค่าเพลง
+    var btnMusic = document.getElementById('btn-music');
+    if(s.bg_music) {
+        document.getElementById('bg-audio').src = s.bg_music.includes('drive.google.com') ? `https://drive.google.com/uc?export=download&id=${s.bg_music.match(/[-\w]{25,}/)[0]}` : s.bg_music;
+        document.getElementById('bg-audio').load();
+        if(btnMusic) btnMusic.classList.remove('hidden');
+    } else { if(btnMusic) btnMusic.classList.add('hidden'); }
+
+    // ภาพวิ่ง (Marquee Image)
+    var imgMarqueeContainer = document.getElementById('img-marquee-container');
+    if(s.marquee_imgs && s.marquee_imgs.trim() !== '') {
+        var urls = s.marquee_imgs.split(',');
+        var dImgMarquee = document.getElementById('disp-img-marquee');
+        dImgMarquee.innerHTML = '';
+        urls.forEach(function(url) {
+            var cleanUrl = url.trim();
+            if(cleanUrl) {
+                var imgSrc = cleanUrl.includes('drive.google.com') ? `https://drive.google.com/thumbnail?id=${cleanUrl.match(/[-\w]{25,}/)[0]}&sz=w1000` : cleanUrl;
+                dImgMarquee.innerHTML += `<img src="${imgSrc}" onclick="showImg(this.src)" class="h-16 w-auto min-w-[100px] object-cover rounded border shadow-sm bg-white p-1 inline-block cursor-pointer hover:scale-105">`;
+            }
+        });
+        if(dImgMarquee.innerHTML !== "") dImgMarquee.innerHTML += dImgMarquee.innerHTML; 
+        if(imgMarqueeContainer) imgMarqueeContainer.classList.remove('hidden');
+    } else { if(imgMarqueeContainer) imgMarqueeContainer.classList.add('hidden'); }
+
+    // ข้อความประกาศวิ่ง
+    var marqueeContainer = document.getElementById('marquee-container');
+    if(s.marquee_text) {
+        var dp = document.getElementById('disp-marquee');
+        if(dp) dp.innerText = s.marquee_text;
+        if(marqueeContainer) marqueeContainer.classList.remove('hidden');
+    } else { if(marqueeContainer) marqueeContainer.classList.add('hidden'); }
+    
+    // เติมข้อมูลลงฟอร์มใน Admin Panel
+    if(document.getElementById('set-marquee')) document.getElementById('set-marquee').value = s.marquee_text || '';
+    if(document.getElementById('set-marquee-imgs')) document.getElementById('set-marquee-imgs').value = s.marquee_imgs || '';
+    if(document.getElementById('set-bg-music')) document.getElementById('set-bg-music').value = s.bg_music || '';
+    
+    // โหลดลิงก์และแสดงผลซ้ายมือ
+    google.script.run.withSuccessHandler(function(r) {
+        var d = JSON.parse(r);
+        if(d.ok) { G_healthData.links = d.data.links || []; renderSidebarLinks(G_healthData.links); }
+    }).getInitData();
+};
+
+function renderSidebarLinks(links) {
+    var topEl = document.getElementById('sidebar-strategic-links');
+    var botEl = document.getElementById('sidebar-general-links');
+    if(!topEl || !botEl) return;
+    topEl.innerHTML = ''; botEl.innerHTML = '';
+    
+    var isAdmin = (G.session && G.session.role === 'admin');
+    
+    links.forEach(function(l, i) {
+        var act = '';
+        if(l.target === 'ภายนอก') act = `window.open('${l.url}','_blank')`;
+        else if(l.target === 'ภายใน') act = `openIframe('${l.url}', '${e_(l.label)}')`;
+        
+        var btnColor = l.color || '#ffffff';
+        var hoverClass = act !== '' ? 'hover:brightness-95 cursor-pointer' : '';
+        var onClickEvent = act !== '' ? `onclick="if(!document.body.classList.contains('admin-mode-active')){ ${act} }"` : '';
+
+        var isDownload = l.type === 'ดาวน์โหลด';
+        var iconHTML = '';
+        if (l.target !== 'ไม่เปิด') {
+            if (isDownload) iconHTML = `<i class="fas fa-cloud-download-alt text-[14px] text-blue-600"></i>`;
+            else iconHTML = `<i class="fas ${l.target==='ภายนอก'?'fa-external-link-alt':'fa-chevron-right'} text-[10px] text-gray-500"></i>`;
+        }
+        var prefixIcon = isDownload ? `<i class="fas fa-file-download text-blue-600 mr-1.5"></i> ` : '';
+        
+        var adminBtns = isAdmin ? `<button onclick="editHealthLink(${i}, event)" class="admin-mode-item bg-white text-gray-500 p-1 rounded border hover:text-blue-500 z-10"><i class="fas fa-edit text-[10px]"></i></button><button onclick="delHealthLink('${i}', event)" class="admin-mode-item bg-white text-gray-500 p-1 rounded border hover:text-red-500 z-10"><i class="fas fa-trash text-[10px]"></i></button>` : '';
+
+        var html = `<div data-index="${i}" ${onClickEvent} class="w-full border p-2 mb-1.5 rounded text-xs font-medium flex justify-between items-center ${hoverClass} group relative shadow-sm" style="background-color: ${btnColor};"><span class="truncate flex items-center"><i class="fas fa-ellipsis-v mr-2 admin-mode-item text-gray-400 move-handle px-1 cursor-move"></i>${prefixIcon}${e_(l.label)}</span><div class="flex gap-1.5 items-center">${iconHTML}${adminBtns}</div></div>`;
+
+        if(l.po === 'บน') topEl.innerHTML += html;
+        else if(l.po === 'ล่าง') botEl.innerHTML += html;
+    });
+
+    var opt = { group: 'sidebar', handle: '.move-handle', animation: 150, disabled: !isAdmin };
+    if(sortableTop) sortableTop.destroy(); if(sortableBottom) sortableBottom.destroy();
+    sortableTop = Sortable.create(topEl, opt); sortableBottom = Sortable.create(botEl, opt);
+}
+
+function openIframe(url, title) {
+    var fv = document.getElementById('iframe-view');
+    fv.style.display = 'flex';
+    document.getElementById('iframe-title').innerText = title || url;
+    document.getElementById('content-iframe').src = url;
+    var btnHome = document.getElementById('btnHome');
+    if (btnHome) btnHome.classList.remove('hidden');
+}
+function closeIframe() {
+    var fv = document.getElementById('iframe-view');
+    fv.style.display = 'none';
+    document.getElementById('content-iframe').src = '';
+    var btnHome = document.getElementById('btnHome');
+    if (btnHome) btnHome.classList.add('hidden');
+}
+
+function toggleMusic() {
+    var audio = document.getElementById('bg-audio');
+    var btn = document.getElementById('btn-music');
+    if (audio.paused) {
+        audio.play().then(() => { btn.innerHTML = '<i class="fas fa-pause" style="color:#1E7145"></i>'; }).catch(err => { toast("เบราว์เซอร์บล็อกการเล่นเสียง", "err"); });
+    } else { audio.pause(); btn.innerHTML = '<i class="fas fa-music"></i>'; }
+}
+
+function toggleAdminPanel() { 
+    if(!G.session || G.session.role !== 'admin') {
+        document.getElementById('admin-not-logged-in').classList.remove('hidden');
+        document.getElementById('admin-tabs-menu').classList.add('hidden');
+        document.getElementById('section-links').classList.add('hidden');
+        document.getElementById('section-settings').classList.add('hidden');
+        document.body.classList.remove('admin-mode-active');
+    } else {
+        document.getElementById('admin-not-logged-in').classList.add('hidden');
+        document.getElementById('admin-tabs-menu').classList.remove('hidden');
+        document.body.classList.add('admin-mode-active');
+        switchAdminTab('links'); renderSidebarLinks(G_healthData.links); 
+    }
+    document.getElementById('admin-panel').classList.toggle('open'); 
+}
+function switchAdminTab(t) { 
+    ['links','settings'].forEach(id => { document.getElementById('section-'+id).classList.add('hidden'); document.getElementById('tab-'+id).className = "flex-1 py-2 text-[11px] font-bold rounded text-gray-500 hover:text-black transition"; }); 
+    document.getElementById('section-'+t).classList.remove('hidden'); document.getElementById('tab-'+t).className = "flex-1 py-2 text-[11px] font-bold rounded bg-white text-[#1E7145] shadow-sm border transition"; 
+}
+function saveHealthConfig(key, inputId, btn) {
+    var val = document.getElementById(inputId).value; var originalText = btn.innerHTML;
+    btn.innerHTML = 'บันทึก...'; btn.disabled = true;
+    google.script.run.withSuccessHandler(function(r) { 
+        btn.innerHTML = originalText; btn.disabled = false; var res = JSON.parse(r);
+        if(res.ok) { toast("บันทึกสำเร็จ", "ok"); forceRefresh(); } else toast(res.msg, "err"); 
+    }).saveSetting(key, val, "Theme Config", "");
+}
+function saveLinkToSheet() {
+    var d = { id: document.getElementById('l-id').value || '', type: document.getElementById('l-type').value, label: document.getElementById('l-name').value, url: document.getElementById('l-url').value || '#', po: document.getElementById('l-po').value, target: document.getElementById('l-target').value, color: document.getElementById('l-color').value };
+    if(!d.label) { toast("กรุณาใส่ชื่อหัวข้อ", "err"); return; }
+    var btn = document.getElementById('btn-save-link2'); btn.disabled = true; btn.innerHTML = 'กำลังบันทึก...';
+    google.script.run.withSuccessHandler(function(r) {
+        btn.disabled = false; btn.innerHTML = 'บันทึกข้อมูลลิงก์'; var res = JSON.parse(r);
+        if(res.ok) { toast(res.msg, "ok"); cancelEditLink(); forceRefresh(); } else toast(res.msg, "err");
+    }).saveLinkData(d);
+}
+function editHealthLink(idx, event) {
+    if(event) event.stopPropagation(); var l = G_healthData.links[idx]; if(!l) return;
+    document.getElementById('l-id').value = idx; document.getElementById('l-type').value = l.type || 'ทั่วไป'; document.getElementById('l-name').value = l.label || ''; document.getElementById('l-url').value = l.url || ''; document.getElementById('l-po').value = l.po || 'บน'; document.getElementById('l-target').value = l.target || 'ภายใน'; document.getElementById('l-color').value = l.color || '#ffffff';
+    document.getElementById('btn-cancel-link').classList.remove('hidden'); document.getElementById('title-link-form').innerHTML = '<i class="fas fa-edit"></i> แก้ไขลิงก์'; document.getElementById('btn-save-link2').innerHTML = 'อัปเดตลิงก์';
+}
+function cancelEditLink() { 
+    document.getElementById('l-id').value = ''; document.getElementById('l-type').value = 'ทั่วไป'; document.getElementById('l-name').value=''; document.getElementById('l-url').value=''; document.getElementById('l-color').value='#ffffff'; 
+    document.getElementById('btn-cancel-link').classList.add('hidden'); document.getElementById('title-link-form').innerHTML = '<i class="fas fa-plus"></i> เพิ่ม/แก้ไขลิงก์'; document.getElementById('btn-save-link2').innerHTML = 'บันทึกข้อมูลลิงก์';
+}
+function delHealthLink(idx, event) {
+    if(event) event.stopPropagation(); if(!confirm("ยืนยันการลบลิงก์นี้?")) return;
+    google.script.run.withSuccessHandler(function(r) { var res = JSON.parse(r); if(res.ok) { toast(res.msg, "ok"); forceRefresh(); } else toast(res.msg, "err"); }).deleteLinkData(idx);
+}
+function toggleEditMode(cb) { 
+    document.getElementById('save-order-btn').classList.toggle('hidden', !cb.checked); 
+    if(sortableTop) sortableTop.option("disabled", !cb.checked); 
+    if(sortableBottom) sortableBottom.option("disabled", !cb.checked); 
+}
+function saveLinkOrder() {
+    var btn = document.getElementById('save-order-btn'); btn.innerHTML = "กำลังบันทึก..."; btn.disabled = true;
+    var newOrder = [];
+    Array.from(document.getElementById('sidebar-strategic-links').children).forEach(function(el) { var i = el.getAttribute('data-index'); var l = G_healthData.links[i]; newOrder.push([l.type, l.label, l.url, 'บน', l.target, l.color]); });
+    Array.from(document.getElementById('sidebar-general-links').children).forEach(function(el) { var i = el.getAttribute('data-index'); var l = G_healthData.links[i]; newOrder.push([l.type, l.label, l.url, 'ล่าง', l.target, l.color]); });
+    google.script.run.withSuccessHandler(function(r){ btn.innerHTML = "บันทึกตำแหน่งใหม่"; btn.disabled = false; var res = JSON.parse(r); if(res.ok) { toast("จัดเรียงลำดับสำเร็จ", "ok"); forceRefresh(); } else toast(res.msg, "err"); }).updateLinkOrder(newOrder);
 }
 </script>
 </body>
