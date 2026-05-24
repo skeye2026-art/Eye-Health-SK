@@ -2002,12 +2002,9 @@ function importCSV() {
                   if (failedList.length > 0) {
                       renderErrorTable(failedList);
                       openPanel('error-report');
-                  } else {
-                      closePanel('conv'); 
-                      fileInput.value = ''; 
-                      forceRefresh();
-                  }
-              } else { 
+                      fileInput.value = ''; // เคลียร์ช่องไฟล์
+                      forceRefresh(); // 🎯 สำคัญมาก: บังคับโหลดตารางใหม่เพื่อกวาด CIDs ที่เพิ่งนำเข้าสำเร็จลงระบบ ป้องกันตรวจซ้ำพลาด
+                  } else { 
                   toast(r.msg || 'เกิดข้อผิดพลาด', 'err'); 
               } 
           })
