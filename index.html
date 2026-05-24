@@ -3221,10 +3221,13 @@ function onCidInput(cid) {
 }
 function getRad(name) { var els = document.querySelectorAll('input[name="'+name+'"]'); for (var i=0;i<els.length;i++){ if(els[i].checked) return els[i].value; } return ''; }
 function setRad(name, val) { var els = document.querySelectorAll('input[name="'+name+'"]'); for(var i=0;i<els.length;i++){ if(els[i].value===val) els[i].checked=true; } }
-
 function saveScr() {
-  var btn = document.getElementById('btnSScr'); var cid = document.getElementById('s-cid').value.trim(); 
-  if (!/^\d{13}$/.test(cid)) { toast('เลขบัตรประชาชน 13 หลักไม่ถูกต้อง', 'err'); return; } 
+  var btn = document.getElementById('btnSScr'); 
+  // 🎯 ดึงแค่ตัวเลข
+  var cid = document.getElementById('s-cid').value.replace(/\D/g, '').trim(); 
+  
+  if (!/^\d{13}$/.test(cid)) { toast('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก', 'err'); return; } 
+  // ... ส่วนที่เหลือของโค้ดคงเดิม ... 
   if (!_editMode && G.allRows.find(function(r){ return r.cid === cid; })) { toast('⚠ เลขบัตรประชาชนนี้มีในระบบแล้ว ไม่สามารถบันทึกซ้ำได้', 'err'); return; } // เช็คข้อมูลซ้ำ
   var hcVal = document.getElementById('s-hc').value; if (!hcVal) { toast('กรุณาเลือก รพ.สต.', 'err'); return; }
   // เพิ่มการบันทึก treatment
