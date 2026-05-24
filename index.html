@@ -1102,7 +1102,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <div class="ov" id="ov-pre" onclick="closePanel('pre')"></div><div class="panel" id="panel-pre"><div class="ph" style="background:var(--teal)"><span class="ph-t">📝 แบบทดสอบก่อนอบรม — Pre-test</span><button class="ph-x" onclick="closePanel('pre')">✕</button></div><div class="pb"><div class="fs"><div class="fs-t">ข้อมูลผู้ทดสอบ</div><div class="fr"><div class="fg"><label>เลขบัตรประชาชน 13 หลัก *</label><input type="text" id="pre-cid" maxlength="13" placeholder="ตรวจสอบสิทธิ์" oninput="checkEligible('pre',this.value)"></div><div class="fg"><label>ชื่อ-สกุล (อ้างอิง)</label><input type="text" id="pre-name" readonly style="background:#f1f5f9"></div></div><div id="pre-err" style="color:var(--red);font-size:11px;margin-top:4px;font-weight:600;"></div></div><div class="fs" id="pre-q-sec" style="opacity:0.5;pointer-events:none;"><div class="fs-t" style="color:var(--teal)">คำชี้แจง — เลือกคำตอบที่ถูกต้องที่สุด เพียง 1 ข้อ (10 ข้อ)</div><div id="preQBody"></div><div class="score-card" id="preSC" style="display:none"><div class="score-big" id="preSN">0</div><div class="score-label">คะแนนที่ได้ จาก 10 คะแนน</div></div></div></div><div class="pf"><button class="btn-p" id="btnSPre" onclick="savePre()" disabled>💾 บันทึก Pre-test</button><button class="btn-sec" onclick="closePanel('pre')">ยกเลิก</button></div></div>
 <div class="ov" id="ov-post" onclick="closePanel('post')"></div><div class="panel" id="panel-post"><div class="ph" style="background:#0891b2"><span class="ph-t">📝 แบบทดสอบหลังอบรม — Post-test</span><button class="ph-x" onclick="closePanel('post')">✕</button></div><div class="pb"><div class="fs"><div class="fs-t">ข้อมูลผู้ทดสอบ</div><div class="fr"><div class="fg"><label>เลขบัตรประชาชน 13 หลัก *</label><input type="text" id="post-cid" maxlength="13" placeholder="ตรวจสอบสิทธิ์" oninput="checkEligible('post',this.value)"></div><div class="fg"><label>ชื่อ-สกุล (อ้างอิง)</label><input type="text" id="post-name" readonly style="background:#f1f5f9"></div></div><div id="post-err" style="color:var(--red);font-size:11px;margin-top:4px;font-weight:600;"></div></div><div class="fs" id="post-q-sec" style="opacity:0.5;pointer-events:none;"><div class="fs-t" style="color:#0891b2">คำชี้แจง — เลือกคำตอบที่ถูกต้องที่สุด เพียง 1 ข้อ (10 ข้อ)</div><div id="postQBody"></div><div class="score-card" id="postSC" style="display:none"><div class="score-big" id="postSN">0</div><div class="score-label">คะแนนที่ได้ จาก 10 คะแนน</div></div></div></div><div class="pf"><button class="btn-p" id="btnSPost" onclick="savePost()" disabled>💾 บันทึก Post-test</button><button class="btn-sec" onclick="closePanel('post')">ยกเลิก</button></div></div>
 <div class="ov" id="ov-loc" onclick="closePanel('loc')"></div><div class="panel" id="panel-loc"><div class="ph" style="background:#ea580c"><span class="ph-t">📍 จัดการพิกัด และภาพผลงาน รพ.สต.</span><button class="ph-x" onclick="closePanel('loc')">✕</button></div><div class="pb"><div class="fs"><div class="fr fr1" style="margin-bottom:12px;"><div class="fg"><label>รพ.สต. ที่ต้องการจัดการ</label><select id="loc-hc" onchange="loadHospLocData()" style="font-weight:bold; color:var(--primary);"></select></div></div><div class="fs-t">บันทึกข้อมูลพิกัด (ละติจูด, ลองจิจูด)</div><div class="fr"><div class="fg"><label>ละติจูด (Latitude)</label><input type="text" id="loc-lat"></div><div class="fg"><label>ลองจิจูด (Longitude)</label><div style="display:flex;gap:4px"><input type="text" id="loc-lon" style="flex:1"><button class="btn-geo" onclick="getGeo('loc-lat','loc-lon')">📍</button></div></div></div></div><div class="fs"><div class="fs-t">ภาพผลงานปัจจุบัน</div><div id="loc-current-pics" style="margin-bottom:12px; min-height:30px;"></div><div class="fs-t" style="margin-top:15px; border-top:1px solid #dbeafe; padding-top:10px;">อัปโหลดภาพเพิ่มเติม (ไม่เกิน 2MB/ภาพ)</div><div class="fg"><input type="file" id="loc-pics" accept="image/png, image/jpeg, image/jpg" multiple></div><p style="font-size:10px;color:var(--muted);margin-top:6px;">ภาพจะถูกอัปโหลดเป็นลิ้งก์ไปยัง Google Drive เพื่อแสดงผลในตาราง</p></div></div><div class="pf"><button class="btn-p" id="btnSLoc" onclick="saveLoc()">💾 บันทึกข้อมูล</button><button class="btn-sec" onclick="closePanel('loc')">ปิด</button></div></div>
-<div class="ov" id="ov-conv" onclick="closePanel('conv')"></div><div class="panel" id="panel-conv"><div class="ph" style="background:#475569"><span class="ph-t">🛠 ระบบนำเข้า & แปลงไฟล์ข้อมูล</span><button class="ph-x" onclick="closePanel('conv')">✕</button></div><div class="pb"><div class="fs"><div class="fs-t">ข้อแนะนำการใช้งาน</div><p style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px;">1. เลือกไฟล์ดิบจากโรงพยาบาล (<b>.txt</b> 18 คอลัมน์) หรือ <b>.csv</b><br>2. สามารถกด <b>"⬇️ นำเข้าข้อมูล (Import)"</b> เพื่อดึงเข้าฐานข้อมูลหลักได้ทันที<br>3. หากต้องการตรวจสอบใน Excel ก่อน ให้กด <b>"🔄 แปลงเป็น Template ใหม่"</b> (ป้องกันปัญหาเลขบัตรกลายเป็น E+12)</p><div class="fg" style="margin-bottom:12px;"><label>การเข้ารหัสภาษา (หากไฟล์อ่านมาแล้วเป็นภาษาต่างดาว ให้เปลี่ยนค่านี้)</label><select id="fileEncoding" style="padding:5px; border:1px solid var(--border); border-radius:5px; outline:none; background:#fff; font-family:inherit;"><option value="UTF-8">UTF-8 (รองรับไฟล์ส่วนใหญ่)</option><option value="windows-874">Windows-874 (TIS-620 / ระบบ รพ. รุ่นเก่า)</option></select></div><div class="fg"><label>เลือกไฟล์ (.csv หรือ .txt)</label><input type="file" id="convFile" accept=".txt,.csv" style="padding:4px"></div><div style="display:flex; gap:10px; margin-top:18px;"><button class="btn-p" style="flex:1; justify-content:center; background:#0d9488;" id="btnImport" onclick="importCSV()">⬇️ นำเข้าข้อมูล (Import)</button><button class="btn-p" style="flex:1; justify-content:center; background:#475569;" onclick="convertFile()">🔄 แปลงเป็น Template</button></div></div></div><div class="pf"><button class="btn-sec" style="width:100%; text-align:center;" onclick="closePanel('conv')">ปิดหน้าต่าง</button></div></div>
+<div class="ov" id="ov-conv" onclick="closePanel('conv')"></div><div class="panel" id="panel-conv"><div class="ph" style="background:#475569"><span class="ph-t">🛠 ระบบนำเข้า & แปลงไฟล์ข้อมูล</span><button class="ph-x" onclick="closePanel('conv')">✕</button></div><div class="pb"><div class="fs"><div class="fs-t">ข้อแนะนำการใช้งาน</div><p style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px;">1. เลือกไฟล์ดิบจากโรงพยาบาล (<b>.txt</b> 18 คอลัมน์) หรือ <b>.csv</b><br>2. สามารถกด <b>"⬇️ นำเข้าข้อมูล (Import)"</b> เพื่อดึงเข้าฐานข้อมูลหลักได้ทันที<br>3. หากต้องการตรวจสอบใน Excel ก่อน ให้กด <b>"🔄 แปลงเป็น Template ใหม่"</b> (ป้องกันปัญหาเลขบัตรกลายเป็น E+12)</p><div class="fg" style="margin-bottom:12px;"><label>การเข้ารหัสภาษา (หากไฟล์อ่านมาแล้วเป็นภาษาต่างดาว ให้เปลี่ยนค่านี้)</label><select id="fileEncoding" style="padding:5px; border:1px solid var(--border); border-radius:5px; outline:none; background:#fff; font-family:inherit;"><option value="UTF-8">UTF-8 (รองรับไฟล์ส่วนใหญ่)</option><option value="windows-874">Windows-874 (TIS-620 / ระบบ รพ. รุ่นเก่า)</option></select></div><div class="fg"><label>เลือกไฟล์ (.csv หรือ .txt)</label><input type="file" id="convFile" accept=".txt,.csv" style="padding:4px"></div><div style="display:flex; gap:10px; margin-top:18px;"><button class="btn-p" style="flex:1; justify-content:center; background:#0d9488;" id="btnImport" onclick="importCSV()">⬇️ นำเข้าข้อมูล (Import)</button><button class="btn-p" style="flex:1; justify-content:center; background:#475569;" onclick="convertFile()">🔄 แปลงเป็น Template</button></div><div style="margin-top:15px; padding-top:15px; border-top:1px solid var(--border);"><button class="btn-p" style="width:100%; justify-content:center; background:#1E3A5F;" onclick="openImportHistory()">📋 ดูประวัติการนำเข้า / รายการที่ไม่ผ่าน</button></div></div></div><div class="pf"><button class="btn-sec" style="width:100%; text-align:center;" onclick="closePanel('conv')">ปิดหน้าต่าง</button></div></div>
 <div class="mov" id="loginMov"><div class="mbox"><div class="m-ico">👁</div><div class="m-ttl">เข้าสู่ระบบ</div><div class="m-sub" id="loginSub">โครงการเด็กไทยสายตาดี</div><div class="lf"><label>ชื่อผู้ใช้ (รหัส รพ.สต. หรือ admin)</label><input type="text" id="lgUser" placeholder="เช่น 08498" maxlength="10" autocomplete="username"></div><div class="lf"><label>รหัสผ่าน</label><input type="password" id="lgPass" placeholder="รหัสผ่าน" maxlength="8" autocomplete="current-password" onkeypress="if(event.key==='Enter')doLogin()"></div><button class="btn-lgn" id="btnLgn" onclick="doLogin()">🔐 เข้าสู่ระบบ</button><button class="btn-guest" onclick="closeLogin()">ดูข้อมูลในฐานะ Guest</button><div class="lerr" id="lgErr"></div></div></div>
 
 <div class="mov" id="pwdMov"><div class="mbox" style="width:360px; padding:25px;"><div class="m-ttl" style="color:var(--accent); margin-bottom:5px;">🔑 เปลี่ยนรหัสผ่าน</div><div class="m-sub">กรุณากรอกรหัสผ่านเดิมเพื่อยืนยันการเปลี่ยนแปลง</div><div class="lf"><label>รหัสผ่านเดิม</label><input type="password" id="pwdOld" placeholder="รหัสผ่านเดิม"></div><div class="lf"><label>รหัสผ่านใหม่</label><input type="password" id="pwdNew" placeholder="รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)"></div><div class="lf"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="pwdConfirm" placeholder="ยืนยันรหัสผ่านใหม่อีกครั้ง"></div><div class="lerr" id="pwdErr"></div><button class="btn-lgn" id="btnChangePwd" onclick="doChangePwd()">💾 เปลี่ยนรหัสผ่าน</button><button class="btn-guest" onclick="closePwdMgr()">ยกเลิก</button></div></div>
@@ -1111,18 +1111,61 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="ov" id="ov-error-report" onclick="closePanel('error-report')"></div>
 <div class="panel beh-panel" id="panel-error-report">
-  <div class="ph" style="background:var(--red)"><span class="ph-t">⚠️ รายการที่นำเข้าไม่สำเร็จ</span><button class="ph-x" onclick="closePanel('error-report')">✕</button></div>
+  <div class="ph" style="background:var(--red)">
+    <span class="ph-t">📋 รายงานการนำเข้าข้อมูล</span>
+    <button class="ph-x" onclick="closePanel('error-report')">✕</button>
+  </div>
   <div class="pb">
-    <div class="tbl-wrap" style="max-height: 400px;">
-        <table class="dtbl" id="error-dtbl">
-            <thead><tr><th>เหตุผลที่ไม่ผ่าน</th><th>เลขบัตร</th><th>ชื่อ-สกุล</th></tr></thead>
-            <tbody id="errorBody"></tbody>
+
+    <div id="error-current-section" class="fs" style="display:none;">
+      <div class="fs-t" style="color:var(--red); border-color:#fecaca;">
+        ⚠️ <span id="error-current-summary"></span>
+      </div>
+      <div class="tbl-wrap" style="max-height: 280px;">
+        <table class="dtbl">
+          <thead><tr>
+            <th style="width:40px;">#</th>
+            <th>เลขบัตร</th>
+            <th>ชื่อ-สกุล</th>
+            <th>โรงเรียน</th>
+            <th>รพ.สต.</th>
+            <th>เหตุผลที่ไม่ผ่าน</th>
+          </tr></thead>
+          <tbody id="error-current-body"></tbody>
         </table>
+      </div>
+      <div style="margin-top:8px;">
+        <button class="btn-exp btn-print-doc" onclick="downloadCurrentFailedCSV()">📥 ดาวน์โหลด CSV รายการที่ไม่ผ่าน</button>
+      </div>
     </div>
+
+    <div class="fs">
+      <div class="fs-t" style="color:var(--red); border-color:#fecaca; display:flex; align-items:center;">
+        📊 ประวัติการนำเข้า (30 รายการล่าสุด)
+        <button class="btn-exp" style="margin-left:auto;" onclick="loadImportHistory()">🔄 รีโหลด</button>
+      </div>
+      <div class="tbl-wrap" style="max-height: 350px;">
+        <table class="dtbl">
+          <thead><tr>
+            <th style="width:40px;">#</th>
+            <th>วันเวลา</th>
+            <th>ผู้นำเข้า</th>
+            <th style="text-align:center;">รวม</th>
+            <th style="text-align:center; color:var(--green);">สำเร็จ</th>
+            <th style="text-align:center; color:var(--red);">ข้าม</th>
+            <th style="text-align:center;">การจัดการ</th>
+          </tr></thead>
+          <tbody id="error-history-body"><tr><td colspan="7" style="text-align:center; padding:15px; color:var(--muted2);">⏳ กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
+      <div id="error-history-admin" style="margin-top:10px; display:none;">
+        <button class="btn-exp" style="color:var(--red); border-color:#fca5a5;" onclick="confirmClearAllImportLogs()">🗑 ลบประวัติทั้งหมด (Admin)</button>
+      </div>
+    </div>
+
   </div>
   <div class="pf">
-    <button class="btn-p" style="background:var(--red);" onclick="downloadErrorCSV()">📥 ดาวน์โหลดรายการที่ผิดพลาด</button>
-    <button class="btn-sec" onclick="closePanel('error-report')">ปิด</button>
+    <button class="btn-sec" style="width:100%; text-align:center;" onclick="closePanel('error-report')">ปิดหน้าต่าง</button>
   </div>
 </div>
 
@@ -1147,7 +1190,8 @@ const WRITE_ACTIONS = new Set([
   'deleteRecord', 'deleteBehaviorRecord', 'deleteFollowupRecord',
   'deleteLinkData', 'deleteVideoItem', 'deleteHospFileLink',
   'updateHospLocation', 'saveLinkData', 'saveVideoItem',
-  'saveLineSettings', 'changePassword'
+  'saveLineSettings', 'changePassword',
+  'deleteImportLog', 'clearAllImportLogs'
 ]);
 
 // 🚫 รายการ action ที่ "ห้าม retry อัตโนมัติ" แม้เกิด error
@@ -1314,6 +1358,7 @@ window.google.script.run = (function() {
             payloadData = { cid: args[0] };
           }
           if (prop === 'deleteLinkData' || prop === 'deleteVideoItem') payloadData = { id: args[0] };
+          if (prop === 'getImportLogDetail' || prop === 'deleteImportLog') payloadData = { batchId: args[0] };
           
           // 🛡 Double-Click Guard: ป้องกันการกดปุ่มซ้ำ (เฉพาะ Write Action)
           let inFlightKey = null;
@@ -2033,16 +2078,173 @@ function importCSV() {
     reader.readAsText(file, encoding);
 }
 
-function downloadErrorCSV() {
-    if(!G_failedData.length) return;
-    var csvContent = "\uFEFFเหตุผลที่ไม่ผ่าน," + "ข้อมูลทุกคอลัมน์ (join ด้วยช่องว่าง)\n";
-    G_failedData.forEach(item => {
-        csvContent += '"' + item.reason + '","' + item.row.join(' ') + '"\n';
+// === Import Log System (v6.4) ===
+var G_failedData = [];
+
+function renderErrorTable(failedList) {
+  G_failedData = failedList || [];
+  if (G_failedData.length === 0) {
+    document.getElementById('error-current-section').style.display = 'none';
+    return;
+  }
+  document.getElementById('error-current-section').style.display = 'block';
+  document.getElementById('error-current-summary').textContent = 
+    'พบ ' + G_failedData.length + ' รายการที่ไม่ผ่านการตรวจสอบในการนำเข้าครั้งล่าสุด';
+  var html = '';
+  G_failedData.forEach(function(item, idx) {
+    html += '<tr>' +
+            '<td>' + (idx+1) + '</td>' +
+            '<td style="font-family: monospace; color:var(--accent); font-weight:600;">' + e_(item.cid || '—') + '</td>' +
+            '<td>' + e_(item.name || '—') + '</td>' +
+            '<td>' + e_(item.school || '—') + '</td>' +
+            '<td>' + e_(item.hospcode || '—') + '</td>' +
+            '<td style="color:var(--red); font-weight:600; font-size:11px;">' + e_(item.reason || '—') + '</td>' +
+            '</tr>';
+  });
+  document.getElementById('error-current-body').innerHTML = html;
+}
+
+function downloadCurrentFailedCSV() {
+  if (!G_failedData.length) { toast('ไม่มีข้อมูล', 'err'); return; }
+  _downloadFailedAsCSV(G_failedData, 'Failed_Import_' + new Date().toISOString().slice(0,19).replace(/[:T]/g, '-'));
+}
+
+function _downloadFailedAsCSV(failedArr, filename) {
+  var csv = '\uFEFF#,เลขบัตร,ชื่อ-สกุล,โรงเรียน,รพ.สต.,เหตุผลที่ไม่ผ่าน\n';
+  failedArr.forEach(function(item, idx) {
+    csv += [
+      idx+1,
+      '"=""' + (item.cid || '') + '"""',
+      '"' + String(item.name || '').replace(/"/g, '""') + '"',
+      '"' + String(item.school || '').replace(/"/g, '""') + '"',
+      '"' + String(item.hospcode || '') + '"',
+      '"' + String(item.reason || '').replace(/"/g, '""') + '"'
+    ].join(',') + '\n';
+  });
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename + '.csv';
+  a.click();
+  toast('ดาวน์โหลดสำเร็จ', 'ok');
+}
+
+function openImportHistory() {
+  G_failedData = [];
+  document.getElementById('error-current-section').style.display = 'none';
+  if (G.session.role === 'admin') {
+    document.getElementById('error-history-admin').style.display = 'block';
+  } else {
+    document.getElementById('error-history-admin').style.display = 'none';
+  }
+  openPanel('error-report');
+  loadImportHistory();
+}
+
+function loadImportHistory() {
+  var tbody = document.getElementById('error-history-body');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:15px; color:var(--muted2);">⏳ กำลังโหลด...</td></tr>';
+  google.script.run.withSuccessHandler(function(r) {
+    var res = JSON.parse(r);
+    if (!res.ok) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:15px; color:var(--red);">❌ ' + res.msg + '</td></tr>';
+      return;
+    }
+    var logs = (res.data && res.data.logs) ? res.data.logs : [];
+    if (logs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:15px; color:var(--muted);">ยังไม่มีประวัติการนำเข้า</td></tr>';
+      return;
+    }
+    var html = '';
+    var isAdmin = (G.session.role === 'admin');
+    logs.forEach(function(log, idx) {
+      var actBtns = '<button class="btn-act" style="color:#3B82F6; border-color:#bfdbfe;" onclick="viewBatchDetail(\'' + log.batchId + '\')" title="ดูรายการที่ไม่ผ่าน">👁</button>';
+      if (log.failed > 0) {
+        actBtns += ' <button class="btn-act" style="color:#0d9488; border-color:#99f6e4;" onclick="downloadBatchCSV(\'' + log.batchId + '\')" title="ดาวน์โหลด CSV">⬇️</button>';
+      }
+      if (isAdmin) {
+        actBtns += ' <button class="btn-act" style="color:var(--red); border-color:#fecaca;" onclick="confirmDeleteImportLog(\'' + log.batchId + '\')" title="ลบ">🗑</button>';
+      }
+      var roleTag = (log.role === 'admin') ? ' <span style="color:var(--accent); font-size:9px; font-weight:600;">(admin)</span>' : '';
+      html += '<tr>' +
+              '<td>' + (idx+1) + '</td>' +
+              '<td style="font-size:10.5px; white-space:nowrap;">' + e_(log.timestamp) + '</td>' +
+              '<td>' + e_(log.user) + roleTag + '</td>' +
+              '<td style="text-align:center; font-weight:600;">' + log.total + '</td>' +
+              '<td style="text-align:center; color:var(--green); font-weight:600;">' + log.success + '</td>' +
+              '<td style="text-align:center; color:var(--red); font-weight:600;">' + log.failed + '</td>' +
+              '<td style="text-align:center; white-space:nowrap;">' + actBtns + '</td>' +
+              '</tr>';
     });
-    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url; a.download = 'Failed_Import_Data.csv'; a.click();
+    tbody.innerHTML = html;
+  }).withFailureHandler(function(e) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:15px; color:var(--red);">❌ ' + e.message + '</td></tr>';
+  }).getImportLogs();
+}
+
+function viewBatchDetail(batchId) {
+  toast('กำลังโหลดรายการ...', 'inf');
+  google.script.run.withSuccessHandler(function(r) {
+    var res = JSON.parse(r);
+    if (!res.ok) { toast(res.msg, 'err'); return; }
+    G_failedData = res.data.failed || [];
+    document.getElementById('error-current-summary').innerHTML = 
+      'Batch: <code style="font-size:11px; background:#fee2e2; padding:2px 6px; border-radius:4px;">' + e_(batchId) + '</code> | ' + 
+      e_(res.data.timestamp) + ' | สำเร็จ ' + res.data.success + ' / ข้าม ' + G_failedData.length + ' รายการ';
+    if (G_failedData.length === 0) {
+      document.getElementById('error-current-body').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:15px; color:var(--green);">✅ Batch นี้นำเข้าสำเร็จทั้งหมด ไม่มีรายการที่ไม่ผ่าน</td></tr>';
+    } else {
+      var html = '';
+      G_failedData.forEach(function(item, idx) {
+        html += '<tr>' +
+                '<td>' + (idx+1) + '</td>' +
+                '<td style="font-family: monospace; color:var(--accent); font-weight:600;">' + e_(item.cid || '—') + '</td>' +
+                '<td>' + e_(item.name || '—') + '</td>' +
+                '<td>' + e_(item.school || '—') + '</td>' +
+                '<td>' + e_(item.hospcode || '—') + '</td>' +
+                '<td style="color:var(--red); font-weight:600; font-size:11px;">' + e_(item.reason || '—') + '</td>' +
+                '</tr>';
+      });
+      document.getElementById('error-current-body').innerHTML = html;
+    }
+    document.getElementById('error-current-section').style.display = 'block';
+    document.getElementById('error-current-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }).getImportLogDetail(batchId);
+}
+
+function downloadBatchCSV(batchId) {
+  toast('กำลังเตรียมไฟล์...', 'inf');
+  google.script.run.withSuccessHandler(function(r) {
+    var res = JSON.parse(r);
+    if (!res.ok) { toast(res.msg, 'err'); return; }
+    var failed = res.data.failed || [];
+    if (!failed.length) { toast('Batch นี้ไม่มีรายการที่ไม่ผ่าน', 'err'); return; }
+    _downloadFailedAsCSV(failed, 'Failed_' + batchId);
+  }).getImportLogDetail(batchId);
+}
+
+function confirmDeleteImportLog(batchId) {
+  if (!confirm('ยืนยันการลบประวัติ Batch:\n' + batchId + ' ?\n\n⚠️ ลบแล้วกู้คืนไม่ได้')) return;
+  google.script.run.withSuccessHandler(function(r) {
+    var res = JSON.parse(r);
+    if (res.ok) { toast(res.msg, 'ok'); loadImportHistory(); }
+    else toast(res.msg, 'err');
+  }).deleteImportLog(batchId);
+}
+
+function confirmClearAllImportLogs() {
+  if (!confirm('⚠️ ยืนยันการลบประวัติการนำเข้าทั้งหมด?\n\nการกระทำนี้ไม่สามารถยกเลิกได้!')) return;
+  var pin = prompt('กรุณายืนยันด้วยการพิมพ์ CONFIRM (ตัวพิมพ์ใหญ่ทั้งหมด):');
+  if (pin !== 'CONFIRM') { toast('ยกเลิกการลบ', 'inf'); return; }
+  google.script.run.withSuccessHandler(function(r) {
+    var res = JSON.parse(r);
+    if (res.ok) {
+      toast(res.msg, 'ok');
+      loadImportHistory();
+      G_failedData = [];
+      document.getElementById('error-current-section').style.display = 'none';
+    } else toast(res.msg, 'err');
+  }).clearAllImportLogs();
 }
 
 function dlTemplate() {
