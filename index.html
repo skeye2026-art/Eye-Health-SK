@@ -1033,7 +1033,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <div class="fs">
       <div class="fs-t">ส่วนที่ 3 — ผลการตรวจสายตา (VA Snellen)</div>
       <div class="fr fr1" style="margin-bottom:8px">
-        <div class="fg"><label>หน่วยวัดสายตา (Unit)</label><select id="s-unit"><option value="F">F (ฟุต)</option><option value="M">M (เมตร)</option></select></div>
+        <div class="fg"><label>หน่วยวัดสายตา (Unit)</label><select id="s-unit" onchange="updateVaDropdowns()"><option value="F">F (ฟุต)</option><option value="M">M (เมตร)</option></select></div>
       </div>
       <table class="va-tbl">
         <thead><tr><th style="text-align:left">การทดสอบ</th><th>ตาขวา (OD)</th><th>ตาซ้าย (OS)</th><th>สองตา (OU)</th></tr></thead>
@@ -2596,51 +2596,83 @@ function bindAutoDiagnose() {
 
 function autoDiagnose() {
     var cov = getRad('ex-cov'), hir = getRad('ex-hir'), col = getRad('ex-col'), ste = getRad('ex-ste');
-    var vr = document.getElementById('vr-n').value; var vl = document.getElementById('vl-n').value;
-    var hx_r = document.getElementById('hx-r').checked; var hx_i = document.getElementById('hx-i').checked; 
-    var hx_a = document.getElementById('hx-a').checked; var hx_h = document.getElementById('hx-h').checked;
-    var hx_f = document.getElementById('hx-f').checked; var hx_g = document.getElementById('hx-g').checked;
+    var vr = document.getElementById('vr-n').value; 
+    var vl = document.getElementById('vl-n').value;
+    
+    // ดึงค่าอาการผิดปกติและพฤติกรรมจาก Checkbox
+    var hx_r = document.getElementById('hx-r').checked; // ตาแดง/มีฝ้าขาวที่ตาดำ
+    var hx_i = document.getElementById('hx-i').checked; // บาดเจ็บ/ผ่าตัด
+    var hx_a = document.getElementById('hx-a').checked; // ตาขี้เกียจ/ตาเหล่/ตาเข
+    var hx_h = document.getElementById('hx-h').checked; // ปวดศีรษะ/หรี่ตา/อ่านหนังสือชิด
+    var hx_f = document.getElementById('hx-f').checked; // ครอบครัวสวมแว่น
+    var hx_g = document.getElementById('hx-g').checked; // เคยสวมแว่น
 
+    // ฟังก์ชันแปลงค่า VA เป็นลำดับความรุนแรง (Rank) เพื่อให้คำนวณง่ายขึ้น
     function getVaRank(v) {
-        var map = {'20/20':1, '6/6':1, '20/30':2, '6/9':2, '20/40':3, '6/12':3, '20/50':4, '6/18':4, '20/70':5, '6/24':5, '20/100':6, '6/36':6, '20/200':7, '6/60':7, 'HM':8, 'PL':9, 'no PL':10};
+        var map = {
+            '20/20':1, '6/6':1, 
+            '20/30':2, '6/9':2, 
+            '20/40':3, '6/12':3, 
+            '20/50':4, '6/15':4, '6/18':4, 
+            '20/70':5, '6/24':5, 
+            '20/100':6, '6/36':6, 
+            '20/200':7, '6/60':7, 
+            '< 20/200':8, '< 6/60':8, 'HM':8, 'PL':8, 'no PL':8
+        };
         return map[v] || 0; 
     }
 
-    var rankR = getVaRank(vr); var rankL = getVaRank(vl);
-    var worstRank = Math.max(rankR, rankL);
-    var diff = Math.abs(rankR - rankL);
+    var rankR = getVaRank(vr); 
+    var rankL = getVaRank(vl);
+    var worstRank = Math.max(rankR, rankL); // ยึดตาข้างที่มองเห็นแย่ที่สุดเป็นหลัก
+    var diff = Math.abs(rankR - rankL); // คำนวณความต่างของตาสองข้าง
     
+    // การจัดกลุ่มอาการทางกายภาพและพฤติกรรม
     var isStrabismus = (cov === 'ผิดปกติ' || hir === 'ผิดปกติ' || ste === 'ผิดปกติ' || hx_a);
-    var isEmergency = (worstRank >= 7 || hx_i || hx_r); 
+    var hasPhysicalAbnormal = isStrabismus || hx_r || hx_i; // อาการทางกายภาพ เช่น ฝ้าขาว ตาเข ตาแดงบวม
+    var hasBehavioralRisk = hx_h; // อาการพฤติกรรม เช่น หรี่ตา เอียงคอ มองใกล้
     
     var diag = ''; var ref = '';
 
-    // Logic จัดกลุ่มตาม Guideline ใหม่
-    if (isEmergency) {
+    // 1. เกณฑ์ฉุกเฉิน/รุนแรง (Emergency)
+    // อ่านแถวแรกไม่เห็น (< 6/60 หรือ < 20/200) หรือมีอาการบาดเจ็บ/ความผิดปกติรุนแรง
+    if (worstRank >= 8 || hx_i) { 
         diag = 'ความผิดปกติรุนแรงของการมองเห็น';
         ref = 'ส่งต่อด่วน (ภายใน 1 สัปดาห์)';
-        toast('🚨 พบความผิดปกติรุนแรง: แนะนำให้ส่งต่อด่วน!', 'err');
-    } else if (worstRank === 6 || diff >= 2 || isStrabismus) {
-        diag = 'สงสัยตาขี้เกียจ/สายตาผิดปกติรุนแรง';
-        ref = 'ควรพบจักษุแพทย์ภายใน 1 เดือน';
-    } else if (worstRank >= 3 && worstRank <= 5) {
-        diag = 'สงสัยสายตาผิดปกติ';
-        ref = 'ควรพบจักษุแพทย์ภายใน 3 เดือน';
-    } else if (worstRank === 2 || hx_h || hx_f) {
+        toast('🚨 พบความผิดปกติรุนแรง (เช่น อ่านแถวบนสุดไม่ได้ หรือบาดเจ็บ): แนะนำให้ส่งต่อด่วน!', 'err');
+    } 
+    // 2. เกณฑ์ที่ต้องส่งต่อแพทย์ (Referral)
+    // VA แย่กว่า 6/12 (Rank >= 4), หรือตาสองข้างต่างกัน 2 แถวขึ้นไป (diff >= 2), หรือมีอาการทางกายภาพ
+    else if (worstRank >= 4 || diff >= 2 || hasPhysicalAbnormal) {
+        if (isStrabismus) {
+            diag = 'สงสัยตาขี้เกียจ/สายตาผิดปกติรุนแรง';
+        } else {
+            diag = 'สงสัยสายตาผิดปกติ';
+        }
+        ref = 'ควรพบจักษุแพทย์ภายใน 1 เดือน'; 
+    } 
+    // 3. เกณฑ์ที่ต้องเฝ้าระวัง (Observation)
+    // VA อยู่ที่ 6/9 ถึง 6/12 (Rank 2-3) หรือมีพฤติกรรมเสี่ยง (หรี่ตา ปวดหัว)
+    else if ((worstRank >= 2 && worstRank <= 3) || hasBehavioralRisk || hx_f) {
         diag = 'เริ่มเฝ้าระวังสายตาผิดปกติ';
         ref = 'ไม่จำเป็นต้องส่งต่อ';
-    } else if (col === 'ผิดปกติ') {
+    } 
+    // 4. กรณีความผิดปกติการมองสี (ตาบอดสี)
+    else if (col === 'ผิดปกติ') {
         diag = 'อื่นๆ';
         ref = 'ไม่จำเป็นต้องส่งต่อ';
         document.getElementById('s-remark').value = 'ความผิดปกติการมองสี (ตาบอดสี)';
-    } else {
+    } 
+    // 5. เกณฑ์ปกติ (Normal)
+    // VA 6/6 หรือ 20/20 ทั้งสองข้าง และไม่มีอาการทางกายภาพ
+    else {
         diag = 'สายตาปกติ';
         ref = 'ไม่จำเป็นต้องส่งต่อ';
     }
 
-    // Auto Alert: กรณีเด็กใส่แว่นอยู่แล้วแต่ VA ยังตก
-    if (hx_g && worstRank >= 3) {
-        document.getElementById('s-remark').value = '⚠️ ใส่แว่นแล้ว VA ยังตกอยู่ ควรประเมินสายตาเต็มระบบใหม่';
+    // Auto Alert: แจ้งเตือนเพิ่มเติมกรณีสวมแว่นตาอยู่แล้ว แต่สายตายังแย่กว่าเกณฑ์ (แย่กว่า 6/12)
+    if (hx_g && worstRank >= 4) {
+        document.getElementById('s-remark').value = '⚠️ ใส่แว่นแล้วระดับสายตายังแย่กว่า 6/12 ควรประสานส่งต่อเพื่อประเมินสายตาซ้ำ';
     } else if (!document.getElementById('s-remark').value.includes('ตาบอดสี')) {
         document.getElementById('s-remark').value = '';
     }
@@ -2723,8 +2755,7 @@ function setDate() {
 
 
 function buildDropdowns() {
-  var vaOpts = '<option value="">— ไม่ระบุ —</option>'; G.vaList.forEach(function(v) { vaOpts += '<option>' + v + '</option>'; });
-  ['vr-n','vl-n','vr-g','vl-g','vr-p','vl-p', 'vou-naked', 'vou-glasses'].forEach(function(id) { document.getElementById(id).innerHTML = vaOpts; });
+  updateVaDropdowns();
   document.getElementById('vr-n').value = '20/20'; document.getElementById('vl-n').value = '20/20';
   var amps = []; G.hospList.forEach(function(h){ if(h.amphoe && amps.indexOf(h.amphoe)===-1) amps.push(h.amphoe); }); amps.sort();
   var ampSel = document.getElementById('fAmp'); amps.forEach(function(a) { ampSel.innerHTML += '<option>' + a + '</option>'; });
@@ -3365,15 +3396,17 @@ window.viewScreeningFullDetails = function(cid) {
             '<tr><td style="font-weight:600; color:var(--muted);">สิทธิการรักษา:</td><td><span style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">' + e_(data.treatment || '—') + '</span></td></tr>' +
             '</table></div>';
             
-    html += '<div class="fs"><div class="fs-t" style="color:var(--primary); font-weight:bold; border-color:var(--accent);">📋 ประวัติสุขภาพตา</div>' +
-            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:11.5px;">' +
-            '<div>• เคยสวมแว่น/เลนส์: <b>' + data.hx_glasses + '</b></div>' +
-            '<div>• เคยผ่าตัด/บาดเจ็บตา: <b>' + data.hx_injury + '</b></div>' +
-            '<div>• มีอาการตาแดงเรื้อรัง: <b>' + data.hx_red_eye + '</b></div>' +
-            '<div>• ปวดหัวบ่อยครั้ง: <b>' + data.hx_headache + '</b></div>' +
-            '<div>• ตาเหล่/ตาขี้เกียจ: <b>' + data.hx_amblyopia + '</b></div>' +
-            '<div>• ครอบครัวสวมแว่น: <b>' + data.hx_family + '</b></div>' +
-            '</div></div>';
+    html += '<div class="fs">
+  <div class="fs-t">ส่วนที่ 2 — ประวัติสุขภาพตาและพฤติกรรม</div>
+  <div class="cb-group">
+    <label class="cbi" title="เคยสวมแว่นตาหรือเลนส์สัมผัส"><input type="checkbox" id="hx-g"> เคยสวมแว่น/เลนส์</label>
+    <label class="cbi" title="เคยผ่าตัดตา หรือได้รับบาดเจ็บที่ตา"><input type="checkbox" id="hx-i"> เคยผ่าตัด/บาดเจ็บตา</label>
+    <label class="cbi" title="ตาแดงเรื้อรัง ขอบตาบวมแดง น้ำตาไหลมาก หรือพบฝ้าขาวที่ตาดำ"><input type="checkbox" id="hx-r"> ตาแดง/ฝ้าขาวที่ตาดำ</label>
+    <label class="cbi" title="ปวดศีรษะบ่อย หรี่ตา เอียงคอ หรือชอบมองใกล้/ชิดกระดาน"><input type="checkbox" id="hx-h"> ปวดหัว/หรี่ตา/มองใกล้</label>
+    <label class="cbi" title="มีประวัติตาขี้เกียจ (Amblyopia) ตาเหล่ หรือตาเข"><input type="checkbox" id="hx-a"> ตาขี้เกียจ/ตาเหล่/ตาเข</label>
+    <label class="cbi" title="บิดา มารดา หรือญาติใกล้ชิดสวมแว่นตา"><input type="checkbox" id="hx-f"> ครอบครัวสวมแว่น</label>
+  </div>
+</div>';
 
     html += '<div class="fs"><div class="fs-t" style="color:var(--primary); font-weight:bold; border-color:var(--accent);">👁️ ผลการตรวจสายตา (หน่วยวัด: ' + e_(data.unit) + ')</div>' +
             '<table class="va-tbl" style="margin-top:4px; font-size:11.5px;">' +
@@ -3503,6 +3536,7 @@ function editRow(cid) {
         if (res.ok) {
             _editMode = true; var d = res.data; document.getElementById('scrPanelTitle').innerHTML = '✏️ แก้ไขข้อมูลคัดกรองสายตา'; document.getElementById('btnSScr').innerHTML = '💾 อัปเดตข้อมูล';
             document.getElementById('s-cid').value = d.cid; document.getElementById('s-cid').setAttribute('readonly', 'true'); document.getElementById('s-pname').value = d.pname; document.getElementById('s-fname').value = d.fname; document.getElementById('s-lname').value = d.lname; document.getElementById('s-bd').value = d.birthday; document.getElementById('s-age').value = d.age_years; document.getElementById('s-sex').value = d.sex; document.getElementById('s-lev').value = d.level_edu; document.getElementById('s-cls').value = d.room; document.getElementById('s-sch').value = d.school_name; document.getElementById('s-hc').value = d.hospcode; document.getElementById('s-dt').value = d.screen_date; document.getElementById('s-addr').value = d.address; document.getElementById('s-moo').value = d.moo; document.getElementById('s-aid').value = d.aid; document.getElementById('s-tambon').value = d.tambon; document.getElementById('s-amphoe').value = d.amphoe; document.getElementById('s-prov').value = d.province; document.getElementById('s-exam').value = d.examiner; document.getElementById('s-pos').value = d.position || ''; document.getElementById('s-remark').value = d.remarks; document.getElementById('s-unit').value = d.unit || 'F';
+            updateVaDropdowns();
             
             // เพิ่มการดึงค่าสิทธิการรักษา
             document.getElementById('s-treat').value = d.treatment || '';
@@ -3924,7 +3958,14 @@ function buildScreeningTemplate(d) {
     html += '</div>';
     
     html += '<div style="font-weight:bold; font-size:16pt; margin-top:10px; background:#f0f0f0; padding:4px;">ส่วนที่ 2 : ประวัติสุขภาพตา</div><table style="width:100%; border-collapse:collapse; margin-top:5px; margin-bottom:10px;"><tr><th style="border:1px solid #000; text-align:center; padding:5px; background:#ddd;">ประวัติสุขภาพตา</th><th style="border:1px solid #000; width:60px; background:#ddd;">ใช่</th><th style="border:1px solid #000; width:60px; background:#ddd;">ไม่ใช่</th></tr>';
-    var hxList = [ {k:'hx_glasses', l:'เคยสวมแว่นตาหรือเลนส์สัมผัส (Contact Lens) หรือไม่'}, {k:'hx_injury', l:'เคยผ่าตัดตา หรือได้รับบาดเจ็บที่ตา'}, {k:'hx_red_eye', l:'มีอาการตาเจ็บ แสบ คัน มีขี้ตามาก หรือตาแดงเรื้อรัง'}, {k:'hx_headache', l:'มีอาการปวดศีรษะบ่อย โดยเฉพาะเวลาใช้สายตา'}, {k:'hx_amblyopia', l:'มีประวัติตาขี้เกียจ (Amblyopia) หรือตาเหล่'}, {k:'hx_family', l:'บิดา มารดา หรือญาติใกล้ชิดสวมแว่นตา'} ];
+    var hxList = [ 
+      {k:'hx_glasses', l:'เคยสวมแว่นตาหรือเลนส์สัมผัส (Contact Lens)'}, 
+      {k:'hx_injury', l:'เคยผ่าตัดตา หรือได้รับบาดเจ็บที่ตา'}, 
+      {k:'hx_red_eye', l:'มีอาการตาเจ็บ แสบ คัน มีขี้ตามาก ตาแดงเรื้อรัง หรือมีฝ้าขาวที่ตาดำ'}, 
+      {k:'hx_headache', l:'มีอาการปวดศีรษะบ่อย หรี่ตา เอียงคอ หรือชอบอ่านหนังสือชิดตา'}, 
+      {k:'hx_amblyopia', l:'มีประวัติตาขี้เกียจ (Amblyopia) ตาเข หรือตาเหล่'}, 
+      {k:'hx_family', l:'บิดา มารดา หรือญาติใกล้ชิดสวมแว่นตา'} 
+    ];
     hxList.forEach(function(hx) { var isYes = (sInfo[hx.k] == '1') ? '☑' : '☐'; var isNo = (sInfo[hx.k] == '0' || sInfo[hx.k] == '') ? '☑' : '☐'; html += '<tr><td style="border:1px solid #000; padding:4px 10px;">'+hx.l+'</td><td style="border:1px solid #000; text-align:center; font-size:18pt;">'+isYes+'</td><td style="border:1px solid #000; text-align:center; font-size:18pt;">'+isNo+'</td></tr>'; });
     
     html += '</table><div style="font-weight:bold; background:#f0f0f0; padding:4px;">ส่วนที่ 3 : ผลการตรวจสายตา (Visual Acuity) <span style="font-weight:normal; font-size:14pt;">ใช้ Snellen Chart ระยะทดสอบ 6 เมตร (20 ฟุต)</span></div><table style="width:100%; border-collapse:collapse; margin-top:5px; margin-bottom:10px; text-align:center;"><tr><th style="border:1px solid #000; padding:5px; background:#ddd;">การทดสอบ</th><th style="border:1px solid #000; background:#ddd;">ตาขวา (OD)</th><th style="border:1px solid #000; background:#ddd;">ตาซ้าย (OS)</th><th style="border:1px solid #000; background:#ddd;">สองตา (OU)</th></tr><tr><td style="border:1px solid #000; text-align:left; padding:5px 10px;">ไม่ใส่แว่น</td><td style="border:1px solid #000;">'+(sInfo.va_r_naked||'')+'</td><td style="border:1px solid #000;">'+(sInfo.va_l_naked||'')+'</td><td style="border:1px solid #000;">'+(sInfo.va_naked_OU||'')+'</td></tr><tr><td style="border:1px solid #000; text-align:left; padding:5px 10px;">ใส่แว่น / เลนส์</td><td style="border:1px solid #000;">'+(sInfo.va_r_glasses||'')+'</td><td style="border:1px solid #000;">'+(sInfo.va_l_glasses||'')+'</td><td style="border:1px solid #000;">'+(sInfo.va_glasses_OU||'')+'</td></tr></table>';
@@ -4992,6 +5033,41 @@ function renderImageMarquee(imageUrlsString) {
         container.appendChild(img);
     });
 }
+
+// ==========================================
+// ฟังก์ชันสลับตัวเลือก VA ให้ตรงกับหน่วย (ฟุต หรือ เมตร)
+// ==========================================
+function updateVaDropdowns() {
+    var unit = document.getElementById('s-unit').value; // 'F' หรือ 'M'
+    
+    // กำหนดชุดตัวเลขตามมาตรฐาน Snellen Chart
+    var vaList = (unit === 'M') ? 
+        ['6/6', '6/9', '6/12', '6/18', '6/24', '6/36', '6/60', '< 6/60', 'HM', 'PL', 'no PL'] : 
+        ['20/20', '20/30', '20/40', '20/50', '20/70', '20/100', '20/200', '< 20/200', 'HM', 'PL', 'no PL'];
+        
+    var ids = ['vr-n','vl-n','vr-g','vl-g','vr-p','vl-p', 'vou-naked', 'vou-glasses'];
+    
+    ids.forEach(function(id) {
+        var el = document.getElementById(id);
+        if(!el) return;
+        var currentIdx = el.selectedIndex; // จำตำแหน่งที่เลือกไว้ เพื่อสลับค่าเทียบเท่า
+        
+        var html = '<option value="">— ไม่ระบุ —</option>';
+        vaList.forEach(function(v) {
+            html += '<option value="' + v + '">' + v + '</option>';
+        });
+        el.innerHTML = html;
+        
+        // คืนค่าตำแหน่งเดิม (เช่น เลือกตัวที่ 3 ของฟุต ก็จะเด้งไปเป็นตัวที่ 3 ของเมตรอัตโนมัติ)
+        if (currentIdx > -1 && currentIdx < el.options.length) {
+            el.selectedIndex = currentIdx;
+        }
+    });
+
+    // สั่งประเมินผลอัตโนมัติซ้ำอีกครั้ง (หากมี) เพื่ออัปเดตการวินิจฉัย
+    if (typeof autoDiagnose === 'function') autoDiagnose();
+}
+
 </script>
 </body>
 </html>
