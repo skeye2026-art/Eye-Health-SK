@@ -2158,14 +2158,18 @@ function loadImportHistory() {
     var html = '';
     var isAdmin = (G.session.role === 'admin');
     logs.forEach(function(log, idx) {
+      // 1. ปุ่มดูข้อมูล (👁) และปุ่มดาวน์โหลด (⬇️) สำหรับทุกคน
       var actBtns = '<button class="btn-act" style="color:#3B82F6; border-color:#bfdbfe;" onclick="viewBatchDetail(\'' + log.batchId + '\')" title="ดูรายการที่ไม่ผ่าน">👁</button>';
       if (log.failed > 0) {
         actBtns += ' <button class="btn-act" style="color:#0d9488; border-color:#99f6e4;" onclick="downloadBatchCSV(\'' + log.batchId + '\')" title="ดาวน์โหลด CSV">⬇️</button>';
       }
-      if (isAdmin) {
-        actBtns += ' <button class="btn-act" style="color:var(--red); border-color:#fecaca;" onclick="confirmDeleteImportLog(\'' + log.batchId + '\')" title="ลบ">🗑</button>';
-      }
+
+      // 2. ปุ่มลบ (🗑) สำหรับทุกคนที่เป็นเจ้าของรายการ (User) หรือเป็น Admin
+      // ฟังก์ชัน deleteImportLog ใน code.gs จะเช็คสิทธิ์ซ้ำอีกรอบเพื่อความปลอดภัย
+      actBtns += ' <button class="btn-act" style="color:var(--red); border-color:#fecaca;" onclick="confirmDeleteImportLog(\'' + log.batchId + '\')" title="ลบรายการนี้">🗑</button>';
+      
       var roleTag = (log.role === 'admin') ? ' <span style="color:var(--accent); font-size:9px; font-weight:600;">(admin)</span>' : '';
+      
       html += '<tr>' +
               '<td>' + (idx+1) + '</td>' +
               '<td style="font-size:10.5px; white-space:nowrap;">' + e_(log.timestamp) + '</td>' +
@@ -2224,10 +2228,13 @@ function downloadBatchCSV(batchId) {
 }
 
 function confirmDeleteImportLog(batchId) {
-  if (!confirm('ยืนยันการลบประวัติ Batch:\n' + batchId + ' ?\n\n⚠️ ลบแล้วกู้คืนไม่ได้')) return;
+  if (!confirm('ยืนยันการลบประวัติ Batch:\n' + batchId + ' ?\n\n⚠️ ข้อมูลนี้จะถูกลบถาวร')) return;
   google.script.run.withSuccessHandler(function(r) {
     var res = JSON.parse(r);
-    if (res.ok) { toast(res.msg, 'ok'); loadImportHistory(); }
+    if (res.ok) { 
+      toast(res.msg, 'ok'); 
+      loadImportHistory(); // โหลดตารางใหม่หลังลบสำเร็จ
+    }
     else toast(res.msg, 'err');
   }).deleteImportLog(batchId);
 }
