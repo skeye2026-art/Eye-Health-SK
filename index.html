@@ -1138,14 +1138,22 @@ const CONFIG = {
 };
 
 // 📝 รายการ action ที่เป็น "การเขียนข้อมูล" — ต้อง Retry + ป้องกันกดซ้ำ
+// ⚠️ หมายเหตุ: importScreeningData ถูกถอดออกจาก retry list เพราะเป็น non-idempotent operation
+// (การเรียกซ้ำอาจทำให้บันทึกข้อมูลซ้ำซ้อนเมื่อ response กลับมาช้า)
 const WRITE_ACTIONS = new Set([
-  'saveScreeningData', 'updateScreeningData', 'importScreeningData',
+  'saveScreeningData', 'updateScreeningData',
   'saveSatisfactionData', 'savePreTest', 'savePostTest',
   'saveFollowupData', 'saveBehaviorData',
   'deleteRecord', 'deleteBehaviorRecord', 'deleteFollowupRecord',
   'deleteLinkData', 'deleteVideoItem', 'deleteHospFileLink',
   'updateHospLocation', 'saveLinkData', 'saveVideoItem',
   'saveLineSettings', 'changePassword'
+]);
+
+// 🚫 รายการ action ที่ "ห้าม retry อัตโนมัติ" แม้เกิด error
+// (เพราะการทำซ้ำอาจทำให้ข้อมูลเสียหาย / ซ้ำซ้อน)
+const NO_RETRY_ACTIONS = new Set([
+  'importScreeningData'
 ]);
 
 // 🛡 Map เก็บ request ที่กำลังทำงาน (key = action + payload hash)
@@ -1220,13 +1228,16 @@ async function _callApiWithRetry(action, payloadData) {
       
       const result = await response.json();
       
-      // 🔍 ตรวจว่า Backend คืน Lock Error หรือไม่
       const isBusy = result && result.ok === false && result.msg && 
                      (result.msg.indexOf('ระบบกำลังประมวลผล') > -1 || 
                       result.msg.indexOf('ระบบกำลังยุ่ง') > -1 ||
                       result.msg.indexOf('ระบบประมวลผลอยู่') > -1);
       
-      // ถ้าระบบยุ่ง + เป็น write action + ยังไม่ครบ retry → ลองใหม่
+      // 🚫 ไม่ retry เด็ดขาดสำหรับ NO_RETRY_ACTIONS
+      if (isBusy && NO_RETRY_ACTIONS.has(action)) {
+        return result;
+      }
+      
       if (isBusy && WRITE_ACTIONS.has(action) && attempt < CONFIG.MAX_RETRY) {
         const waitMs = CONFIG.RETRY_BASE_MS * attempt;
         _polyfillToast('⏳ ระบบกำลังยุ่ง กำลังลองใหม่ (' + (attempt + 1) + '/' + CONFIG.MAX_RETRY + ')...', 'inf');
@@ -1234,12 +1245,15 @@ async function _callApiWithRetry(action, payloadData) {
         continue;
       }
       
-      // ✅ สำเร็จ หรือเป็น error อื่นที่ไม่ใช่ Lock → คืนผลลัพธ์
       return result;
       
     } catch (err) {
       lastError = err;
-      // Network error → retry เฉพาะ write action เท่านั้น
+      // 🚫 ไม่ retry network error สำหรับ NO_RETRY_ACTIONS เลย — โยน error ทันที
+      if (NO_RETRY_ACTIONS.has(action)) {
+        throw err;
+      }
+      
       if (WRITE_ACTIONS.has(action) && attempt < CONFIG.MAX_RETRY) {
         const waitMs = CONFIG.RETRY_BASE_MS * attempt;
         _polyfillToast('📡 การเชื่อมต่อขัดข้อง กำลังลองใหม่ (' + (attempt + 1) + '/' + CONFIG.MAX_RETRY + ')...', 'inf');
@@ -1912,65 +1926,92 @@ function mapCsvToRowDynamic(headers, cols) {
 }
 
 function importCSV() {
-    var fileInput = document.getElementById('convFile'); if (!fileInput.files.length) { toast('กรุณาเลือกไฟล์ก่อนครับ', 'err'); return; }
-    var file = fileInput.files[0]; var reader = new FileReader(); var encoding = document.getElementById('fileEncoding') ? document.getElementById('fileEncoding').value : 'UTF-8';
+    var fileInput = document.getElementById('convFile'); 
+    if (!fileInput.files.length) { toast('กรุณาเลือกไฟล์ก่อนครับ', 'err'); return; }
+    var file = fileInput.files[0]; 
+    var reader = new FileReader(); 
+    var encoding = document.getElementById('fileEncoding') ? document.getElementById('fileEncoding').value : 'UTF-8';
+    
     reader.onload = function(e) {
-        var text = e.target.result; var lines = text.split(/\r\n|\n|\r/); var processedRows = [];
+        var text = e.target.result; 
+        var lines = text.split(/\r\n|\n|\r/); 
+        var processedRows = [];
         var headers = [];
         
         for (var i = 0; i < lines.length; i++) { 
             var line = lines[i].trim(); if (!line) continue; 
-            var delimiter = ','; if (line.indexOf('\t') !== -1) delimiter = '\t'; else if (line.indexOf('|') !== -1) delimiter = '|'; else if (line.indexOf(';') !== -1) delimiter = ';'; 
+            var delimiter = ','; 
+            if (line.indexOf('\t') !== -1) delimiter = '\t'; 
+            else if (line.indexOf('|') !== -1) delimiter = '|'; 
+            else if (line.indexOf(';') !== -1) delimiter = ';'; 
             var cols = smartParseCSVLine(line, delimiter); 
             
-            // 🛠️ FIX HEADER DETECTION: ป้องกันการลบข้อมูลบรรทัดแรกทิ้ง
             var isHeader = (line.indexOf('ระดับชั้น') > -1 || line.toLowerCase().indexOf('cid') > -1 || line.indexOf('เลขบัตร') > -1 || line.toLowerCase().indexOf('level_edu') > -1);
-            if (i === 0 && isHeader) {
-                headers = cols; continue; 
-            } else if (i === 0 && !isHeader) {
-                headers = []; // ถ้าบรรทัดแรกไม่ใช่ Header ให้เว้นว่างไว้เพื่อเข้า smartProcessRow
-            }
-            if (i > 0 && isHeader) { headers = cols; continue; } // ป้องกันกรณีหัวตารางแทรกอยู่กลางไฟล์
+            if (i === 0 && isHeader) { headers = cols; continue; } 
+            else if (i === 0 && !isHeader) { headers = []; }
+            if (i > 0 && isHeader) { headers = cols; continue; }
             
             var mapped = (headers.length > 0) ? mapCsvToRowDynamic(headers, cols) : smartProcessRow(cols); 
             if (mapped) processedRows.push(mapped); 
         }
         
         if(processedRows.length === 0) { toast('ไม่พบข้อมูลในไฟล์ หรือข้อมูลไม่ถูกต้อง', 'err'); return; } 
-        var btn = document.getElementById('btnImport'); btn.disabled = true; btn.innerHTML = '⏳ กำลังนำเข้า...';
-        google.script.run.withSuccessHandler(function(res) { 
-    btn.disabled = false; btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; 
-    var r = JSON.parse(res); 
-    if(r.ok) {
-        toast(r.msg, 'ok');
-        if (r.data.failed && r.data.failed.length > 0) {
-            renderErrorTable(r.data.failed);
-            openPanel('error-report');
-        } else {
-            closePanel('conv'); 
-            fileInput.value = ''; 
-            forceRefresh();
+        
+        // ⚠️ เตือนกรณีนำเข้าจำนวนมาก
+        if(processedRows.length > 100) {
+            if(!confirm('คุณกำลังจะนำเข้า ' + processedRows.length + ' รายการในครั้งเดียว\n\nระบบแนะนำให้แบ่งเป็นกลุ่มละ ≤ 100 รายการ เพื่อป้องกันปัญหา timeout และข้อมูลซ้ำซ้อน\n\nต้องการดำเนินการต่อหรือไม่?')) return;
         }
-    } else { toast(r.msg, 'err'); } 
-}).importScreeningData(processedRows);
+        
+        var btn = document.getElementById('btnImport'); 
+        btn.disabled = true; 
+        btn.innerHTML = '⏳ กำลังนำเข้า... (ห้ามปิดหน้านี้)';
+        
+        google.script.run
+          .withSuccessHandler(function(res) { 
+              btn.disabled = false; 
+              btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; 
+              
+              // 🛡 ป้องกัน JSON.parse fail
+              var r;
+              try { 
+                  r = (typeof res === 'string') ? JSON.parse(res) : res; 
+              } catch(parseErr) { 
+                  toast('ผลลัพธ์ผิดรูปแบบ: ' + parseErr.message, 'err'); 
+                  console.error('Parse error:', parseErr, 'Raw response:', res);
+                  return; 
+              }
+              
+              // 🛡 ป้องกัน null/undefined
+              if (!r) { toast('ไม่ได้รับผลลัพธ์จากเซิร์ฟเวอร์', 'err'); return; }
+              
+              if(r.ok) {
+                  toast(r.msg || 'นำเข้าสำเร็จ', 'ok');
+                  
+                  // 🛡 เช็ค null/undefined ทุกระดับก่อน access
+                  var failedList = (r.data && r.data.failed) ? r.data.failed : [];
+                  
+                  if (failedList.length > 0) {
+                      renderErrorTable(failedList);
+                      openPanel('error-report');
+                  } else {
+                      closePanel('conv'); 
+                      fileInput.value = ''; 
+                      forceRefresh();
+                  }
+              } else { 
+                  toast(r.msg || 'เกิดข้อผิดพลาด', 'err'); 
+              } 
+          })
+          .withFailureHandler(function(err) {
+              btn.disabled = false; 
+              btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)';
+              toast('❌ การนำเข้าล้มเหลว: ' + (err.message || 'Unknown') + '\n\n⚠️ กรุณาตรวจสอบฐานข้อมูลก่อนนำเข้าซ้ำ เพื่อป้องกันข้อมูลซ้ำซ้อน', 'err');
+              console.error('Import failure:', err);
+          })
+          .importScreeningData(processedRows);
     }; 
     reader.readAsText(file, encoding);
 }
-
-// เพิ่มฟังก์ชันแสดงตารางและดาวน์โหลด
-var G_failedData = [];
-function renderErrorTable(failedData) {
-    G_failedData = failedData;
-    var body = document.getElementById('errorBody');
-    body.innerHTML = failedData.map(item => `
-        <tr>
-            <td style="color:var(--red); font-weight:bold;">${item.reason}</td>
-            <td>${item.row[2] || '-'}</td>
-            <td>${item.row[6] || '-'}</td>
-        </tr>
-    `).join('');
-}
-
 function downloadErrorCSV() {
     if(!G_failedData.length) return;
     var csvContent = "\uFEFFเหตุผลที่ไม่ผ่าน," + "ข้อมูลทุกคอลัมน์ (join ด้วยช่องว่าง)\n";
