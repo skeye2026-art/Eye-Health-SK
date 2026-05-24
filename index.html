@@ -2156,14 +2156,16 @@ function loadImportHistory() {
       return;
     }
     var html = '';
-    var isAdmin = (G.session.role === 'admin');
+    var currentUser = String(G.session.user).trim().toLowerCase();
+    var logOwner = String(log.user).trim().toLowerCase();
+    var canDelete = (G.session.role === 'admin' || logOwner === currentUser);
     logs.forEach(function(log, idx) {
       var actBtns = '<button class="btn-act" style="color:#3B82F6; border-color:#bfdbfe;" onclick="viewBatchDetail(\'' + log.batchId + '\')" title="ดูรายการที่ไม่ผ่าน">👁</button>';
       if (log.failed > 0) {
         actBtns += ' <button class="btn-act" style="color:#0d9488; border-color:#99f6e4;" onclick="downloadBatchCSV(\'' + log.batchId + '\')" title="ดาวน์โหลด CSV">⬇️</button>';
       }
-      if (isAdmin) {
-        actBtns += ' <button class="btn-act" style="color:var(--red); border-color:#fecaca;" onclick="confirmDeleteImportLog(\'' + log.batchId + '\')" title="ลบ">🗑</button>';
+      if (canDelete) {
+      actBtns += ' <button class="btn-act" style="color:var(--red); border-color:#fecaca;" onclick="confirmDeleteImportLog(\'' + log.batchId + '\')" title="ลบ">🗑</button>';
       }
       var roleTag = (log.role === 'admin') ? ' <span style="color:var(--accent); font-size:9px; font-weight:600;">(admin)</span>' : '';
       html += '<tr>' +
