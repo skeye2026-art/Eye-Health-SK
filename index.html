@@ -1215,71 +1215,75 @@ function initVisualSettings(settings) {
 // ─── Core: ยิง API พร้อมระบบ Retry อัตโนมัติ ───
 async function _callApiWithRetry(action, payloadData) {
   let lastError = null;
-  
+
   for (let attempt = 1; attempt <= CONFIG.MAX_RETRY; attempt++) {
     try {
       const response = await fetch(CONFIG.GAS_API_URL, {
-  method: 'POST',
-  redirect: 'follow',
-  mode: 'cors',
-  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-  body: JSON.stringify({ action: action, data: payloadData })
-});
+        method: 'POST',
+        redirect: 'follow',
+        mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: action, data: payloadData })
+      });
 
-// 🛡 ตรวจสอบ content-type ก่อน parse — ถ้าไม่ใช่ JSON ให้ throw error เพื่อให้ retry
-const contentType = response.headers.get('content-type') || '';
-const responseText = await response.text();
-
-// ถ้าเจอข้อความ healthcheck แทน JSON = redirect ผิดพลาด → throw เพื่อ retry
-if (responseText.indexOf('API is running') > -1 || responseText.indexOf('✅') === 0) {
-  throw new Error('Received healthcheck response instead of JSON (redirect issue)');
-}
-
-let result;
-try {
-  result = JSON.parse(responseText);
-} catch(e) {
-  throw new Error('Invalid JSON response: ' + responseText.substring(0, 100));
-}
-      
       if (!response.ok) throw new Error('HTTP ' + response.status);
-      
-      const isBusy = result && result.ok === false && result.msg && 
-                     (result.msg.indexOf('ระบบกำลังประมวลผล') > -1 || 
+
+      const responseText = await response.text();
+
+      // 🛡 ถ้าเจอ healthcheck แทน JSON = redirect ผิดพลาด → throw เพื่อ retry
+      if (responseText.indexOf('API is running') > -1 || responseText.charAt(0) === '✅') {
+        throw new Error('Received healthcheck response instead of JSON (redirect issue)');
+      }
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseErr) {
+        throw new Error('Invalid JSON: ' + responseText.substring(0, 100));
+      }
+
+      const isBusy = result && result.ok === false && result.msg &&
+                     (result.msg.indexOf('ระบบกำลังประมวลผล') > -1 ||
                       result.msg.indexOf('ระบบกำลังยุ่ง') > -1 ||
                       result.msg.indexOf('ระบบประมวลผลอยู่') > -1);
-      
-      // 🚫 ไม่ retry เด็ดขาดสำหรับ NO_RETRY_ACTIONS
+
       if (isBusy && NO_RETRY_ACTIONS.has(action)) {
         return result;
       }
-      
+
       if (isBusy && WRITE_ACTIONS.has(action) && attempt < CONFIG.MAX_RETRY) {
         const waitMs = CONFIG.RETRY_BASE_MS * attempt;
         _polyfillToast('⏳ ระบบกำลังยุ่ง กำลังลองใหม่ (' + (attempt + 1) + '/' + CONFIG.MAX_RETRY + ')...', 'inf');
         await _sleep(waitMs);
         continue;
       }
-      
+
       return result;
-      
+
     } catch (err) {
       lastError = err;
-      // 🚫 ไม่ retry network error สำหรับ NO_RETRY_ACTIONS เลย — โยน error ทันที
+
       if (NO_RETRY_ACTIONS.has(action)) {
         throw err;
       }
-      
+
       if (WRITE_ACTIONS.has(action) && attempt < CONFIG.MAX_RETRY) {
         const waitMs = CONFIG.RETRY_BASE_MS * attempt;
         _polyfillToast('📡 การเชื่อมต่อขัดข้อง กำลังลองใหม่ (' + (attempt + 1) + '/' + CONFIG.MAX_RETRY + ')...', 'inf');
         await _sleep(waitMs);
         continue;
       }
+
+      // 📡 สำหรับ Read Action ที่ไม่ใช่ Write — retry ครบจำนวนรอบเหมือนกัน
+      if (attempt < CONFIG.MAX_RETRY) {
+        await _sleep(CONFIG.RETRY_BASE_MS);
+        continue;
+      }
+
       throw err;
     }
   }
-  
+
   if (lastError) throw lastError;
   return { ok: false, msg: 'ระบบไม่ว่าง กรุณาลองใหม่ภายหลัง (ครบ ' + CONFIG.MAX_RETRY + ' ครั้งแล้ว)' };
 }
