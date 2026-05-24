@@ -2040,32 +2040,40 @@ function importCSV() {
         
         google.script.run
           .withSuccessHandler(function(res) {
-              btn.disabled = false;
-              btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)';
+    btn.disabled = false;
+    btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)';
 
-              var r;
-              try {
-                  r = (typeof res === 'string') ? JSON.parse(res) : res;
-              } catch (parseErr) {
-                  toast('ผลลัพธ์ผิดรูปแบบ: ' + parseErr.message, 'err');
-                  console.error('Parse error:', parseErr, 'Raw response:', res);
-                  return;
-              }
+    var r;
+    try {
+        r = (typeof res === 'string') ? JSON.parse(res) : res;
+    } catch (parseErr) {
+        toast('ผลลัพธ์ผิดรูปแบบ: ' + parseErr.message, 'err');
+        return;
+    }
 
-              if (!r) { toast('ไม่ได้รับผลลัพธ์จากเซิร์ฟเวอร์', 'err'); return; }
+    if (!r) { toast('ไม่ได้รับผลลัพธ์จากเซิร์ฟเวอร์', 'err'); return; }
 
-              if (r.ok) {
-                  toast(r.msg || 'นำเข้าสำเร็จ', 'ok');
-                  var failedList = (r.data && r.data.failed) ? r.data.failed : [];
-                  if (failedList.length > 0) {
-                      renderErrorTable(failedList);
-                      openPanel('error-report');
-                  }
-                  fileInput.value = '';
-                  forceRefresh();
-              } else {
-                  toast(r.msg || 'เกิดข้อผิดพลาด', 'err');
-              }
+    if (r.ok) {
+        toast(r.msg || 'นำเข้าสำเร็จ', 'ok');
+        var failedList = (r.data && r.data.failed) ? r.data.failed : [];
+        
+        // --- ส่วนที่แก้ไข ---
+        // 1. ส่งข้อมูลรายการที่ไม่ผ่านไป render
+        renderErrorTable(failedList);
+        
+        // 2. เปิดหน้าต่างรายงาน
+        openPanel('error-report');
+        
+        // 3. เรียกฟังก์ชันโหลดประวัติ (อันนี้คือจุดที่ขาดไปครับ)
+        loadImportHistory(); 
+        // ------------------
+
+        fileInput.value = '';
+        forceRefresh();
+    } else {
+        toast(r.msg || 'เกิดข้อผิดพลาด', 'err');
+    }
+})
           })
           .withFailureHandler(function(err) {
               btn.disabled = false;
