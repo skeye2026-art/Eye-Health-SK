@@ -1976,45 +1976,45 @@ function importCSV() {
         btn.innerHTML = '⏳ กำลังนำเข้า... (ห้ามปิดหน้านี้)';
         
         google.script.run
-          .withSuccessHandler(function(res) { 
-              btn.disabled = false; 
-              btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; 
-              
-              // 🛡 ป้องกัน JSON.parse fail
-              var r;
-              try { 
-                  r = (typeof res === 'string') ? JSON.parse(res) : res; 
-              } catch(parseErr) { 
-                  toast('ผลลัพธ์ผิดรูปแบบ: ' + parseErr.message, 'err'); 
-                  console.error('Parse error:', parseErr, 'Raw response:', res);
-                  return; 
-              }
-              
-              // 🛡 ป้องกัน null/undefined
-              if (!r) { toast('ไม่ได้รับผลลัพธ์จากเซิร์ฟเวอร์', 'err'); return; }
-              
-              if(r.ok) {
-                  toast(r.msg || 'นำเข้าสำเร็จ', 'ok');
-                  
-                  // 🛡 เช็ค null/undefined ทุกระดับก่อน access
-                  var failedList = (r.data && r.data.failed) ? r.data.failed : [];
-                  
-                  if (failedList.length > 0) {
-                      renderErrorTable(failedList);
-                      openPanel('error-report');
-                      fileInput.value = ''; // เคลียร์ช่องไฟล์
-                      forceRefresh(); // 🎯 สำคัญมาก: บังคับโหลดตารางใหม่เพื่อกวาด CIDs ที่เพิ่งนำเข้าสำเร็จลงระบบ ป้องกันตรวจซ้ำพลาด
-                  } else { 
-                  toast(r.msg || 'เกิดข้อผิดพลาด', 'err'); 
-              } 
-          })
-          .withFailureHandler(function(err) {
-              btn.disabled = false; 
-              btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)';
-              toast('❌ การนำเข้าล้มเหลว: ' + (err.message || 'Unknown') + '\n\n⚠️ กรุณาตรวจสอบฐานข้อมูลก่อนนำเข้าซ้ำ เพื่อป้องกันข้อมูลซ้ำซ้อน', 'err');
-              console.error('Import failure:', err);
-          })
-          .importScreeningData(processedRows);
+  .withSuccessHandler(function(res) { 
+      btn.disabled = false; 
+      btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)'; 
+      
+      // 🛡 ป้องกัน JSON.parse fail
+      var r;
+      try { 
+          r = (typeof res === 'string') ? JSON.parse(res) : res; 
+      } catch(parseErr) { 
+          toast('ผลลัพธ์ผิดรูปแบบ: ' + parseErr.message, 'err'); 
+          console.error('Parse error:', parseErr, 'Raw response:', res);
+          return; 
+      }
+      
+      // 🛡 ป้องกัน null/undefined
+      if (!r) { toast('ไม่ได้รับผลลัพธ์จากเซิร์ฟเวอร์', 'err'); return; }
+      
+      if(r.ok) {
+          toast(r.msg || 'นำเข้าสำเร็จ', 'ok');
+          
+          var failedList = (r.data && r.data.failed) ? r.data.failed : [];
+          
+          if (failedList.length > 0) {
+              renderErrorTable(failedList);
+              openPanel('error-report');
+          }
+          fileInput.value = '';
+          forceRefresh();
+      } else { 
+          toast(r.msg || 'เกิดข้อผิดพลาด', 'err'); 
+      }
+  })
+  .withFailureHandler(function(err) {
+      btn.disabled = false; 
+      btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)';
+      toast('❌ การนำเข้าล้มเหลว: ' + (err.message || 'Unknown') + '\n\n⚠️ กรุณาตรวจสอบฐานข้อมูลก่อนนำเข้าซ้ำ เพื่อป้องกันข้อมูลซ้ำซ้อน', 'err');
+      console.error('Import failure:', err);
+  })
+  .importScreeningData(processedRows);
     }; 
     reader.readAsText(file, encoding);
 }
