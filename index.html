@@ -1219,14 +1219,30 @@ async function _callApiWithRetry(action, payloadData) {
   for (let attempt = 1; attempt <= CONFIG.MAX_RETRY; attempt++) {
     try {
       const response = await fetch(CONFIG.GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: action, data: payloadData })
-      });
+  method: 'POST',
+  redirect: 'follow',
+  mode: 'cors',
+  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+  body: JSON.stringify({ action: action, data: payloadData })
+});
+
+// 🛡 ตรวจสอบ content-type ก่อน parse — ถ้าไม่ใช่ JSON ให้ throw error เพื่อให้ retry
+const contentType = response.headers.get('content-type') || '';
+const responseText = await response.text();
+
+// ถ้าเจอข้อความ healthcheck แทน JSON = redirect ผิดพลาด → throw เพื่อ retry
+if (responseText.indexOf('API is running') > -1 || responseText.indexOf('✅') === 0) {
+  throw new Error('Received healthcheck response instead of JSON (redirect issue)');
+}
+
+let result;
+try {
+  result = JSON.parse(responseText);
+} catch(e) {
+  throw new Error('Invalid JSON response: ' + responseText.substring(0, 100));
+}
       
       if (!response.ok) throw new Error('HTTP ' + response.status);
-      
-      const result = await response.json();
       
       const isBusy = result && result.ok === false && result.msg && 
                      (result.msg.indexOf('ระบบกำลังประมวลผล') > -1 || 
