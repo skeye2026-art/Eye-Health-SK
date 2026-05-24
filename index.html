@@ -1019,14 +1019,14 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
         <div class="fg"><label>ตำแหน่งผู้ตรวจ</label><input type="text" id="s-pos"></div>
       </div>
     </div> <div class="fs">
-      <div class="fs-t">ส่วนที่ 2 — ประวัติสุขภาพตา</div>
+      <div class="fs-t">ส่วนที่ 2 — ประวัติสุขภาพตาและพฤติกรรม</div>
       <div class="cb-group">
-        <label class="cbi"><input type="checkbox" id="hx-g"> เคยสวมแว่น/เลนส์</label>
-        <label class="cbi"><input type="checkbox" id="hx-i"> เคยผ่าตัดตา/บาดเจ็บ</label>
-        <label class="cbi"><input type="checkbox" id="hx-r"> อาการตาแดงเรื้อรัง</label>
-        <label class="cbi"><input type="checkbox" id="hx-h"> ปวดศีรษะบ่อยครั้ง</label>
-        <label class="cbi"><input type="checkbox" id="hx-a"> ตาขี้เกียจ/ตาเหล่</label>
-        <label class="cbi"><input type="checkbox" id="hx-f"> ครอบครัวสวมแว่น</label>
+        <label class="cbi" title="เคยสวมแว่นตาหรือเลนส์สัมผัส"><input type="checkbox" id="hx-g"> เคยสวมแว่น/เลนส์</label>
+        <label class="cbi" title="เคยผ่าตัดตา หรือได้รับบาดเจ็บที่ตา"><input type="checkbox" id="hx-i"> เคยผ่าตัด/บาดเจ็บตา</label>
+        <label class="cbi" title="ตาแดงเรื้อรัง ขอบตาบวมแดง น้ำตาไหลมาก หรือพบฝ้าขาวที่ตาดำ"><input type="checkbox" id="hx-r"> ตาแดง/ฝ้าขาวที่ตาดำ</label>
+        <label class="cbi" title="ปวดศีรษะบ่อย หรี่ตา เอียงคอ หรือชอบมองใกล้/ชิดกระดาน"><input type="checkbox" id="hx-h"> ปวดหัว/หรี่ตา/มองใกล้</label>
+        <label class="cbi" title="มีประวัติตาขี้เกียจ (Amblyopia) ตาเหล่ หรือตาเข"><input type="checkbox" id="hx-a"> ตาขี้เกียจ/ตาเหล่/ตาเข</label>
+        <label class="cbi" title="บิดา มารดา หรือญาติใกล้ชิดสวมแว่นตา"><input type="checkbox" id="hx-f"> ครอบครัวสวมแว่น</label>
       </div>
     </div>
 
@@ -3396,17 +3396,15 @@ window.viewScreeningFullDetails = function(cid) {
             '<tr><td style="font-weight:600; color:var(--muted);">สิทธิการรักษา:</td><td><span style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">' + e_(data.treatment || '—') + '</span></td></tr>' +
             '</table></div>';
             
-    html += '<div class="fs">
-  <div class="fs-t">ส่วนที่ 2 — ประวัติสุขภาพตาและพฤติกรรม</div>
-  <div class="cb-group">
-    <label class="cbi" title="เคยสวมแว่นตาหรือเลนส์สัมผัส"><input type="checkbox" id="hx-g"> เคยสวมแว่น/เลนส์</label>
-    <label class="cbi" title="เคยผ่าตัดตา หรือได้รับบาดเจ็บที่ตา"><input type="checkbox" id="hx-i"> เคยผ่าตัด/บาดเจ็บตา</label>
-    <label class="cbi" title="ตาแดงเรื้อรัง ขอบตาบวมแดง น้ำตาไหลมาก หรือพบฝ้าขาวที่ตาดำ"><input type="checkbox" id="hx-r"> ตาแดง/ฝ้าขาวที่ตาดำ</label>
-    <label class="cbi" title="ปวดศีรษะบ่อย หรี่ตา เอียงคอ หรือชอบมองใกล้/ชิดกระดาน"><input type="checkbox" id="hx-h"> ปวดหัว/หรี่ตา/มองใกล้</label>
-    <label class="cbi" title="มีประวัติตาขี้เกียจ (Amblyopia) ตาเหล่ หรือตาเข"><input type="checkbox" id="hx-a"> ตาขี้เกียจ/ตาเหล่/ตาเข</label>
-    <label class="cbi" title="บิดา มารดา หรือญาติใกล้ชิดสวมแว่นตา"><input type="checkbox" id="hx-f"> ครอบครัวสวมแว่น</label>
-  </div>
-</div>';
+    html += '<div class="fs"><div class="fs-t" style="color:var(--primary); font-weight:bold; border-color:var(--accent);">📋 ประวัติสุขภาพตาและพฤติกรรม</div>' +
+            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:11.5px;">' +
+            '<div>• เคยสวมแว่น/เลนส์: <b>' + data.hx_glasses + '</b></div>' +
+            '<div>• เคยผ่าตัด/บาดเจ็บตา: <b>' + data.hx_injury + '</b></div>' +
+            '<div>• ตาแดง/ฝ้าขาวที่ตาดำ: <b>' + data.hx_red_eye + '</b></div>' +
+            '<div>• ปวดหัว/หรี่ตา/มองใกล้: <b>' + data.hx_headache + '</b></div>' +
+            '<div>• ตาขี้เกียจ/ตาเหล่/ตาเข: <b>' + data.hx_amblyopia + '</b></div>' +
+            '<div>• ครอบครัวสวมแว่น: <b>' + data.hx_family + '</b></div>' +
+            '</div></div>';
 
     html += '<div class="fs"><div class="fs-t" style="color:var(--primary); font-weight:bold; border-color:var(--accent);">👁️ ผลการตรวจสายตา (หน่วยวัด: ' + e_(data.unit) + ')</div>' +
             '<table class="va-tbl" style="margin-top:4px; font-size:11.5px;">' +
