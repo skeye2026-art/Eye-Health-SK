@@ -2007,7 +2007,7 @@ function importCSV() {
       } else { 
           toast(r.msg || 'เกิดข้อผิดพลาด', 'err'); 
       }
-  })
+  }
   .withFailureHandler(function(err) {
       btn.disabled = false; 
       btn.innerHTML = '⬇️ นำเข้าข้อมูล (Import)';
