@@ -1952,10 +1952,19 @@ function importCSV() {
             if (i > 0 && isHeader) { headers = cols; continue; }
             
             var mapped = (headers.length > 0) ? mapCsvToRowDynamic(headers, cols) : smartProcessRow(cols); 
-            if (mapped) processedRows.push(mapped); 
+            if (mapped) {
+                var cid = String(mapped[2]).replace(/[^0-9]/g, ''); // เลขบัตร ปชช. อยู่คอลัมน์ที่ index 2
+                // ตรวจสอบว่ามี CID นี้ในฐานข้อมูลหรือมีในแถวที่เพิ่งเตรียมนำเข้าแล้วหรือไม่
+                var isDupSystem = G.allRows.find(function(r) { return r.cid === cid; });
+                var isDupFile = processedRows.find(function(r) { return String(r[2]).replace(/[^0-9]/g, '') === cid; });
+                
+                if (!isDupSystem && !isDupFile && cid.length === 13) {
+                    processedRows.push(mapped); // ถ้าไม่ซ้ำ ให้เก็บเข้า array เตรียม import
+                }
+            }
         }
         
-        if(processedRows.length === 0) { toast('ไม่พบข้อมูลในไฟล์ หรือข้อมูลไม่ถูกต้อง', 'err'); return; } 
+        if(processedRows.length === 0) { toast('ไม่พบข้อมูลใหม่ให้ขำเข้า (ข้อมูลอาจซ้ำทั้งหมด หรือ ไฟล์ไม่ถูกต้อง)', 'err'); return; } 
         
         // ⚠️ เตือนกรณีนำเข้าจำนวนมาก
         if(processedRows.length > 100) {
@@ -3204,12 +3213,23 @@ function closeLogin() { document.getElementById('loginMov').classList.remove('op
 function doLogin() { var u = document.getElementById('lgUser').value.trim(); var p = document.getElementById('lgPass').value.trim(); if (!u || !p) { document.getElementById('lgErr').textContent = 'กรุณากรอกข้อมูล'; return; } var btn = document.getElementById('btnLgn'); btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังตรวจสอบ...'; google.script.run.withSuccessHandler(function(r) { btn.disabled = false; btn.innerHTML = '🔐 เข้าสู่ระบบ'; var d = JSON.parse(r); if (d.ok) { G.session = { loggedIn:true, user:d.data.user, role:d.data.role, hospcode:d.data.hospcode }; closeLogin(); updateAuthUI(); toast('เข้าสู่ระบบสำเร็จ', 'ok'); forceRefresh(); } else { document.getElementById('lgErr').textContent = d.msg; } }).login(u, p); }
 function doLogout() { google.script.run.withSuccessHandler(function() { G.session = {loggedIn:false,user:'',role:'',hospcode:''}; updateAuthUI(); loadDashboard({}); toast('ออกจากระบบแล้ว', 'ok'); }).logout(); }
 function calcAge() { var bdStr = document.getElementById('s-bd').value; if (!bdStr) return; var parts = bdStr.split('/'); if(parts.length===3) { var y = parseInt(parts[2], 10); if(y > 2400) y -= 543; var dt = new Date(y, parseInt(parts[1])-1, parseInt(parts[0])); document.getElementById('s-age').value = Math.floor((new Date()-dt)/(365.25*24*3600*1000)); } }
-function onCidInput(cid) { if (!_editMode && cid.length === 13 && G.allRows.find(function(r){ return r.cid===cid; })) toast('⚠ CID นี้มีในระบบแล้ว (โปรดใช้เมนู ✏️ แก้ไขข้อมูล)','inf'); }
+function onCidInput(cid) { 
+  var btn = document.getElementById('btnSScr');
+  if (!_editMode && cid.length === 13 && G.allRows.find(function(r){ return r.cid === cid; })) {
+    toast('⚠ CID นี้มีในระบบแล้ว ไม่สามารถบันทึกซ้ำได้ (โปรดใช้เมนู ✏️ แก้ไขข้อมูล)', 'err'); 
+    btn.disabled = true; // ล็อคปุ่มบันทึก
+  } else {
+    btn.disabled = false; // ปลดล็อคปุ่มบันทึก
+  }
+}
 function getRad(name) { var els = document.querySelectorAll('input[name="'+name+'"]'); for (var i=0;i<els.length;i++){ if(els[i].checked) return els[i].value; } return ''; }
 function setRad(name, val) { var els = document.querySelectorAll('input[name="'+name+'"]'); for(var i=0;i<els.length;i++){ if(els[i].value===val) els[i].checked=true; } }
 
 function saveScr() {
-  var btn = document.getElementById('btnSScr'); var cid = document.getElementById('s-cid').value.trim(); if (!/^\d{13}$/.test(cid)) { toast('เลขบัตรประชาชน 13 หลักไม่ถูกต้อง', 'err'); return; } var hcVal = document.getElementById('s-hc').value; if (!hcVal) { toast('กรุณาเลือก รพ.สต.', 'err'); return; }
+  var btn = document.getElementById('btnSScr'); var cid = document.getElementById('s-cid').value.trim(); 
+  if (!/^\d{13}$/.test(cid)) { toast('เลขบัตรประชาชน 13 หลักไม่ถูกต้อง', 'err'); return; } 
+  if (!_editMode && G.allRows.find(function(r){ return r.cid === cid; })) { toast('⚠ เลขบัตรประชาชนนี้มีในระบบแล้ว ไม่สามารถบันทึกซ้ำได้', 'err'); return; } // เช็คข้อมูลซ้ำ
+  var hcVal = document.getElementById('s-hc').value; if (!hcVal) { toast('กรุณาเลือก รพ.สต.', 'err'); return; }
   // เพิ่มการบันทึก treatment
   var d = { cid: cid, pname: document.getElementById('s-pname').value, fname: document.getElementById('s-fname').value.trim(), lname: document.getElementById('s-lname').value.trim(), birthday: document.getElementById('s-bd').value, age_years: document.getElementById('s-age').value, sex: document.getElementById('s-sex').value, level_edu: document.getElementById('s-lev').value, room: document.getElementById('s-cls').value, school_name: document.getElementById('s-sch').value, hospcode: hcVal, screen_date: document.getElementById('s-dt').value, examiner: document.getElementById('s-exam').value, position: document.getElementById('s-pos').value, address: document.getElementById('s-addr').value, moo: document.getElementById('s-moo').value, aid: document.getElementById('s-aid').value, unit: document.getElementById('s-unit').value, lat_s: document.getElementById('s-schl-lat').value, lon_s: document.getElementById('s-schl-lon').value, tambon: document.getElementById('s-tambon').value, amphoe: document.getElementById('s-amphoe').value, province: document.getElementById('s-prov').value, remarks: document.getElementById('s-remark').value, hx_glasses: document.getElementById('hx-g').checked, hx_injury: document.getElementById('hx-i').checked, hx_red_eye: document.getElementById('hx-r').checked, hx_headache: document.getElementById('hx-h').checked, hx_amblyopia: document.getElementById('hx-a').checked, hx_family: document.getElementById('hx-f').checked, va_r_naked: document.getElementById('vr-n').value, va_l_naked: document.getElementById('vl-n').value, va_r_glasses: document.getElementById('vr-g').value, va_l_glasses: document.getElementById('vl-g').value, ph_r: document.getElementById('vr-p').value, ph_l: document.getElementById('vl-p').value, va_naked_OU: document.getElementById('vou-naked').value, va_glasses_OU: document.getElementById('vou-glasses').value, cover_test: getRad('ex-cov'), hirschberg: getRad('ex-hir'), color_vision: getRad('ex-col'), stereopsis: getRad('ex-ste'), diagnosis: document.getElementById('s-diag').value, referral: document.getElementById('s-ref').value, treatment: document.getElementById('s-treat').value,
   nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย'};
