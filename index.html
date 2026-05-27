@@ -5096,9 +5096,9 @@ function determineFlowAfterStep(cid, currentStep) {
   }
   if(currentStep === 'beh') {
     if(status === 'normal') {
-      return { next: 'sat', msg: 'ผู้รับการตรวจ <b>มีผลคัดกรองสายตาปกติ</b><br><br>ลำดับต่อไปข้ามไปทำ <b>แบบประเมินความพึงพอใจ</b>', action: function(){ openPanel('sat'); document.getElementById('sat-search-cid').value=cid; searchSatUser(cid); } };
+      return { next: 'sat', msg: 'ผู้รับการตรวจ <b style="color: var(--green);">มีผลคัดกรองสายตาปกติ</b><br><br>ลำดับต่อไปข้ามไปทำ <b>แบบประเมินความพึงพอใจ</b>', action: function(){ openPanel('sat'); document.getElementById('sat-search-cid').value=cid; searchSatUser(cid); } };
     } else {
-      return { next: 'pre', msg: 'ผู้รับการตรวจ <b>มีผลคัดกรองสายตาผิดปกติ/ส่งต่อ/ตัดแว่น</b><br><br>ลำดับต่อไปกรุณาทำ <b>แบบทดสอบก่อนอบรม (Pre-Test)</b>', action: function(){ openPanel('pre'); document.getElementById('pre-cid').value=cid; checkEligible('pre', cid); } };
+      return { next: 'pre', msg: 'ผู้รับการตรวจ <b style="color: var(--red);">มีผลคัดกรองสายตาผิดปกติ/ส่งต่อ/ตัดแว่น</b><br><br>ลำดับต่อไปกรุณาทำ <b>แบบทดสอบก่อนอบรม (Pre-Test)</b>', action: function(){ openPanel('pre'); document.getElementById('pre-cid').value=cid; checkEligible('pre', cid); } };
     }
   }
   if(currentStep === 'pre') {
