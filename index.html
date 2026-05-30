@@ -4040,7 +4040,7 @@ setTimeout(function(){
     }
 }, 2200); }else toast(res.msg,'err'); }).savePostTest(d); }
 
-function openDel(cid) { G.delTarget={cid:cid,sheet:'Screening_Data'}; document.getElementById('delCidShow').textContent=cid; document.getElementById('delErr').textContent=''; document.getElementById('delMov').classList.add('open'); }
+function openDel(cid) { G.delTarget={cid:cid,sheet:'screening_data'}; document.getElementById('delCidShow').textContent=cid; document.getElementById('delErr').textContent=''; document.getElementById('delMov').classList.add('open'); }
 function closeDel(){ document.getElementById('delMov').classList.remove('open'); }
 function confirmDel(){ google.script.run.withSuccessHandler(function(r){ var res=JSON.parse(r); if(res.ok){toast(res.msg,'ok');closeDel();forceRefresh();}else document.getElementById('delErr').textContent=res.msg; }).deleteRecord(G.delTarget.sheet,G.delTarget.cid); }
 function doExportCSV() {
@@ -6096,6 +6096,7 @@ async function exportOnePageAsImage() {
     }, 800); // ดีเลย์รอให้ Browser วาดรูป Base64 ลงจอให้เรียบร้อยก่อนแคปภาพ
   });
 }
+
 </script>
 </body>
 </html>
