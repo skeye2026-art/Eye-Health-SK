@@ -3344,7 +3344,7 @@ function loadDashboard(params) {
     // เรียกวาดกราฟชุดใหม่ที่นี่
     if(d.data.extraStats) renderExtraDashCharts(d.data.extraStats);
 
-    if (G.session.loggedIn) renderTable(G.dispRows);
+    renderTable(G.dispRows); // เรียกแสดงตารางแบบไม่มีเงื่อนไขผูกมัดล็อกอิน
     if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 300);
   }).getDashboardData(params);
 }
