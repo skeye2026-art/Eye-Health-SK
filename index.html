@@ -2024,6 +2024,13 @@ var G = {
 };
 var myMap = null; var hospLayer = null; var schoolLayer = null; var _satClickIdx = null; var _editMode = false;
 
+// ฟังก์ชันสำหรับปิดบังเลขบัตรประชาชนตามหลัก PDPA
+function maskCid(cid) {
+  if (!cid || cid.length !== 13) return cid;
+  // แสดงตัวหน้าสุด 1 ตัว และตัวหลังสุด 2 ตัว (เช่น 1-XXXX-XXXXX-X9-9)
+  return cid.charAt(0) + '-XXXX-XXXXX-X' + cid.charAt(11) + '-' + cid.charAt(12);
+}
+
 function e_(str) { 
   if (str === null || str === undefined) return '';
   return String(str)
@@ -3184,7 +3191,11 @@ function updateAuthUI() {
                    '<button class="btn-hdr btn-hdr-manual" onclick="openPwdMgr()">🔑 เปลี่ยนรหัส</button>' +
                    '<button class="btn-hdr btn-hdr-out" onclick="doLogout()">ออกจากระบบ</button>';
                    
-    as.style.display = 'block'; asGuest.style.display = 'none'; document.getElementById('indvTableSec').style.display = 'flex'; document.getElementById('guestMsg').style.display = 'none'; document.getElementById('thManageHosp').style.display = 'table-cell'; document.getElementById('th-cid').style.display = 'table-cell';
+    as.style.display = 'block'; asGuest.style.display = 'none'; 
+    document.getElementById('indvTableSec').style.display = 'flex'; 
+    document.getElementById('guestMsg').style.display = 'none'; 
+    document.getElementById('thManageHosp').style.display = 'table-cell'; 
+    document.getElementById('th-cid').style.display = 'table-cell';
     if(s.role === 'user' || s.role === 'admin') { document.getElementById('btnLoc').style.display = 'flex'; document.getElementById('btnConv').style.display = 'flex'; }
     if(s.role === 'admin') { 
         document.getElementById('btnLinkMgr').style.display = 'flex'; 
@@ -3202,7 +3213,15 @@ function updateAuthUI() {
         document.getElementById('s-hc').disabled = false; 
     }
   } else {
-    aa.innerHTML = '<button class="btn-hdr btn-hdr-login" onclick="openLogin()">🔐 เข้าสู่ระบบ</button>'; as.style.display = 'none'; asGuest.style.display = 'block'; document.getElementById('indvTableSec').style.display = 'none'; document.getElementById('guestMsg').style.display = 'block'; document.getElementById('thManageHosp').style.display = 'none'; document.getElementById('th-cid').style.display = 'none';
+    aa.innerHTML = '<button class="btn-hdr btn-hdr-login" onclick="openLogin()">🔐 เข้าสู่ระบบ</button>'; 
+    as.style.display = 'none'; asGuest.style.display = 'block'; 
+    
+    // เปิดให้ Guest เห็นตาราง แต่ซ่อนคอลัมน์ "จัดการ รพ.สต."
+    document.getElementById('indvTableSec').style.display = 'flex'; 
+    document.getElementById('guestMsg').style.display = 'none'; 
+    document.getElementById('thManageHosp').style.display = 'none'; 
+    document.getElementById('th-cid').style.display = 'table-cell'; // แสดงคอลัมน์ CID
+    
     document.getElementById('sat-hc').disabled = false;
     document.getElementById('s-hc').disabled = false;
   }
@@ -3720,17 +3739,16 @@ function renderTable(rows) {
                   '<button class="btn-act" style="color:var(--red);border-color:#fecaca;" onclick="openDel(\'' + e_(r.cid) + '\'); event.stopPropagation();" title="ลบข้อมูล">🗑</button></div>'; 
     }
     
-    var tdCid = loggedIn ? ('<td class="col-cid" style="color:var(--accent);font-weight:600;">'+e_(r.cid)+'</td>') : '<td class="col-cid" style="display:none;"></td>';
+    // แปลง CID ถ้าไม่ได้ Login ให้ Mask ข้อมูล
+    var displayCid = loggedIn ? e_(r.cid) : maskCid(r.cid);
+    var tdCid = '<td class="col-cid" style="color:var(--accent);font-weight:600;">' + displayCid + '</td>';
     
     var bRisk = r.beh_risk === 'high' ? '<span class="badge bgl" title="เสี่ยงสูง">สูง</span>' : (r.beh_risk === 'medium' ? '<span class="badge brf" title="เสี่ยงปานกลาง">กลาง</span>' : (r.beh_risk === 'low' ? '<span class="badge bn" title="เสี่ยงน้อย">น้อย</span>' : '<span style="color:#cbd5e1">-</span>'));
     var fStat = r.fup_status ? '<span class="badge bn" title="'+e_(r.fup_status)+'">☑ แล้ว</span>' : '<span style="color:#cbd5e1">-</span>';
     var txtTreat = r.treatment && r.treatment.length > 12 ? r.treatment.substring(0,12) + '...' : (r.treatment || '—');
 
-    // เรียกฟังก์ชันด้วย window. เพื่อรับประกันว่าจะไม่หลุด scope
-    var trAttrs = '';
-    if (loggedIn) {
-      trAttrs = ' onclick="window.viewScreeningFullDetails(\'' + String(r.cid).trim() + '\')" style="cursor:pointer;" title="คลิกแถวนี้เพื่อดูข้อมูล Screening_Data ทั้งหมด"';
-    }
+    // เปิดให้คลิกดูรายละเอียดได้ทุกคน (แต่ CID ด้านในจะโดนซ่อนด้วย)
+    var trAttrs = ' onclick="window.viewScreeningFullDetails(\'' + String(r.cid).trim() + '\')" style="cursor:pointer;" title="คลิกแถวนี้เพื่อดูข้อมูล Screening_Data ทั้งหมด"';
 
     h += '<tr' + trAttrs + '>' +
          '<td style="text-align:center;"><input type="checkbox" class="row-chk" value="'+r.cid+'" onclick="event.stopPropagation();"></td>' +
@@ -3768,9 +3786,10 @@ window.viewScreeningFullDetails = function(cid) {
     var sexText = data.sex === '1' ? 'ชาย' : (data.sex === '2' ? 'หญิง' : 'ไม่ระบุ');
     
     var html = '';
+    var displayCidPopup = G.session.loggedIn ? e_(data.cid) : maskCid(data.cid);
     html += '<div class="fs"><div class="fs-t" style="color:var(--primary); font-weight:bold; border-color:var(--accent);">👤 ข้อมูลทั่วไปของผู้รับการตรวจ</div>' +
             '<table style="width:100%; font-size:12px; margin-bottom:5px;">' +
-            '<tr><td style="width:120px; font-weight:600; color:var(--muted);">เลขบัตรประชาชน:</td><td><b>' + e_(data.cid) + '</b></td></tr>' +
+            '<tr><td style="width:120px; font-weight:600; color:var(--muted);">เลขบัตรประชาชน:</td><td><b>' + displayCidPopup + '</b></td></tr>' +
             '<tr><td style="font-weight:600; color:var(--muted);">ชื่อ-นามสกุล:</td><td>' + e_(data.pname) + e_(data.fname) + ' ' + e_(data.lname) + '</td></tr>' +
             '<tr><td style="font-weight:600; color:var(--muted);">วันเกิด:</td><td>' + e_(data.birthday) + ' (' + e_(data.age_years) + ' ปี) | <b>เพศ:</b> ' + sexText + '</td></tr>' +
             '<tr><td style="font-weight:600; color:var(--muted);">ระดับชั้น:</td><td>' + e_(data.level_edu) + (data.room ? ' ห้อง ' + e_(data.room) : '') + ' (ชั้นเรียน: ' + e_(data.school_class) + ')</td></tr>' +
@@ -4696,15 +4715,10 @@ function renderBehDashboard() {
     }, plugins:[ChartDataLabels]
   });
 
-  // 8) Detail table (กำหนดสิทธิ์การมองเห็นเฉพาะตอน Login)
-  if (G.session.loggedIn) {
-      document.getElementById('behTblWrapper').style.display = 'block';
-      if(document.getElementById('behGuestMsg')) document.getElementById('behGuestMsg').style.display = 'none';
-      renderBehTable(d.rows);
-  } else {
-      document.getElementById('behTblWrapper').style.display = 'none';
-      if(document.getElementById('behGuestMsg')) document.getElementById('behGuestMsg').style.display = 'block';
-  }
+  // 8) Detail table (ให้ทุกคนเห็นได้ แต่ซ่อนข้อมูล CID ในฟังก์ชัน renderBehTable)
+  document.getElementById('behTblWrapper').style.display = 'block';
+  if(document.getElementById('behGuestMsg')) document.getElementById('behGuestMsg').style.display = 'none';
+  renderBehTable(d.rows);
 }
 
 function renderBehHorizontalBar(canvasId, key, dataObj, color) {
@@ -4748,7 +4762,8 @@ function renderBehTable(rows) {
       actBtns += ' <button class="btn-act" style="color:#3B82F6;border-color:#bfdbfe;" onclick="editBehRecord(\''+r.cid+'\')" title="แก้ไข">✏️</button>';
       actBtns += ' <button class="btn-act" style="color:var(--red);border-color:#fecaca;" onclick="delBehRecord(\''+r.cid+'\',\''+e_(r.name)+'\')" title="ลบ">🗑</button>';
     }
-    h += '<tr><td>'+(i+1)+'</td><td>'+e_(r.cid)+'</td><td>'+e_(r.name)+'</td><td>'+e_(r.school_class)+'</td><td>'+e_(r.hosp_name)+'</td>' +
+    var displayCidBeh = canManage ? e_(r.cid) : maskCid(r.cid);
+    h += '<tr><td>'+(i+1)+'</td><td>'+displayCidBeh+'</td><td>'+e_(r.name)+'</td><td>'+e_(r.school_class)+'</td><td>'+e_(r.hosp_name)+'</td>' +
          '<td style="text-align:center;">'+r.hours_wk.toFixed(1)+'</td><td style="text-align:center;">'+r.hours_we.toFixed(1)+'</td>' +
          '<td>'+e_(r.distance)+'</td><td>'+e_(r.rest)+'</td><td style="font-size:10px;">'+e_(r.symptoms)+'</td>' +
          '<td style="text-align:center;"><span class="'+rcl+'">'+rt+' ('+r.risk_score+')</span></td>' +
@@ -4911,15 +4926,10 @@ function renderFupDashboard() {
   // 5) Heatmap
   renderFupHeatmap(d.hospHeatmap);
   
-  // 6) Detail table (กำหนดสิทธิ์การมองเห็นเฉพาะตอน Login)
-  if (G.session.loggedIn) {
-      document.getElementById('fupTblWrapper').style.display = 'block';
-      if(document.getElementById('fupGuestMsg')) document.getElementById('fupGuestMsg').style.display = 'none';
-      renderFupTable(d.rows);
-  } else {
-      document.getElementById('fupTblWrapper').style.display = 'none';
-      if(document.getElementById('fupGuestMsg')) document.getElementById('fupGuestMsg').style.display = 'block';
-  }
+  // 6) Detail table (ให้ทุกคนเห็นได้ แต่ซ่อนข้อมูล CID ในฟังก์ชัน renderFupTable)
+  document.getElementById('fupTblWrapper').style.display = 'block';
+  if(document.getElementById('fupGuestMsg')) document.getElementById('fupGuestMsg').style.display = 'none';
+  renderFupTable(d.rows);
 }
 
 function renderFupHeatmap(data) {
@@ -4983,7 +4993,8 @@ function renderFupTable(rows) {
       actBtns += '<button class="btn-act" style="color:#3B82F6;border-color:#bfdbfe;" onclick="editFupRecord(\''+r.cid+'\')" title="แก้ไข">✏️</button> ';
       actBtns += '<button class="btn-act" style="color:var(--red);border-color:#fecaca;" onclick="delFupRecord(\''+r.cid+'\',\''+e_(r.name)+'\')" title="ลบ">🗑</button>';
     } else { actBtns = '—'; }
-    h += '<tr><td>'+(i+1)+'</td><td>'+e_(r.cid)+'</td><td>'+e_(r.name)+'</td><td>'+e_(r.school_class)+'</td><td>'+e_(r.hosp_name)+'</td>'+
+    var displayCidFup = canManage ? e_(r.cid) : maskCid(r.cid);
+    h += '<tr><td>'+(i+1)+'</td><td>'+displayCidFup+'</td><td>'+e_(r.name)+'</td><td>'+e_(r.school_class)+'</td><td>'+e_(r.hosp_name)+'</td>'+
          '<td style="font-size:10px;">'+e_(r.duration)+'</td><td style="font-size:10px;">'+e_(r.c_status)+'</td>'+
          '<td style="font-size:10px;">'+e_(r.q_board)+'</td><td style="font-size:10px;">'+e_(r.q_focus)+'</td><td style="font-size:10px;">'+e_(r.q_confidence)+'</td><td style="font-size:10px;">'+e_(r.q_headache)+'</td>'+
          '<td style="text-align:center;font-weight:700;color:#7c3aed;">'+e_(r.overall_sat)+'</td>'+
