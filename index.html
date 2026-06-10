@@ -1278,7 +1278,8 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <div id="behGuestMsg" style="text-align:center; padding:30px; color:var(--muted); display:none;">
       <p>🔒 กรุณาเข้าสู่ระบบ เพื่อดูตารางรายละเอียดผู้ตอบแบบสอบถามรายบุคคล</p>
     </div>
-  </div>  </div>  <div class="ov" id="ov-vidmgr" onclick="closePanel('vidmgr')"></div>
+
+<div class="ov" id="ov-vidmgr" onclick="closePanel('vidmgr')"></div>
 <div class="panel" id="panel-vidmgr">
   <div class="ph" style="background:#dc2626"><span class="ph-t">📺 จัดการเพลย์ลิสต์วิดีโอ</span><button class="ph-x" onclick="closePanel('vidmgr')">✕</button></div>
   <div class="pb">
@@ -1557,7 +1558,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 // ✨ Features: Auto-Retry + Double-Click Guard + Loading Indicator
 // ==============================================================
 const CONFIG = {
-  GAS_API_URL: "............................",
+  GAS_API_URL: "https://script.google.com/macros/s/AKfycbwllnhLYUsyLvA7mutkPBP1XTmYFAwSnv6TToqRWPC6M3qf1xLzs7Ho0HUDCo46q4OUCQ/exec",
   MAX_RETRY: 5,           // จำนวนครั้งสูงสุดที่จะลองใหม่
   RETRY_BASE_MS: 3000     // หน่วงเวลาฐาน: 2s → 4s → 6s + jitter
 };
@@ -1740,13 +1741,6 @@ window.google.script.run = (function() {
             payloadData = { cid: args[0] };
           }
           if (prop === 'deleteLinkData' || prop === 'deleteVideoItem') payloadData = { id: args[0] };
-          if (prop === 'getImportLogDetail' || prop === 'deleteImportLog') payloadData = { batchId: args[0] };
-          
-          /// 🟢 เพิ่มโค้ดแนบข้อมูล Login ประจำเครื่อง ไปกับทุก Request เสมอ
-          if (typeof payloadData === 'object' && window.G && window.G.session) {
-              payloadData._clientSession = window.G.session;
-          }
-
           if (prop === 'getImportLogDetail' || prop === 'deleteImportLog') payloadData = { batchId: args[0] };
           
           // 🛡 Double-Click Guard: ป้องกันการกดปุ่มซ้ำ (เฉพาะ Write Action)
@@ -2253,7 +2247,7 @@ function applyFilters() {
     preAvg: k.testCount>0 ? Math.round(k.preSum/k.testCount*10)/10 : null,
     postAvg: k.testCount>0 ? Math.round(k.postSum/k.testCount*10)/10 : null,
     gainAvg: k.testCount>0 ? Math.round(k.gainSum/k.testCount) : null,
-    satAvg: (G.kpi && G.kpi.satAvg !== undefined) ? G.kpi.satAvg : null,
+    satAvg: G.kpi.satAvg,
     preTestCount: k.preCount,
     satCount: k.satCount,
     satPct: Math.round(k.satCount/t*100),
@@ -2708,12 +2702,6 @@ function triggerFlow(nextStep, msg, nextAction) {
 function closeFlow() { document.getElementById('flowMov').classList.remove('open'); }
 
 window.onload = function () {
-  // ✅ เพิ่มบล็อกนี้ที่บรรทัดบนสุดของ window.onload เพื่อดึง Session เดิมกลับมา
-  var savedSession = localStorage.getItem('eyeHealthSession');
-  if (savedSession) {
-      try { window.G.session = JSON.parse(savedSession); } catch(e) {}
-  }
-
   setDate(); buildSatQ(); buildTestQ('pre'); buildTestQ('post');
   // [v6.3] กด ESC ปิด image modal
   document.addEventListener('keydown', function(e){
@@ -3435,7 +3423,17 @@ function saveLoc() {
   var fileInput = document.getElementById('loc-pics'); var files = fileInput.files; if (files.length > 2) { toast('แนบภาพได้สูงสุด 2 ภาพเท่านั้น', 'err'); return; } var valid = true; for (var i = 0; i < files.length; i++) { if (files[i].size > 2 * 1024 * 1024) { toast('ไฟล์ ' + files[i].name + ' มีขนาดเกิน 2MB', 'err'); valid = false; } } if (!valid) return;
   btn.disabled=true; btn.innerHTML='<span class="sp"></span> กำลังเตรียมข้อมูล...'; var promises = [];
   for (var i = 0; i < files.length; i++) { promises.push(new Promise(function(resolve, reject) { var f = files[i]; var reader = new FileReader(); reader.onload = function(e) { resolve({ name: f.name, mimeType: f.type, data: e.target.result.split(',')[1] }); }; reader.readAsDataURL(f); })); }
-  Promise.all(promises).then(function(picData) { btn.innerHTML='<span class="sp"></span> กำลังอัปโหลด...'; var d = { hospcode: hc, lat_h: document.getElementById('loc-lat').value, lon_h: document.getElementById('loc-lon').value, pics: picData }; google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; var res=JSON.parse(r); if(res.ok){ toast(res.msg,'ok'); document.getElementById('loc-pics').value=''; closePanel('loc'); forceRefresh(); } else toast(res.msg,'err'); }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; toast(e.message,'err'); }).updateHospLocation(d); });
+  Promise.all(promises).then(function(picData) { btn.innerHTML='<span class="sp"></span> กำลังอัปโหลด...'; 
+  var d = { 
+  hospcode: hc, 
+  lat_h: document.getElementById('loc-lat').value, 
+  lon_h: document.getElementById('loc-lon').value, 
+  pics: picData,
+  userSession_user: G.session.user,
+  userSession_role: G.session.role,
+  userSession_hospcode: G.session.hospcode
+}; 
+google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; var res=JSON.parse(r); if(res.ok){ toast(res.msg,'ok'); document.getElementById('loc-pics').value=''; closePanel('loc'); forceRefresh(); } else toast(res.msg,'err'); }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; toast(e.message,'err'); }).updateHospLocation(d); });
 }
 
 function toggleHospFilter(hospcode) { var el = document.getElementById('fHosp'); if (el.value === hospcode) { el.value = ''; } else { el.value = hospcode; } applyFilters(); }
@@ -3485,19 +3483,19 @@ function updateKPIs(k) {
     }
   } 
   // ⭐ พึงพอใจ — แสดงจำนวนคน + % ที่ตอบ
-  sv('k-sat', (k.satAvg !== null && k.satAvg !== undefined) ? Number(k.satAvg).toFixed(2) : '—'); 
+  sv('k-sat', k.satAvg !== null ? k.satAvg.toFixed(2) : '—'); 
   if (k.satPct !== undefined) {
     svHtml('k-sat-sub', '/5.00<br><span style="font-size:9px; color:var(--purple); font-weight:600;">' + k.satCount + ' คน (' + k.satPct + '%)</span>');
   }
   
   // 📝 Pre-test — แสดงจำนวนคน + % ที่ทำ
-  sv('k-pre', (k.preAvg !== null && k.preAvg !== undefined) ? Number(k.preAvg).toFixed(1) : '—'); 
+  sv('k-pre', k.preAvg !== null ? k.preAvg.toFixed(1) : '—'); 
   if (k.prePct !== undefined) {
     svHtml('k-pre-sub', '/10 คะแนน<br><span style="font-size:9px; color:var(--teal); font-weight:600;">' + k.preCount + ' คน (' + k.prePct + '%)</span>');
   }
   
   // 📝 Post-test — แสดงจำนวนคน + % ที่ทำ
-  sv('k-post', (k.postAvg !== null && k.postAvg !== undefined) ? Number(k.postAvg).toFixed(1) : '—'); 
+  sv('k-post', k.postAvg !== null ? k.postAvg.toFixed(1) : '—'); 
   if (k.postPct !== undefined) {
     svHtml('k-post-sub', '/10 คะแนน<br><span style="font-size:9px; color:#0891b2; font-weight:600;">' + k.postCount + ' คน (' + k.postPct + '%)</span>');
   }
@@ -3876,38 +3874,9 @@ function openPanel(id) {
 function closePanel(id) { document.getElementById('ov-'+id).classList.remove('open'); document.getElementById('panel-'+id).classList.remove('open'); }
 function openLogin() { document.getElementById('lgErr').textContent = ''; document.getElementById('loginMov').classList.add('open'); document.getElementById('lgUser').focus(); }
 function closeLogin() { document.getElementById('loginMov').classList.remove('open'); }
-function doLogin() { 
-  var u = document.getElementById('lgUser').value.trim(); 
-  var p = document.getElementById('lgPass').value.trim(); 
-  if (!u || !p) { document.getElementById('lgErr').textContent = 'กรุณากรอกข้อมูล'; return; } 
-  var btn = document.getElementById('btnLgn'); btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังตรวจสอบ...'; 
-  google.script.run.withSuccessHandler(function(r) { 
-    btn.disabled = false; btn.innerHTML = '🔐 เข้าสู่ระบบ'; 
-    var d = JSON.parse(r); 
-    if (d.ok) { 
-      G.session = { loggedIn:true, user:d.data.user, role:d.data.role, hospcode:d.data.hospcode }; 
-      
-      // ✅ เพิ่มบรรทัดนี้: บันทึก Session ลงในคอมพิวเตอร์/มือถือของผู้ใช้
-      localStorage.setItem('eyeHealthSession', JSON.stringify(G.session));
-      
-      closeLogin(); updateAuthUI(); toast('เข้าสู่ระบบสำเร็จ', 'ok'); forceRefresh(); 
-    } else { document.getElementById('lgErr').textContent = d.msg; } 
-  }).login(u, p); 
-}
-
-function doLogout() { 
-  google.script.run.withSuccessHandler(function() { 
-    G.session = {loggedIn:false,user:'',role:'',hospcode:''}; 
-    
-    // ✅ เพิ่มบรรทัดนี้: ล้าง Session ออกจากเครื่องเมื่อกดออกจากระบบ
-    localStorage.removeItem('eyeHealthSession');
-    
-    updateAuthUI(); loadDashboard({}); toast('ออกจากระบบแล้ว', 'ok'); 
-  }).logout(); 
-}
-
+function doLogin() { var u = document.getElementById('lgUser').value.trim(); var p = document.getElementById('lgPass').value.trim(); if (!u || !p) { document.getElementById('lgErr').textContent = 'กรุณากรอกข้อมูล'; return; } var btn = document.getElementById('btnLgn'); btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังตรวจสอบ...'; google.script.run.withSuccessHandler(function(r) { btn.disabled = false; btn.innerHTML = '🔐 เข้าสู่ระบบ'; var d = JSON.parse(r); if (d.ok) { G.session = { loggedIn:true, user:d.data.user, role:d.data.role, hospcode:d.data.hospcode }; closeLogin(); updateAuthUI(); toast('เข้าสู่ระบบสำเร็จ', 'ok'); forceRefresh(); } else { document.getElementById('lgErr').textContent = d.msg; } }).login(u, p); }
+function doLogout() { google.script.run.withSuccessHandler(function() { G.session = {loggedIn:false,user:'',role:'',hospcode:''}; updateAuthUI(); loadDashboard({}); toast('ออกจากระบบแล้ว', 'ok'); }).logout(); }
 function calcAge() { var bdStr = document.getElementById('s-bd').value; if (!bdStr) return; var parts = bdStr.split('/'); if(parts.length===3) { var y = parseInt(parts[2], 10); if(y > 2400) y -= 543; var dt = new Date(y, parseInt(parts[1])-1, parseInt(parts[0])); document.getElementById('s-age').value = Math.floor((new Date()-dt)/(365.25*24*3600*1000)); } }
-
 function onCidInput(cid) { 
   var btn = document.getElementById('btnSScr');
   if (!_editMode && cid.length === 13 && G.allRows.find(function(r){ return r.cid === cid; })) {
@@ -3930,7 +3899,10 @@ function saveScr() {
   var hcVal = document.getElementById('s-hc').value; if (!hcVal) { toast('กรุณาเลือก รพ.สต.', 'err'); return; }
   // เพิ่มการบันทึก treatment
   var d = { cid: cid, pname: document.getElementById('s-pname').value, fname: document.getElementById('s-fname').value.trim(), lname: document.getElementById('s-lname').value.trim(), birthday: document.getElementById('s-bd').value, age_years: document.getElementById('s-age').value, sex: document.getElementById('s-sex').value, level_edu: document.getElementById('s-lev').value, room: document.getElementById('s-cls').value, school_name: document.getElementById('s-sch').value, hospcode: hcVal, screen_date: document.getElementById('s-dt').value, examiner: document.getElementById('s-exam').value, position: document.getElementById('s-pos').value, address: document.getElementById('s-addr').value, moo: document.getElementById('s-moo').value, aid: document.getElementById('s-aid').value, unit: document.getElementById('s-unit').value, lat_s: document.getElementById('s-schl-lat').value, lon_s: document.getElementById('s-schl-lon').value, tambon: document.getElementById('s-tambon').value, amphoe: document.getElementById('s-amphoe').value, province: document.getElementById('s-prov').value, remarks: document.getElementById('s-remark').value, hx_glasses: document.getElementById('hx-g').checked, hx_injury: document.getElementById('hx-i').checked, hx_red_eye: document.getElementById('hx-r').checked, hx_headache: document.getElementById('hx-h').checked, hx_amblyopia: document.getElementById('hx-a').checked, hx_family: document.getElementById('hx-f').checked, va_r_naked: document.getElementById('vr-n').value, va_l_naked: document.getElementById('vl-n').value, va_r_glasses: document.getElementById('vr-g').value, va_l_glasses: document.getElementById('vl-g').value, ph_r: document.getElementById('vr-p').value, ph_l: document.getElementById('vl-p').value, va_naked_OU: document.getElementById('vou-naked').value, va_glasses_OU: document.getElementById('vou-glasses').value, cover_test: getRad('ex-cov'), hirschberg: getRad('ex-hir'), color_vision: getRad('ex-col'), stereopsis: getRad('ex-ste'), diagnosis: document.getElementById('s-diag').value, referral: document.getElementById('s-ref').value, treatment: document.getElementById('s-treat').value,
-  nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย'};
+  nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย',
+  userSession_user: G.session.user,
+  userSession_role: G.session.role,
+  userSession_hospcode: G.session.hospcode};
   btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังประมวลผล...';
   
   if (_editMode) { 
@@ -4061,7 +4033,10 @@ function searchSatUser(val) {
 
 function saveSat() {
   var btn = document.getElementById('btnSSat'); var hc = document.getElementById('sat-hc').value; if (!hc) { toast('กรุณาระบุรหัส รพ.สต.','err'); return; }
-  var d = { eval_type: document.getElementById('sat-type').value, cid: document.getElementById('sat-search-cid').value, hospcode:hc, eval_sex:document.getElementById('sat-sex').value, eval_age:document.getElementById('sat-age').value, eval_class:document.getElementById('sat-cls').value, school_name: document.getElementById('sat-sch').value, comment_s:document.getElementById('sat-str').value, comment_i:document.getElementById('sat-imp').value, recommend:(document.querySelector('input[name="satrec"]:checked')||{}).value||'' };
+  var d = { eval_type: document.getElementById('sat-type').value, cid: document.getElementById('sat-search-cid').value, hospcode:hc, eval_sex:document.getElementById('sat-sex').value, eval_age:document.getElementById('sat-age').value, eval_class:document.getElementById('sat-cls').value, school_name: document.getElementById('sat-sch').value, comment_s:document.getElementById('sat-str').value, comment_i:document.getElementById('sat-imp').value, recommend:(document.querySelector('input[name="satrec"]:checked')||{}).value||'',
+  userSession_user: G.session.user,
+  userSession_role: G.session.role,
+  userSession_hospcode: G.session.hospcode };
   for (var i=1;i<=10;i++){ var el=document.querySelector('input[name="sq'+i+'"]:checked'); d['q'+i] = el?el.value:5; }
   btn.disabled=true; btn.innerHTML='<span class="sp"></span> บันทึก...';
   google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึกแบบประเมิน'; var res=JSON.parse(r); if(res.ok){toast(res.msg,'ok');closePanel('sat');forceRefresh();}else toast(res.msg,'err'); }).saveSatisfactionData(d);
@@ -4459,7 +4434,7 @@ function buildSatTemplate(d) {
     html += '<div style="padding:10px;">จุดเด่นของโครงการ / สิ่งที่ชอบ :<br><div style="border-bottom:1px dotted #000; height:30px; margin-bottom:10px; padding-left:10px;">'+(satInfo.comment_s||'')+'</div>ข้อเสนอแนะ / สิ่งที่ควรปรับปรุง :<br><div style="border-bottom:1px dotted #000; height:30px; margin-bottom:15px; padding-left:10px;">'+(satInfo.comment_i||'')+'</div>';
     
     var rec = satInfo.recommend || '';
-    html += '<b>ท่านจะแนะนำโครงการนี้ให้ผู้อื่นหรือไม่ ?</b><br><div style="margin-top:5px; margin-left:20px;">'+((rec==='แนะนำอย่างยิ่ง') ? '☑' : '☐')+' แนะนำอย่างยิ่ง     '+((rec==='แนะนำ') ? '☑' : '☐')+' แนะนำ     '+((rec==='ไม่แน่ใจ') ? '☑' : '☐')+' ไม่แน่ใจ     '+((rec==='ไม่แนะนำ') ? '☑' : '☐')+' ไม่แนะนำ</div></div>';
+    html += '<b>ท่านจะแนะนำโครงการนี้ให้ผู้อื่นหรือไม่ ?</b><br><div style="margin-top:5px; margin-left:20px;">'+((rec==='แนะนำอย่างยิ่ง') ? '☑' : '☐')+' แนะนำอย่างยิ่ง     '+((rec==='แนะนำ') ? '☑' : '☐')+' แนะนำ     '+((rec==='ไม่แน่ใจ') ? '☑' : '☐')+' ไม่แน่ใจ     '+((rec==='ไม่แนะนำ') ? '☑' : '☐')+' ไม่แนะนำ</div></div>';
     html += '</div>';
     return html;
 }
@@ -4521,7 +4496,7 @@ function buildTestTemplate(title, d, type) {
     html += '</table></div>';
     
     html += '<div style="margin-top:20px; display:flex; justify-content:space-between; font-weight:bold; padding-top:10px; border-top:1px solid #ccc;">';
-    html += '<div>คะแนนที่ได้ <span style="font-size:24pt; text-decoration:underline;">  '+(ansInfo.total||'  ')+'  </span> / 10</div>';
+    html += '<div>คะแนนที่ได้ <span style="font-size:24pt; text-decoration:underline;">  '+(ansInfo.total||'  ')+'  </span> / 10</div>';
     html += '</div></div>';
     return html;
 }
@@ -4577,7 +4552,10 @@ function saveBeh() {
   document.querySelectorAll('#beh-device input:checked').forEach(function(el)  { devices.push(el.value); });
   document.querySelectorAll('#beh-purpose input:checked').forEach(function(el) { purposes.push(el.value); });
   document.querySelectorAll('#beh-symptom input:checked').forEach(function(el) { symptoms.push(el.value); });
-  var d = { cid: cid, q_device: devices.join(', '), q_purpose: purposes.join(', '), q_time_wk_morn: document.getElementById('beh-t-wk-m').value, q_time_wk_noon: document.getElementById('beh-t-wk-n').value, q_time_wk_eve: document.getElementById('beh-t-wk-e').value, q_time_we_morn: document.getElementById('beh-t-we-m').value, q_time_we_noon: document.getElementById('beh-t-we-n').value, q_time_we_eve: document.getElementById('beh-t-we-e').value, q_dist: document.getElementById('beh-dist').value, q_rest: document.getElementById('beh-rest').value, q_blue: document.getElementById('beh-blue').value, q_symptom: symptoms.join(', '), comment: document.getElementById('beh-comment').value };
+  var d = { cid: cid, q_device: devices.join(', '), q_purpose: purposes.join(', '), q_time_wk_morn: document.getElementById('beh-t-wk-m').value, q_time_wk_noon: document.getElementById('beh-t-wk-n').value, q_time_wk_eve: document.getElementById('beh-t-wk-e').value, q_time_we_morn: document.getElementById('beh-t-we-m').value, q_time_we_noon: document.getElementById('beh-t-we-n').value, q_time_we_eve: document.getElementById('beh-t-we-e').value, q_dist: document.getElementById('beh-dist').value, q_rest: document.getElementById('beh-rest').value, q_blue: document.getElementById('beh-blue').value, q_symptom: symptoms.join(', '), comment: document.getElementById('beh-comment').value,
+  userSession_user: G.session.user,
+  userSession_role: G.session.role,
+  userSession_hospcode: G.session.hospcode };
 
   btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังบันทึก...';
   google.script.run.withSuccessHandler(function(r) {
@@ -5108,7 +5086,10 @@ function saveFup() {
     q_board: getRad('q_board'), q_focus: getRad('q_focus'),
     q_confidence: getRad('q_confidence'), q_headache: getRad('q_headache'),
     reasons: reasons.join(', '), overall_sat: getRad('overall_sat'),
-    comment: document.getElementById('fup-comment').value
+    comment: document.getElementById('fup-comment').value,
+    userSession_user: G.session.user,
+    userSession_role: G.session.role,
+    userSession_hospcode: G.session.hospcode
   };
   
   btn.disabled = true; btn.innerHTML = '<span class="sp"></span> บันทึก...';
@@ -5117,11 +5098,12 @@ function saveFup() {
     var res = JSON.parse(r);
     if (res.ok) {
       toast(res.msg, 'ok'); closePanel('fup');
-      document.getElementById('fup-cid').value = ''; document.getElementById('fup-err').textContent = '';
-      document.getElementById('fup-form-sec').style.opacity = '0.5'; document.getElementById('fup-form-sec').style.pointerEvents = 'none';
+      document.getElementById('fup-cid').value = '';
+      document.getElementById('fup-err').textContent = '';
+      document.getElementById('fup-form-sec').style.opacity = '0.5';
+      document.getElementById('fup-form-sec').style.pointerEvents = 'none';
       document.getElementById('btnSFup').disabled = true;
       forceRefresh();
-      // 💡 แจ้งจบ Flow ทุกครั้ง
       var flow = determineFlowAfterStep(cid, 'fup');
       if(flow) {
         setTimeout(function(){
@@ -5133,8 +5115,10 @@ function saveFup() {
         }, 600);
       }
     } else { toast(res.msg, 'err'); }
-  }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึกการติดตามผล'; toast('Error: '+e.message,'err'); }).saveFollowupData(d);
-}
+  }).withFailureHandler(function(e){
+    btn.disabled=false; btn.innerHTML='💾 บันทึกการติดตามผล'; toast('Error: '+e.message,'err');
+  }).saveFollowupData(d);
+}  // ← ปิด saveFup
 // ===== ADD: Edit/Delete สำหรับ Behavior & Followup (v6.2) =====
 
 // ฟังก์ชันคำนวณลำดับถัดไปอัตโนมัติตามสถานะของผู้รับการตรวจ
