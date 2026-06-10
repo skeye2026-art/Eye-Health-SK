@@ -2709,6 +2709,12 @@ function triggerFlow(nextStep, msg, nextAction) {
 function closeFlow() { document.getElementById('flowMov').classList.remove('open'); }
 
 window.onload = function () {
+  // ✅ เพิ่มบล็อกนี้ที่บรรทัดบนสุดของ window.onload เพื่อดึง Session เดิมกลับมา
+  var savedSession = localStorage.getItem('eyeHealthSession');
+  if (savedSession) {
+      try { window.G.session = JSON.parse(savedSession); } catch(e) {}
+  }
+
   setDate(); buildSatQ(); buildTestQ('pre'); buildTestQ('post');
   // [v6.3] กด ESC ปิด image modal
   document.addEventListener('keydown', function(e){
@@ -3871,9 +3877,38 @@ function openPanel(id) {
 function closePanel(id) { document.getElementById('ov-'+id).classList.remove('open'); document.getElementById('panel-'+id).classList.remove('open'); }
 function openLogin() { document.getElementById('lgErr').textContent = ''; document.getElementById('loginMov').classList.add('open'); document.getElementById('lgUser').focus(); }
 function closeLogin() { document.getElementById('loginMov').classList.remove('open'); }
-function doLogin() { var u = document.getElementById('lgUser').value.trim(); var p = document.getElementById('lgPass').value.trim(); if (!u || !p) { document.getElementById('lgErr').textContent = 'กรุณากรอกข้อมูล'; return; } var btn = document.getElementById('btnLgn'); btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังตรวจสอบ...'; google.script.run.withSuccessHandler(function(r) { btn.disabled = false; btn.innerHTML = '🔐 เข้าสู่ระบบ'; var d = JSON.parse(r); if (d.ok) { G.session = { loggedIn:true, user:d.data.user, role:d.data.role, hospcode:d.data.hospcode }; closeLogin(); updateAuthUI(); toast('เข้าสู่ระบบสำเร็จ', 'ok'); forceRefresh(); } else { document.getElementById('lgErr').textContent = d.msg; } }).login(u, p); }
-function doLogout() { google.script.run.withSuccessHandler(function() { G.session = {loggedIn:false,user:'',role:'',hospcode:''}; updateAuthUI(); loadDashboard({}); toast('ออกจากระบบแล้ว', 'ok'); }).logout(); }
+function doLogin() { 
+  var u = document.getElementById('lgUser').value.trim(); 
+  var p = document.getElementById('lgPass').value.trim(); 
+  if (!u || !p) { document.getElementById('lgErr').textContent = 'กรุณากรอกข้อมูล'; return; } 
+  var btn = document.getElementById('btnLgn'); btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังตรวจสอบ...'; 
+  google.script.run.withSuccessHandler(function(r) { 
+    btn.disabled = false; btn.innerHTML = '🔐 เข้าสู่ระบบ'; 
+    var d = JSON.parse(r); 
+    if (d.ok) { 
+      G.session = { loggedIn:true, user:d.data.user, role:d.data.role, hospcode:d.data.hospcode }; 
+      
+      // ✅ เพิ่มบรรทัดนี้: บันทึก Session ลงในคอมพิวเตอร์/มือถือของผู้ใช้
+      localStorage.setItem('eyeHealthSession', JSON.stringify(G.session));
+      
+      closeLogin(); updateAuthUI(); toast('เข้าสู่ระบบสำเร็จ', 'ok'); forceRefresh(); 
+    } else { document.getElementById('lgErr').textContent = d.msg; } 
+  }).login(u, p); 
+}
+
+function doLogout() { 
+  google.script.run.withSuccessHandler(function() { 
+    G.session = {loggedIn:false,user:'',role:'',hospcode:''}; 
+    
+    // ✅ เพิ่มบรรทัดนี้: ล้าง Session ออกจากเครื่องเมื่อกดออกจากระบบ
+    localStorage.removeItem('eyeHealthSession');
+    
+    updateAuthUI(); loadDashboard({}); toast('ออกจากระบบแล้ว', 'ok'); 
+  }).logout(); 
+}
+
 function calcAge() { var bdStr = document.getElementById('s-bd').value; if (!bdStr) return; var parts = bdStr.split('/'); if(parts.length===3) { var y = parseInt(parts[2], 10); if(y > 2400) y -= 543; var dt = new Date(y, parseInt(parts[1])-1, parseInt(parts[0])); document.getElementById('s-age').value = Math.floor((new Date()-dt)/(365.25*24*3600*1000)); } }
+
 function onCidInput(cid) { 
   var btn = document.getElementById('btnSScr');
   if (!_editMode && cid.length === 13 && G.allRows.find(function(r){ return r.cid === cid; })) {
