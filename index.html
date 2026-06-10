@@ -1743,6 +1743,14 @@ window.google.script.run = (function() {
           if (prop === 'deleteLinkData' || prop === 'deleteVideoItem') payloadData = { id: args[0] };
           if (prop === 'getImportLogDetail' || prop === 'deleteImportLog') payloadData = { batchId: args[0] };
           
+          // 🟢 เพิ่มโค้ดแนบข้อมูล Login ประจำเครื่อง ไปกับทุก Request เสมอ
+          if (typeof payloadData === 'object' && window.G && window.G.session) {
+              payloadData._clientSession = window.G.session;
+          }
+
+          // 🛡 Double-Click Guard: ป้องกันการกดปุ่มซ้ำ (เฉพาะ Write Action)
+          let inFlightKey = null;if (prop === 'getImportLogDetail' || prop === 'deleteImportLog') payloadData = { batchId: args[0] };
+          
           // 🛡 Double-Click Guard: ป้องกันการกดปุ่มซ้ำ (เฉพาะ Write Action)
           let inFlightKey = null;
           if (WRITE_ACTIONS.has(prop)) {
@@ -3890,7 +3898,6 @@ function saveScr() {
   // เพิ่มการบันทึก treatment
   var d = { cid: cid, pname: document.getElementById('s-pname').value, fname: document.getElementById('s-fname').value.trim(), lname: document.getElementById('s-lname').value.trim(), birthday: document.getElementById('s-bd').value, age_years: document.getElementById('s-age').value, sex: document.getElementById('s-sex').value, level_edu: document.getElementById('s-lev').value, room: document.getElementById('s-cls').value, school_name: document.getElementById('s-sch').value, hospcode: hcVal, screen_date: document.getElementById('s-dt').value, examiner: document.getElementById('s-exam').value, position: document.getElementById('s-pos').value, address: document.getElementById('s-addr').value, moo: document.getElementById('s-moo').value, aid: document.getElementById('s-aid').value, unit: document.getElementById('s-unit').value, lat_s: document.getElementById('s-schl-lat').value, lon_s: document.getElementById('s-schl-lon').value, tambon: document.getElementById('s-tambon').value, amphoe: document.getElementById('s-amphoe').value, province: document.getElementById('s-prov').value, remarks: document.getElementById('s-remark').value, hx_glasses: document.getElementById('hx-g').checked, hx_injury: document.getElementById('hx-i').checked, hx_red_eye: document.getElementById('hx-r').checked, hx_headache: document.getElementById('hx-h').checked, hx_amblyopia: document.getElementById('hx-a').checked, hx_family: document.getElementById('hx-f').checked, va_r_naked: document.getElementById('vr-n').value, va_l_naked: document.getElementById('vl-n').value, va_r_glasses: document.getElementById('vr-g').value, va_l_glasses: document.getElementById('vl-g').value, ph_r: document.getElementById('vr-p').value, ph_l: document.getElementById('vl-p').value, va_naked_OU: document.getElementById('vou-naked').value, va_glasses_OU: document.getElementById('vou-glasses').value, cover_test: getRad('ex-cov'), hirschberg: getRad('ex-hir'), color_vision: getRad('ex-col'), stereopsis: getRad('ex-ste'), diagnosis: document.getElementById('s-diag').value, referral: document.getElementById('s-ref').value, treatment: document.getElementById('s-treat').value,
   nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย'};
-  d.userHosp = G.session.hospcode; d.userRole = G.session.role;
   btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังประมวลผล...';
   
   if (_editMode) { 
