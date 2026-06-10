@@ -2253,7 +2253,7 @@ function applyFilters() {
     preAvg: k.testCount>0 ? Math.round(k.preSum/k.testCount*10)/10 : null,
     postAvg: k.testCount>0 ? Math.round(k.postSum/k.testCount*10)/10 : null,
     gainAvg: k.testCount>0 ? Math.round(k.gainSum/k.testCount) : null,
-    satAvg: G.kpi.satAvg,
+    satAvg: (G.kpi && G.kpi.satAvg !== undefined) ? G.kpi.satAvg : null,
     preTestCount: k.preCount,
     satCount: k.satCount,
     satPct: Math.round(k.satCount/t*100),
@@ -3485,19 +3485,19 @@ function updateKPIs(k) {
     }
   } 
   // ⭐ พึงพอใจ — แสดงจำนวนคน + % ที่ตอบ
-  sv('k-sat', k.satAvg !== null ? k.satAvg.toFixed(2) : '—'); 
+  sv('k-sat', (k.satAvg !== null && k.satAvg !== undefined) ? Number(k.satAvg).toFixed(2) : '—'); 
   if (k.satPct !== undefined) {
     svHtml('k-sat-sub', '/5.00<br><span style="font-size:9px; color:var(--purple); font-weight:600;">' + k.satCount + ' คน (' + k.satPct + '%)</span>');
   }
   
   // 📝 Pre-test — แสดงจำนวนคน + % ที่ทำ
-  sv('k-pre', k.preAvg !== null ? k.preAvg.toFixed(1) : '—'); 
+  sv('k-pre', (k.preAvg !== null && k.preAvg !== undefined) ? Number(k.preAvg).toFixed(1) : '—'); 
   if (k.prePct !== undefined) {
     svHtml('k-pre-sub', '/10 คะแนน<br><span style="font-size:9px; color:var(--teal); font-weight:600;">' + k.preCount + ' คน (' + k.prePct + '%)</span>');
   }
   
   // 📝 Post-test — แสดงจำนวนคน + % ที่ทำ
-  sv('k-post', k.postAvg !== null ? k.postAvg.toFixed(1) : '—'); 
+  sv('k-post', (k.postAvg !== null && k.postAvg !== undefined) ? Number(k.postAvg).toFixed(1) : '—'); 
   if (k.postPct !== undefined) {
     svHtml('k-post-sub', '/10 คะแนน<br><span style="font-size:9px; color:#0891b2; font-weight:600;">' + k.postCount + ' คน (' + k.postPct + '%)</span>');
   }
