@@ -1743,13 +1743,12 @@ window.google.script.run = (function() {
           if (prop === 'deleteLinkData' || prop === 'deleteVideoItem') payloadData = { id: args[0] };
           if (prop === 'getImportLogDetail' || prop === 'deleteImportLog') payloadData = { batchId: args[0] };
           
-          // 🟢 เพิ่มโค้ดแนบข้อมูล Login ประจำเครื่อง ไปกับทุก Request เสมอ
+          /// 🟢 เพิ่มโค้ดแนบข้อมูล Login ประจำเครื่อง ไปกับทุก Request เสมอ
           if (typeof payloadData === 'object' && window.G && window.G.session) {
               payloadData._clientSession = window.G.session;
           }
 
-          // 🛡 Double-Click Guard: ป้องกันการกดปุ่มซ้ำ (เฉพาะ Write Action)
-          let inFlightKey = null;if (prop === 'getImportLogDetail' || prop === 'deleteImportLog') payloadData = { batchId: args[0] };
+          if (prop === 'getImportLogDetail' || prop === 'deleteImportLog') payloadData = { batchId: args[0] };
           
           // 🛡 Double-Click Guard: ป้องกันการกดปุ่มซ้ำ (เฉพาะ Write Action)
           let inFlightKey = null;
