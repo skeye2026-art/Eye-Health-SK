@@ -1650,7 +1650,7 @@ async function _callApiWithRetry(action, payloadData) {
         redirect: 'follow',
         mode: 'cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: action, data: payloadData, _token: (function(){ try { return localStorage.getItem('EYE_SESSION_TOKEN') || ''; } catch(e){ return ''; } })() })
+        body: JSON.stringify({ action: action, data: payloadData })
       });
 
       if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -3864,8 +3864,8 @@ function openPanel(id) {
 function closePanel(id) { document.getElementById('ov-'+id).classList.remove('open'); document.getElementById('panel-'+id).classList.remove('open'); }
 function openLogin() { document.getElementById('lgErr').textContent = ''; document.getElementById('loginMov').classList.add('open'); document.getElementById('lgUser').focus(); }
 function closeLogin() { document.getElementById('loginMov').classList.remove('open'); }
-function doLogin() { var u = document.getElementById('lgUser').value.trim(); var p = document.getElementById('lgPass').value.trim(); if (!u || !p) { document.getElementById('lgErr').textContent = 'กรุณากรอกข้อมูล'; return; } var btn = document.getElementById('btnLgn'); btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังตรวจสอบ...'; google.script.run.withSuccessHandler(function(r) { btn.disabled = false; btn.innerHTML = '🔐 เข้าสู่ระบบ'; var d = JSON.parse(r); if (d.ok) { G.session = { loggedIn:true, user:d.data.user, role:d.data.role, hospcode:d.data.hospcode }; try { if (d.data.token) localStorage.setItem('EYE_SESSION_TOKEN', d.data.token); } catch(e){} closeLogin(); updateAuthUI(); toast('เข้าสู่ระบบสำเร็จ', 'ok'); forceRefresh(); } else { document.getElementById('lgErr').textContent = d.msg; } }).login(u, p); }
-function doLogout() { google.script.run.withSuccessHandler(function() { G.session = {loggedIn:false,user:'',role:'',hospcode:''}; try { localStorage.removeItem('EYE_SESSION_TOKEN'); } catch(e){} updateAuthUI(); loadDashboard({}); toast('ออกจากระบบแล้ว', 'ok'); }).logout(); }
+function doLogin() { var u = document.getElementById('lgUser').value.trim(); var p = document.getElementById('lgPass').value.trim(); if (!u || !p) { document.getElementById('lgErr').textContent = 'กรุณากรอกข้อมูล'; return; } var btn = document.getElementById('btnLgn'); btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังตรวจสอบ...'; google.script.run.withSuccessHandler(function(r) { btn.disabled = false; btn.innerHTML = '🔐 เข้าสู่ระบบ'; var d = JSON.parse(r); if (d.ok) { G.session = { loggedIn:true, user:d.data.user, role:d.data.role, hospcode:d.data.hospcode }; closeLogin(); updateAuthUI(); toast('เข้าสู่ระบบสำเร็จ', 'ok'); forceRefresh(); } else { document.getElementById('lgErr').textContent = d.msg; } }).login(u, p); }
+function doLogout() { google.script.run.withSuccessHandler(function() { G.session = {loggedIn:false,user:'',role:'',hospcode:''}; updateAuthUI(); loadDashboard({}); toast('ออกจากระบบแล้ว', 'ok'); }).logout(); }
 function calcAge() { var bdStr = document.getElementById('s-bd').value; if (!bdStr) return; var parts = bdStr.split('/'); if(parts.length===3) { var y = parseInt(parts[2], 10); if(y > 2400) y -= 543; var dt = new Date(y, parseInt(parts[1])-1, parseInt(parts[0])); document.getElementById('s-age').value = Math.floor((new Date()-dt)/(365.25*24*3600*1000)); } }
 function onCidInput(cid) { 
   var btn = document.getElementById('btnSScr');
