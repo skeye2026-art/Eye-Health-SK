@@ -3423,17 +3423,7 @@ function saveLoc() {
   var fileInput = document.getElementById('loc-pics'); var files = fileInput.files; if (files.length > 2) { toast('แนบภาพได้สูงสุด 2 ภาพเท่านั้น', 'err'); return; } var valid = true; for (var i = 0; i < files.length; i++) { if (files[i].size > 2 * 1024 * 1024) { toast('ไฟล์ ' + files[i].name + ' มีขนาดเกิน 2MB', 'err'); valid = false; } } if (!valid) return;
   btn.disabled=true; btn.innerHTML='<span class="sp"></span> กำลังเตรียมข้อมูล...'; var promises = [];
   for (var i = 0; i < files.length; i++) { promises.push(new Promise(function(resolve, reject) { var f = files[i]; var reader = new FileReader(); reader.onload = function(e) { resolve({ name: f.name, mimeType: f.type, data: e.target.result.split(',')[1] }); }; reader.readAsDataURL(f); })); }
-  Promise.all(promises).then(function(picData) { btn.innerHTML='<span class="sp"></span> กำลังอัปโหลด...'; 
-  var d = { 
-  hospcode: hc, 
-  lat_h: document.getElementById('loc-lat').value, 
-  lon_h: document.getElementById('loc-lon').value, 
-  pics: picData,
-  userSession_user: G.session.user,
-  userSession_role: G.session.role,
-  userSession_hospcode: G.session.hospcode
-}; 
-google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; var res=JSON.parse(r); if(res.ok){ toast(res.msg,'ok'); document.getElementById('loc-pics').value=''; closePanel('loc'); forceRefresh(); } else toast(res.msg,'err'); }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; toast(e.message,'err'); }).updateHospLocation(d); });
+  Promise.all(promises).then(function(picData) { btn.innerHTML='<span class="sp"></span> กำลังอัปโหลด...'; var d = { hospcode: hc, lat_h: document.getElementById('loc-lat').value, lon_h: document.getElementById('loc-lon').value, pics: picData }; google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; var res=JSON.parse(r); if(res.ok){ toast(res.msg,'ok'); document.getElementById('loc-pics').value=''; closePanel('loc'); forceRefresh(); } else toast(res.msg,'err'); }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; toast(e.message,'err'); }).updateHospLocation(d); });
 }
 
 function toggleHospFilter(hospcode) { var el = document.getElementById('fHosp'); if (el.value === hospcode) { el.value = ''; } else { el.value = hospcode; } applyFilters(); }
@@ -3899,10 +3889,7 @@ function saveScr() {
   var hcVal = document.getElementById('s-hc').value; if (!hcVal) { toast('กรุณาเลือก รพ.สต.', 'err'); return; }
   // เพิ่มการบันทึก treatment
   var d = { cid: cid, pname: document.getElementById('s-pname').value, fname: document.getElementById('s-fname').value.trim(), lname: document.getElementById('s-lname').value.trim(), birthday: document.getElementById('s-bd').value, age_years: document.getElementById('s-age').value, sex: document.getElementById('s-sex').value, level_edu: document.getElementById('s-lev').value, room: document.getElementById('s-cls').value, school_name: document.getElementById('s-sch').value, hospcode: hcVal, screen_date: document.getElementById('s-dt').value, examiner: document.getElementById('s-exam').value, position: document.getElementById('s-pos').value, address: document.getElementById('s-addr').value, moo: document.getElementById('s-moo').value, aid: document.getElementById('s-aid').value, unit: document.getElementById('s-unit').value, lat_s: document.getElementById('s-schl-lat').value, lon_s: document.getElementById('s-schl-lon').value, tambon: document.getElementById('s-tambon').value, amphoe: document.getElementById('s-amphoe').value, province: document.getElementById('s-prov').value, remarks: document.getElementById('s-remark').value, hx_glasses: document.getElementById('hx-g').checked, hx_injury: document.getElementById('hx-i').checked, hx_red_eye: document.getElementById('hx-r').checked, hx_headache: document.getElementById('hx-h').checked, hx_amblyopia: document.getElementById('hx-a').checked, hx_family: document.getElementById('hx-f').checked, va_r_naked: document.getElementById('vr-n').value, va_l_naked: document.getElementById('vl-n').value, va_r_glasses: document.getElementById('vr-g').value, va_l_glasses: document.getElementById('vl-g').value, ph_r: document.getElementById('vr-p').value, ph_l: document.getElementById('vl-p').value, va_naked_OU: document.getElementById('vou-naked').value, va_glasses_OU: document.getElementById('vou-glasses').value, cover_test: getRad('ex-cov'), hirschberg: getRad('ex-hir'), color_vision: getRad('ex-col'), stereopsis: getRad('ex-ste'), diagnosis: document.getElementById('s-diag').value, referral: document.getElementById('s-ref').value, treatment: document.getElementById('s-treat').value,
-  nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย',
-  userSession_user: G.session.user,
-  userSession_role: G.session.role,
-  userSession_hospcode: G.session.hospcode};
+  nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย'};
   btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังประมวลผล...';
   
   if (_editMode) { 
@@ -4033,10 +4020,7 @@ function searchSatUser(val) {
 
 function saveSat() {
   var btn = document.getElementById('btnSSat'); var hc = document.getElementById('sat-hc').value; if (!hc) { toast('กรุณาระบุรหัส รพ.สต.','err'); return; }
-  var d = { eval_type: document.getElementById('sat-type').value, cid: document.getElementById('sat-search-cid').value, hospcode:hc, eval_sex:document.getElementById('sat-sex').value, eval_age:document.getElementById('sat-age').value, eval_class:document.getElementById('sat-cls').value, school_name: document.getElementById('sat-sch').value, comment_s:document.getElementById('sat-str').value, comment_i:document.getElementById('sat-imp').value, recommend:(document.querySelector('input[name="satrec"]:checked')||{}).value||'',
-  userSession_user: G.session.user,
-  userSession_role: G.session.role,
-  userSession_hospcode: G.session.hospcode };
+  var d = { eval_type: document.getElementById('sat-type').value, cid: document.getElementById('sat-search-cid').value, hospcode:hc, eval_sex:document.getElementById('sat-sex').value, eval_age:document.getElementById('sat-age').value, eval_class:document.getElementById('sat-cls').value, school_name: document.getElementById('sat-sch').value, comment_s:document.getElementById('sat-str').value, comment_i:document.getElementById('sat-imp').value, recommend:(document.querySelector('input[name="satrec"]:checked')||{}).value||'' };
   for (var i=1;i<=10;i++){ var el=document.querySelector('input[name="sq'+i+'"]:checked'); d['q'+i] = el?el.value:5; }
   btn.disabled=true; btn.innerHTML='<span class="sp"></span> บันทึก...';
   google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึกแบบประเมิน'; var res=JSON.parse(r); if(res.ok){toast(res.msg,'ok');closePanel('sat');forceRefresh();}else toast(res.msg,'err'); }).saveSatisfactionData(d);
@@ -4434,7 +4418,7 @@ function buildSatTemplate(d) {
     html += '<div style="padding:10px;">จุดเด่นของโครงการ / สิ่งที่ชอบ :<br><div style="border-bottom:1px dotted #000; height:30px; margin-bottom:10px; padding-left:10px;">'+(satInfo.comment_s||'')+'</div>ข้อเสนอแนะ / สิ่งที่ควรปรับปรุง :<br><div style="border-bottom:1px dotted #000; height:30px; margin-bottom:15px; padding-left:10px;">'+(satInfo.comment_i||'')+'</div>';
     
     var rec = satInfo.recommend || '';
-    html += '<b>ท่านจะแนะนำโครงการนี้ให้ผู้อื่นหรือไม่ ?</b><br><div style="margin-top:5px; margin-left:20px;">'+((rec==='แนะนำอย่างยิ่ง') ? '☑' : '☐')+' แนะนำอย่างยิ่ง     '+((rec==='แนะนำ') ? '☑' : '☐')+' แนะนำ     '+((rec==='ไม่แน่ใจ') ? '☑' : '☐')+' ไม่แน่ใจ     '+((rec==='ไม่แนะนำ') ? '☑' : '☐')+' ไม่แนะนำ</div></div>';
+    html += '<b>ท่านจะแนะนำโครงการนี้ให้ผู้อื่นหรือไม่ ?</b><br><div style="margin-top:5px; margin-left:20px;">'+((rec==='แนะนำอย่างยิ่ง') ? '☑' : '☐')+' แนะนำอย่างยิ่ง     '+((rec==='แนะนำ') ? '☑' : '☐')+' แนะนำ     '+((rec==='ไม่แน่ใจ') ? '☑' : '☐')+' ไม่แน่ใจ     '+((rec==='ไม่แนะนำ') ? '☑' : '☐')+' ไม่แนะนำ</div></div>';
     html += '</div>';
     return html;
 }
@@ -4496,7 +4480,7 @@ function buildTestTemplate(title, d, type) {
     html += '</table></div>';
     
     html += '<div style="margin-top:20px; display:flex; justify-content:space-between; font-weight:bold; padding-top:10px; border-top:1px solid #ccc;">';
-    html += '<div>คะแนนที่ได้ <span style="font-size:24pt; text-decoration:underline;">  '+(ansInfo.total||'  ')+'  </span> / 10</div>';
+    html += '<div>คะแนนที่ได้ <span style="font-size:24pt; text-decoration:underline;">  '+(ansInfo.total||'  ')+'  </span> / 10</div>';
     html += '</div></div>';
     return html;
 }
@@ -4552,10 +4536,7 @@ function saveBeh() {
   document.querySelectorAll('#beh-device input:checked').forEach(function(el)  { devices.push(el.value); });
   document.querySelectorAll('#beh-purpose input:checked').forEach(function(el) { purposes.push(el.value); });
   document.querySelectorAll('#beh-symptom input:checked').forEach(function(el) { symptoms.push(el.value); });
-  var d = { cid: cid, q_device: devices.join(', '), q_purpose: purposes.join(', '), q_time_wk_morn: document.getElementById('beh-t-wk-m').value, q_time_wk_noon: document.getElementById('beh-t-wk-n').value, q_time_wk_eve: document.getElementById('beh-t-wk-e').value, q_time_we_morn: document.getElementById('beh-t-we-m').value, q_time_we_noon: document.getElementById('beh-t-we-n').value, q_time_we_eve: document.getElementById('beh-t-we-e').value, q_dist: document.getElementById('beh-dist').value, q_rest: document.getElementById('beh-rest').value, q_blue: document.getElementById('beh-blue').value, q_symptom: symptoms.join(', '), comment: document.getElementById('beh-comment').value,
-  userSession_user: G.session.user,
-  userSession_role: G.session.role,
-  userSession_hospcode: G.session.hospcode };
+  var d = { cid: cid, q_device: devices.join(', '), q_purpose: purposes.join(', '), q_time_wk_morn: document.getElementById('beh-t-wk-m').value, q_time_wk_noon: document.getElementById('beh-t-wk-n').value, q_time_wk_eve: document.getElementById('beh-t-wk-e').value, q_time_we_morn: document.getElementById('beh-t-we-m').value, q_time_we_noon: document.getElementById('beh-t-we-n').value, q_time_we_eve: document.getElementById('beh-t-we-e').value, q_dist: document.getElementById('beh-dist').value, q_rest: document.getElementById('beh-rest').value, q_blue: document.getElementById('beh-blue').value, q_symptom: symptoms.join(', '), comment: document.getElementById('beh-comment').value };
 
   btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังบันทึก...';
   google.script.run.withSuccessHandler(function(r) {
@@ -5086,10 +5067,7 @@ function saveFup() {
     q_board: getRad('q_board'), q_focus: getRad('q_focus'),
     q_confidence: getRad('q_confidence'), q_headache: getRad('q_headache'),
     reasons: reasons.join(', '), overall_sat: getRad('overall_sat'),
-    comment: document.getElementById('fup-comment').value,
-    userSession_user: G.session.user,
-    userSession_role: G.session.role,
-    userSession_hospcode: G.session.hospcode
+    comment: document.getElementById('fup-comment').value
   };
   
   btn.disabled = true; btn.innerHTML = '<span class="sp"></span> บันทึก...';
@@ -5098,12 +5076,11 @@ function saveFup() {
     var res = JSON.parse(r);
     if (res.ok) {
       toast(res.msg, 'ok'); closePanel('fup');
-      document.getElementById('fup-cid').value = '';
-      document.getElementById('fup-err').textContent = '';
-      document.getElementById('fup-form-sec').style.opacity = '0.5';
-      document.getElementById('fup-form-sec').style.pointerEvents = 'none';
+      document.getElementById('fup-cid').value = ''; document.getElementById('fup-err').textContent = '';
+      document.getElementById('fup-form-sec').style.opacity = '0.5'; document.getElementById('fup-form-sec').style.pointerEvents = 'none';
       document.getElementById('btnSFup').disabled = true;
       forceRefresh();
+      // 💡 แจ้งจบ Flow ทุกครั้ง
       var flow = determineFlowAfterStep(cid, 'fup');
       if(flow) {
         setTimeout(function(){
@@ -5115,10 +5092,8 @@ function saveFup() {
         }, 600);
       }
     } else { toast(res.msg, 'err'); }
-  }).withFailureHandler(function(e){
-    btn.disabled=false; btn.innerHTML='💾 บันทึกการติดตามผล'; toast('Error: '+e.message,'err');
-  }).saveFollowupData(d);
-}  // ← ปิด saveFup
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึกการติดตามผล'; toast('Error: '+e.message,'err'); }).saveFollowupData(d);
+}
 // ===== ADD: Edit/Delete สำหรับ Behavior & Followup (v6.2) =====
 
 // ฟังก์ชันคำนวณลำดับถัดไปอัตโนมัติตามสถานะของผู้รับการตรวจ
