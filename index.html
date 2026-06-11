@@ -1647,13 +1647,25 @@ async function _callApiWithRetry(action, payloadData) {
 
   for (let attempt = 1; attempt <= CONFIG.MAX_RETRY; attempt++) {
     try {
+      // 🟢 นำโค้ดชุดนี้ไปทับส่วน fetch เดิมที่เบิ้ลกันอยู่
       const response = await fetch(CONFIG.GAS_API_URL, {
         method: 'POST',
         redirect: 'follow',
         mode: 'cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: action, data: payloadData, _token: (function(){ try { return sessionStorage.getItem('EYE_SESSION_TOKEN') || localStorage.getItem('EYE_SESSION_TOKEN') || ''; } catch(e){ return ''; } })() })body: JSON.stringify({ action: action, data: payloadData, _token: (function(){ try { return localStorage.getItem('EYE_SESSION_TOKEN') || ''; } catch(e){ return ''; } })() })
+        body: JSON.stringify({ 
+            action: action, 
+            data: payloadData, 
+            _token: (function(){ 
+                try { 
+                    return sessionStorage.getItem('EYE_SESSION_TOKEN') || localStorage.getItem('EYE_SESSION_TOKEN') || ''; 
+                } catch(e){ 
+                    return ''; 
+                } 
+            })() 
+        })
       });
+      // 🟢 จบส่วนที่ต้องแก้ไข
 
       if (!response.ok) throw new Error('HTTP ' + response.status);
 
