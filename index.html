@@ -1278,6 +1278,8 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <div id="behGuestMsg" style="text-align:center; padding:30px; color:var(--muted); display:none;">
       <p>🔒 กรุณาเข้าสู่ระบบ เพื่อดูตารางรายละเอียดผู้ตอบแบบสอบถามรายบุคคล</p>
     </div>
+  </div>  <!-- ⬅️ ปิด .pb -->
+</div>  <!-- ⬅️ ปิด .panel#panel-behdash -->
 
 <div class="ov" id="ov-vidmgr" onclick="closePanel('vidmgr')"></div>
 <div class="panel" id="panel-vidmgr">
@@ -3381,13 +3383,6 @@ function closeImg() {
     }
 }
 
-// ฟังก์ชันปิด Modal
-function closeImg() { 
-    const modal = document.getElementById('imgModal');
-    modal.classList.remove('open'); 
-    setTimeout(function(){ document.getElementById('modal-img').src = ''; }, 250); 
-}
-
 function renderSummaryTable(data) {
   var tb = document.getElementById('hospSumBody'); if (!data || data.length === 0) { tb.innerHTML = '<tr><td colspan="12" style="text-align:center;">ไม่มีข้อมูล</td></tr>'; return; }
   var html = ''; var currentFilter = document.getElementById('fHosp').value;
@@ -5359,12 +5354,6 @@ function showExpandedImage(url) {
     const img = document.getElementById('modal-img');
     img.src = imgSrc;
     modal.classList.add('open');
-}
-
-// ฟังก์ชันสำหรับปิดรูปภาพ
-function closeImg() { 
-    document.getElementById('imgModal').classList.remove('open'); 
-    setTimeout(function(){ document.getElementById('modal-img').src = ''; }, 250); 
 }
 
 function applySettings() {
