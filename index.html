@@ -611,6 +611,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   <button class="btn-form bf-loc" style="background:#dc2626; margin-top:10px; display:none;" id="btnVidMgr" onclick="openVideoMgrPanel()">📺จัดการลิสต์วิดีโอ</button>
 <button class="btn-form bf-loc" style="background:#6366f1; margin-top:4px; display:none;" id="btnLinkMgr" onclick="openLinkMgr()">🔗 จัดการปุ่มลิ้งก์</button>
 <button class="btn-form bf-loc" style="background:#059669; margin-top:4px; display:none;" id="btnLineMgr" onclick="openLineMgr()">💬 ตั้งค่า LINE API</button>
+<button class="btn-form bf-loc" style="background:#4b5563; margin-top:4px; display:none;" id="btnSysSet" onclick="openSysSettings()">⚙️ ตั้งค่าระบบ (ข้อความ/ภาพวิ่ง)</button>
 </div>
 
 <div class="add-sec" id="addSecGuest" style="display:none">
@@ -1553,6 +1554,39 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <button class="btn-sec" style="width:100%; text-align:center;" onclick="closePanel('error-report')">ปิดหน้าต่าง</button>
   </div>
 </div>
+<div class="ov" id="ov-sysset" onclick="closePanel('sysset')"></div>
+<div class="panel" id="panel-sysset">
+  <div class="ph" style="background:#4b5563">
+    <span class="ph-t">⚙️ ตั้งค่าระบบ (ข้อความวิ่ง / ภาพวิ่ง)</span>
+    <button class="ph-x" onclick="closePanel('sysset')">✕</button>
+  </div>
+  <div class="pb">
+    <div class="fs">
+      <div class="fs-t" style="color:#4b5563; border-color:#e5e7eb;">💬 ตั้งค่าข้อความวิ่ง (Text Marquee)</div>
+      <div class="fg" style="margin-bottom:8px;">
+        <label class="cbi"><input type="checkbox" id="set-txt-en"> เปิดใช้งานข้อความวิ่ง</label>
+      </div>
+      <div class="fg" style="margin-bottom:12px;">
+        <label>ข้อความที่ต้องการแสดง</label>
+        <input type="text" id="set-txt-val" placeholder="เช่น ยินดีต้อนรับเข้าสู่ระบบ...">
+      </div>
+    </div>
+    <div class="fs">
+      <div class="fs-t" style="color:#4b5563; border-color:#e5e7eb;">🖼️ ตั้งค่าภาพผลงานวิ่ง (Image Marquee)</div>
+      <div class="fg" style="margin-bottom:8px;">
+        <label class="cbi"><input type="checkbox" id="set-img-en"> เปิดใช้งานภาพวิ่ง</label>
+      </div>
+      <div class="fg" style="margin-bottom:12px;">
+        <label>URL รูปภาพ (คั่นด้วยเครื่องหมายลูกน้ำ , )</label>
+        <textarea id="set-img-val" rows="4" placeholder="https://..., https://..."></textarea>
+        <div style="font-size:10px; color:var(--muted); margin-top:4px;">* สามารถใส่เป็น URL เต็ม หรือใส่แค่ ID ของภาพจาก Google Drive ก็ได้</div>
+      </div>
+    </div>
+  </div>
+  <div class="pf">
+    <button class="btn-p" style="background:#4b5563; width:100%; justify-content:center;" onclick="saveSysSettings()">💾 บันทึกการตั้งค่า</button>
+  </div>
+</div>
 
 <script>
 // ==============================================================
@@ -1575,7 +1609,7 @@ const WRITE_ACTIONS = new Set([
   'deleteRecord', 'deleteBehaviorRecord', 'deleteFollowupRecord',
   'deleteLinkData', 'deleteVideoItem', 'deleteHospFileLink',
   'updateHospLocation', 'saveLinkData', 'saveVideoItem',
-  'saveLineSettings', 'changePassword',
+  'saveLineSettings', 'changePassword', 'saveSystemSettings', // <--- เพิ่มตรงนี้
   'deleteImportLog', 'clearAllImportLogs'
 ]);
 
@@ -3193,7 +3227,7 @@ function onAmpChange() { var amp = document.getElementById('fAmp').value; var hS
 
 function updateAuthUI() {
   // [v6.3] Reset admin-only buttons ก่อนเสมอ ป้องกัน state ค้างจาก session เดิม
-  ['btnLineMgr', 'btnLinkMgr', 'btnVidMgr', 'btnLoc', 'btnConv'].forEach(function(id) {
+  ['btnLineMgr', 'btnLinkMgr', 'btnVidMgr', 'btnLoc', 'btnConv', 'btnSysSet'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -3214,7 +3248,8 @@ function updateAuthUI() {
     if(s.role === 'admin') { 
         document.getElementById('btnLinkMgr').style.display = 'flex'; 
         document.getElementById('btnVidMgr').style.display = 'flex';
-        document.getElementById('btnLineMgr').style.display = 'flex'; 
+        document.getElementById('btnLineMgr').style.display = 'flex';
+        document.getElementById('btnSysSet').style.display = 'flex'; 
     }
     if (s.role !== 'admin' && s.hospcode !== 'all') { 
         document.getElementById('sat-hc').value = s.hospcode; 
@@ -5240,6 +5275,42 @@ function saveLine() {
     if(res.ok) { toast(res.msg, 'ok'); G.settings.LINE_TOKEN = token; G.settings.LINE_TARGET = target; }
     else { toast(res.msg, 'err'); }
   }).saveLineSettings(token, target);
+}
+
+function openSysSettings() {
+  document.getElementById('set-txt-en').checked = (String(G.settings.enable_text_marquee).toLowerCase() === 'true');
+  document.getElementById('set-txt-val').value = G.settings.marquee_text || '';
+  document.getElementById('set-img-en').checked = (String(G.settings.enable_img_marquee).toLowerCase() === 'true');
+  document.getElementById('set-img-val').value = G.settings.marquee_imgs || '';
+  openPanel('sysset');
+}
+
+function saveSysSettings() {
+  var d = {
+    enable_text_marquee: document.getElementById('set-txt-en').checked,
+    marquee_text: document.getElementById('set-txt-val').value,
+    enable_img_marquee: document.getElementById('set-img-en').checked,
+    marquee_imgs: document.getElementById('set-img-val').value
+  };
+  toast('กำลังบันทึก...', 'inf');
+  google.script.run.withSuccessHandler(function(r) {
+    var res = JSON.parse(r);
+    if(res.ok) { 
+      toast(res.msg, 'ok'); 
+      // อัปเดตตัวแปร G ในระบบทันที
+      G.settings.enable_text_marquee = d.enable_text_marquee;
+      G.settings.marquee_text = d.marquee_text;
+      G.settings.enable_img_marquee = d.enable_img_marquee;
+      G.settings.marquee_imgs = d.marquee_imgs;
+      closePanel('sysset');
+      
+      // เรียกฟังก์ชันเดิมที่มีอยู่แล้ว เพื่อแสดงผลทันทีโดยไม่ต้องรีเฟรชหน้า
+      applySettings(); 
+      renderImageMarquee(G.settings.marquee_imgs);
+    } else { 
+      toast(res.msg, 'err'); 
+    }
+  }).saveSystemSettings(d);
 }
 
 function testLine() {
