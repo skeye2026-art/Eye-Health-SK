@@ -2329,8 +2329,10 @@ function applyFilters() {
   renderPieChart(kpiOut);
   renderBarChart();
   renderHeatmap();
+  renderExtraDashCharts(extra); // 👈 เพิ่มบรรทัดนี้ เพื่อให้วาดกราฟ 5 ตัวด้านล่าง
   if(typeof updateMapMarkers === 'function') updateMapMarkers();
 }
+
 function clearFilters() {
   ['fAmp','fHosp','fSch','fStat','fSex'].forEach(function(id){
     document.getElementById(id).value = '';
