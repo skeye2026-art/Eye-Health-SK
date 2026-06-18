@@ -4109,13 +4109,53 @@ setTimeout(function(){
 function openDel(cid) { G.delTarget={cid:cid,sheet:'screening_data'}; document.getElementById('delCidShow').textContent=cid; document.getElementById('delErr').textContent=''; document.getElementById('delMov').classList.add('open'); }
 function closeDel(){ document.getElementById('delMov').classList.remove('open'); }
 function confirmDel(){ google.script.run.withSuccessHandler(function(r){ var res=JSON.parse(r); if(res.ok){toast(res.msg,'ok');closeDel();forceRefresh();}else document.getElementById('delErr').textContent=res.msg; }).deleteRecord(G.delTarget.sheet,G.delTarget.cid); }
+
 function doExportCSV() {
   if (!G.dispRows.length) { toast('ไม่มีข้อมูลให้ส่งออก','err'); return; }
-  var hdr = '#,เลขบัตร,ชื่อ-สกุล,ชั้น,โรงเรียน,รหัสโรงเรียน,รพ.สต.,ชื่อ รพ.สต.,อำเภอ,สิทธิรักษา,VA ขวา,VA ซ้าย,วินิจฉัย,การส่งต่อ,สถานะ,ระดับเสี่ยงหน้าจอ,การใส่แว่นตา,วันตรวจ,Pre,Post,Gain%';
-  var rows = G.dispRows.map(function(r,i){ 
-      return [i+1,'"=""'+r.cid+'"""','"'+r.student_name+'"',r.school_class,'"'+r.school_name+'"',r.school_code,r.hospcode,'"'+r.hosp_name+'"',r.amphoe,'"'+r.treatment+'"',r.va_r,r.va_l,'"'+r.diagnosis+'"','"'+r.referral+'"',SL[r.status]||r.status,r.beh_risk||'-',r.fup_status||'-',r.screen_date,r.pre||'',r.post||'',r.gain||''].join(','); 
+  
+  // เพิ่มหัวคอลัมน์ให้ครบตามตารางหน้าเว็บ
+  var hdr = '#,เลขบัตร,ชื่อ-สกุล,ชั้น,โรงเรียน,รหัสโรงเรียน,อำเภอ,รพ.สต.,ชื่อ รพ.สต.,สิทธิรักษา,VAขวา(ตาเปล่า),VAซ้าย(ตาเปล่า),VAสองตา(ตาเปล่า),VAขวา(ใส่แว่น),VAซ้าย(ใส่แว่น),VAสองตา(ใส่แว่น),PHขวา,PHซ้าย,วินิจฉัย,การส่งต่อ,สถานะ,ระดับเสี่ยงหน้าจอ,การใส่แว่นตา,พึงพอใจ,Pre,Post,Gain%,วันตรวจ';
+  
+  var rows = G.dispRows.map(function(r, i) { 
+      return [
+          i + 1,
+          '"=""' + r.cid + '"""',
+          '"' + (r.student_name || '') + '"',
+          '"' + (r.school_class || '') + '"',
+          '"' + (r.school_name || '') + '"',
+          '"' + (r.school_code || '') + '"',
+          '"' + (r.amphoe || '') + '"',
+          '"' + (r.hospcode || '') + '"',
+          '"' + (r.hosp_name || '') + '"',
+          '"' + (r.treatment || '') + '"',
+          '"' + (r.va_r_naked || '') + '"',
+          '"' + (r.va_l_naked || '') + '"',
+          '"' + (r.va_naked_OU || '') + '"',
+          '"' + (r.va_r_glasses || '') + '"',
+          '"' + (r.va_l_glasses || '') + '"',
+          '"' + (r.va_glasses_OU || '') + '"',
+          '"' + (r.ph_r || '') + '"',
+          '"' + (r.ph_l || '') + '"',
+          '"' + (r.diagnosis || '') + '"',
+          '"' + (r.referral || '') + '"',
+          '"' + (SL[r.status] || r.status || '') + '"',
+          '"' + (r.beh_risk || '-') + '"',
+          '"' + (r.fup_status || '-') + '"',
+          '"' + (r.sat !== null ? r.sat.toFixed(2) : '-') + '"',
+          '"' + (r.pre !== null ? r.pre : '') + '"',
+          '"' + (r.post !== null ? r.post : '') + '"',
+          '"' + (r.gain !== null ? r.gain : '') + '"',
+          '"' + (r.screen_date || '') + '"'
+      ].join(','); 
   });
-  var csv = '\uFEFF' + hdr + '\n' + rows.join('\n'); var blob = new Blob([csv],{type:'text/csv;charset=utf-8'}); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'eyehealth_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); toast('Export CSV สำเร็จ','ok');
+  
+  var csv = '\uFEFF' + hdr + '\n' + rows.join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }); 
+  var a = document.createElement('a'); 
+  a.href = URL.createObjectURL(blob); 
+  a.download = 'eyehealth_export_' + new Date().toISOString().slice(0,10) + '.csv'; 
+  a.click();
+  toast('Export CSV สำเร็จ', 'ok');
 }
 
 function openPrintModal() { var chks = document.querySelectorAll('.row-chk:checked'); if(chks.length === 0) { toast('กรุณาติ๊กเลือกข้อมูลในตารางอย่างน้อย 1 รายการ', 'err'); return; } document.getElementById('printMov').classList.add('open'); }
