@@ -4119,7 +4119,6 @@ function confirmDel(){ google.script.run.withSuccessHandler(function(r){ var res
 function doExportCSV() {
   if (!G.dispRows.length) { toast('ไม่มีข้อมูลให้ส่งออก','err'); return; }
   
-  // เพิ่มหัวคอลัมน์ให้ครบตามตารางหน้าเว็บ
   var hdr = '#,เลขบัตร,ชื่อ-สกุล,ชั้น,โรงเรียน,รหัสโรงเรียน,อำเภอ,รพ.สต.,ชื่อ รพ.สต.,สิทธิรักษา,VAขวา(ตาเปล่า),VAซ้าย(ตาเปล่า),VAสองตา(ตาเปล่า),VAขวา(ใส่แว่น),VAซ้าย(ใส่แว่น),VAสองตา(ใส่แว่น),PHขวา,PHซ้าย,วินิจฉัย,การส่งต่อ,สถานะ,ระดับเสี่ยงหน้าจอ,การใส่แว่นตา,พึงพอใจ,Pre,Post,Gain%,วันตรวจ';
   
   var rows = G.dispRows.map(function(r, i) { 
@@ -4129,9 +4128,9 @@ function doExportCSV() {
           '"' + (r.student_name || '') + '"',
           '"' + (r.school_class || '') + '"',
           '"' + (r.school_name || '') + '"',
-          '"' + (r.school_code || '') + '"',
+          '"=""' + (r.school_code || '') + '"""',
           '"' + (r.amphoe || '') + '"',
-          '"' + (r.hospcode || '') + '"',
+          '"=""' + (r.hospcode || '') + '"""',
           '"' + (r.hosp_name || '') + '"',
           '"' + (r.treatment || '') + '"',
           '"=""' + (r.va_r_naked || '') + '"""',
@@ -4867,9 +4866,26 @@ function renderBehTable(rows) {
 
 function exportBehCSV() {
   if (!GB.data || !GB.data.rows.length) { toast('ไม่มีข้อมูลให้ส่งออก','err'); return; }
-  var hdr = '#,เลขบัตร,ชื่อ-สกุล,ชั้น,รพ.สต.,ชม.วันธรรมดา,ชม.วันหยุด,อุปกรณ์,วัตถุประสงค์,ระยะ,พัก,แว่นกรองฟ้า,อาการ,คะแนนเสี่ยง,ระดับเสี่ยง';
+  var hdr = '#,เลขบัตร,ชื่อ-สกุล,ชั้น,รหัส รพ.สต.,ชื่อ รพ.สต.,ชม.วันธรรมดา,ชม.วันหยุด,อุปกรณ์,วัตถุประสงค์,ระยะ,พัก,แว่นกรองฟ้า,อาการ,คะแนนเสี่ยง,ระดับเสี่ยง';
   var lines = GB.data.rows.map(function(r,i){
-    return [i+1,'"=""'+r.cid+'"""','"'+r.name+'"',r.school_class,'"'+r.hosp_name+'"',r.hours_wk,r.hours_we,'"'+r.devices+'"','"'+r.purposes+'"','"'+r.distance+'"','"'+r.rest+'"','"'+r.blue+'"','"'+r.symptoms+'"',r.risk_score,r.risk_level].join(',');
+    return [
+        i+1,
+        '"=""'+r.cid+'"""',
+        '"'+r.name+'"',
+        '"'+(r.school_class || '')+'"',
+        '"=""'+r.hospcode+'"""',
+        '"'+r.hosp_name+'"',
+        r.hours_wk,
+        r.hours_we,
+        '"'+r.devices+'"',
+        '"'+r.purposes+'"',
+        '"'+r.distance+'"',
+        '"'+r.rest+'"',
+        '"'+r.blue+'"',
+        '"'+r.symptoms+'"',
+        r.risk_score,
+        r.risk_level
+    ].join(',');
   });
   var csv = '\uFEFF' + hdr + '\n' + lines.join('\n');
   var blob = new Blob([csv],{type:'text/csv;charset=utf-8'}); var a = document.createElement('a');
