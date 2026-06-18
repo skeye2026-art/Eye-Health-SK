@@ -2262,14 +2262,14 @@ function applyFilters() {
     return true;
   });
 
-  var k = {total:0, normal:0, abnormal:0, referred:0, glasses:0, preSum:0, postSum:0, gainSum:0, testCount:0, satCount:0, preCount:0, postCount:0};
+  var k = {total:0, normal:0, abnormal:0, referred:0, glasses:0, preSum:0, postSum:0, gainSum:0, testCount:0, satCount:0, preCount:0, postCount:0, satSum:0};
   G.dispRows.forEach(function(r) {
     k.total++;
     if(r.status==='normal') k.normal++;
     else if(r.status==='abnormal') k.abnormal++;
     else if(r.status==='referred') k.referred++;
     else if(r.status==='glasses') k.glasses++;
-    if(r.sat !== null) k.satCount++;
+    if(r.sat !== null) { k.satCount++; k.satSum += Number(r.sat); }
     if(r.pre !== null) k.preCount++;
     if(r.post !== null) k.postCount++;
     if(r.pre !== null && r.post !== null) {
@@ -2296,7 +2296,7 @@ function applyFilters() {
     preAvg: k.testCount>0 ? Math.round(k.preSum/k.testCount*10)/10 : null,
     postAvg: k.testCount>0 ? Math.round(k.postSum/k.testCount*10)/10 : null,
     gainAvg: k.testCount>0 ? Math.round(k.gainSum/k.testCount) : null,
-    satAvg: G.kpi.satAvg,
+    satAvg: k.satCount > 0 ? Math.round(k.satSum / k.satCount * 100) / 100 : null,
     preTestCount: k.preCount,
     satCount: k.satCount,
     satPct: Math.round(k.satCount/t*100),
@@ -2323,10 +2323,11 @@ function applyFilters() {
       var diagLevel = getDiagSeverityForRow(r);
       extra.diagSeverityTally[diagLevel]++;
   });
-  // -----------------------------------------------------------------------------------
+
   updateKPIs(kpiOut);
   renderTable(G.dispRows);
   renderPieChart(kpiOut);
+  renderSatTestChart(kpiOut); // <-- เพิ่มบรรทัดนี้เพื่อให้กราฟอัปเดต
   renderBarChart();
   renderHeatmap();
   renderExtraDashCharts(extra); // 👈 เพิ่มบรรทัดนี้ เพื่อให้วาดกราฟ 5 ตัวด้านล่าง
@@ -3535,19 +3536,19 @@ function updateKPIs(k) {
     }
   } 
   // ⭐ พึงพอใจ — แสดงจำนวนคน + % ที่ตอบ
-  sv('k-sat', k.satAvg !== null ? k.satAvg.toFixed(2) : '—'); 
+  sv('k-sat', (k.satAvg !== null && k.satAvg !== undefined) ? Number(k.satAvg).toFixed(2) : '—'); 
   if (k.satPct !== undefined) {
     svHtml('k-sat-sub', '/5.00<br><span style="font-size:9px; color:var(--purple); font-weight:600;">' + k.satCount + ' คน (' + k.satPct + '%)</span>');
   }
   
   // 📝 Pre-test — แสดงจำนวนคน + % ที่ทำ
-  sv('k-pre', k.preAvg !== null ? k.preAvg.toFixed(1) : '—'); 
+  sv('k-pre', (k.preAvg !== null && k.preAvg !== undefined) ? Number(k.preAvg).toFixed(1) : '—'); 
   if (k.prePct !== undefined) {
     svHtml('k-pre-sub', '/10 คะแนน<br><span style="font-size:9px; color:var(--teal); font-weight:600;">' + k.preCount + ' คน (' + k.prePct + '%)</span>');
   }
   
   // 📝 Post-test — แสดงจำนวนคน + % ที่ทำ
-  sv('k-post', k.postAvg !== null ? k.postAvg.toFixed(1) : '—'); 
+  sv('k-post', (k.postAvg !== null && k.postAvg !== undefined) ? Number(k.postAvg).toFixed(1) : '—'); 
   if (k.postPct !== undefined) {
     svHtml('k-post-sub', '/10 คะแนน<br><span style="font-size:9px; color:#0891b2; font-weight:600;">' + k.postCount + ' คน (' + k.postPct + '%)</span>');
   }
@@ -3749,7 +3750,9 @@ function renderPieChart(kpi) {
 function renderSatTestChart(kpi) {
   var metricKeys = ['sat', 'pre', 'post'];
   var ctx = document.getElementById('lineChart').getContext('2d'); if (G.lineInst) G.lineInst.destroy(); _satClickIdx = null;
-  var satVal = kpi.satAvg !== null ? kpi.satAvg : 0; var preVal = kpi.preAvg !== null ? kpi.preAvg : 0; var postVal = kpi.postAvg !== null ? kpi.postAvg : 0;
+  var satVal = (kpi.satAvg !== null && kpi.satAvg !== undefined) ? Number(kpi.satAvg) : 0; 
+  var preVal = (kpi.preAvg !== null && kpi.preAvg !== undefined) ? Number(kpi.preAvg) : 0; 
+  var postVal = (kpi.postAvg !== null && kpi.postAvg !== undefined) ? Number(kpi.postAvg) : 0;
   var origColors = ['#7c3aed', '#0d9488', '#0891b2']; var labels = ['ความพึงพอใจ', 'Pre-test', 'Post-test']; var displayVals = [satVal * 2, preVal, postVal];
   G.lineInst = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ data: displayVals, backgroundColor: origColors.slice(), borderRadius: 6, borderSkipped: false }] }, options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 25 } }, onClick: function(evt, elements) { var ds = this.data.datasets[0]; if (!elements.length) {
   ds.backgroundColor = origColors.slice();
