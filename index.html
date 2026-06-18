@@ -2183,8 +2183,10 @@ function convertFile() {
         var csvContent = "\uFEFF" + hdr.join(',') + "\n";
         processedRows.forEach(function(r) {
             var rowStr = r.map(function(c, idx) {
-                if (idx === 2) return '="'+c+'"';
-                if (idx === 14) return '="'+c+'"';
+                // บังคับให้เลขบัตร (2), รหัสรพ.สต (14) และค่า VA (24 ถึง 31) เป็น Text เพื่อป้องกัน Excel แปลงเป็นวันที่
+                if (idx === 2 || idx === 14 || (idx >= 24 && idx <= 31)) {
+                    return '="'+String(c).replace(/"/g, '""')+'"';
+                }
                 return '"'+String(c).replace(/"/g, '""')+'"';
             }).join(',');
             csvContent += rowStr + "\n";
@@ -2713,7 +2715,11 @@ function dlTemplate() {
     "ผู้ตรวจทดสอบ", "นักวิชาการสาธารณสุข", "1074000001", "หนองสองห้อง", "บ้านแพ้ว", 
     "สมุทรสาคร", "", "สิทธิบัตรทอง (30 บาท)", "ไทย"  // ⬅️ เพิ่ม
   ];
-  var formattedDummy = dummyData.map(function(c, i){ if (i===2) return '="'+c+'"'; if (i===14) return '="'+c+'"'; return '"'+c+'"'; }).join(','); csv += formattedDummy + "\n";
+  var formattedDummy = dummyData.map(function(c, i){ 
+    if (i===2 || i===14 || (i>=24 && i<=31)) return '="'+c+'"'; 
+    return '"'+c+'"'; 
+  }).join(','); 
+  csv += formattedDummy + "\n";
   var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = url; a.download = 'Template_Screening_Import_v6.3.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a); toast('ดาวน์โหลด Template เรียบร้อยครับ', 'ok');
 }
 
@@ -4128,14 +4134,14 @@ function doExportCSV() {
           '"' + (r.hospcode || '') + '"',
           '"' + (r.hosp_name || '') + '"',
           '"' + (r.treatment || '') + '"',
-          '"' + (r.va_r_naked || '') + '"',
-          '"' + (r.va_l_naked || '') + '"',
-          '"' + (r.va_naked_OU || '') + '"',
-          '"' + (r.va_r_glasses || '') + '"',
-          '"' + (r.va_l_glasses || '') + '"',
-          '"' + (r.va_glasses_OU || '') + '"',
-          '"' + (r.ph_r || '') + '"',
-          '"' + (r.ph_l || '') + '"',
+          '"=""' + (r.va_r_naked || '') + '"""',
+          '"=""' + (r.va_l_naked || '') + '"""',
+          '"=""' + (r.va_naked_OU || '') + '"""',
+          '"=""' + (r.va_r_glasses || '') + '"""',
+          '"=""' + (r.va_l_glasses || '') + '"""',
+          '"=""' + (r.va_glasses_OU || '') + '"""',
+          '"=""' + (r.ph_r || '') + '"""',
+          '"=""' + (r.ph_l || '') + '"""',
           '"' + (r.diagnosis || '') + '"',
           '"' + (r.referral || '') + '"',
           '"' + (SL[r.status] || r.status || '') + '"',
