@@ -1853,11 +1853,10 @@ var G_chartFilter = {
 
 function getDiagSeverityForRow(r) {
   var diagStr = String(r.diagnosis || '').trim();
-  if (/ปกติ|เฝ้าระวัง/.test(diagStr) || diagStr === '') return 'ปกติ/เฝ้าระวัง';
+  if (/ความผิดปกติรุนแรง|อื่นๆ/.test(diagStr)) return 'ฉุกเฉิน';
+  if (/ตาขี้เกียจ|รุนแรง/.test(diagStr)) return 'รุนแรง/ตาขี้เกียจ';
   if (/สงสัยสายตาผิดปกติ/.test(diagStr)) return 'ผิดปกติ(น้อย-ปานกลาง)';
-  if (/ตาขี้เกียจ|รุนแรง/.test(diagStr) && !/ผิดปกติรุนแรง/.test(diagStr)) return 'รุนแรง/ตาขี้เกียจ';
-  if (/ความผิดปกติรุนแรง/.test(diagStr) || /อื่นๆ/.test(diagStr)) return 'ฉุกเฉิน';
-  return 'ปกติ/เฝ้าระวัง';
+  return 'ปกติ/เฝ้าระวัง'; // <-- ทุกเคสที่ไม่ตรงเงื่อนไขบน จะถูกนับเป็นปกติ เพื่อให้จำนวนคนครบ 100%
 }
 
 function makeChartToggle(stateKey, filterKey, values) {
@@ -2308,7 +2307,23 @@ function applyFilters() {
     traineePct: Math.round(k.preCount/t*100),
     traineePctGlasses: k.glasses > 0 ? Math.round(k.preCount/k.glasses*100) : null
   };
+  // --- ส่วนที่เพิ่มใหม่: คำนวณกราฟด้านล่างแบบ Real-time ให้ยอดรวมตรงกับผู้ป่วยในตารางเป๊ะ 100% ---
+  var extra = {
+      treatTally: {}, behRiskTally: { low: 0, medium: 0, high: 0 },
+      fupWearTally: {}, diagSeverityTally: { 'ปกติ/เฝ้าระวัง': 0, 'ผิดปกติ(น้อย-ปานกลาง)': 0, 'รุนแรง/ตาขี้เกียจ': 0, 'ฉุกเฉิน': 0 }, natTally: {}
+  };
 
+  G.dispRows.forEach(function(r) {
+      var treat = String(r.treatment || '').trim() || 'ไม่ระบุสิทธิ์';
+      extra.treatTally[treat] = (extra.treatTally[treat] || 0) + 1;
+      var nat = String(r.nationality || 'ไทย').trim() || 'ไทย';
+      extra.natTally[nat] = (extra.natTally[nat] || 0) + 1;
+      if(r.beh_risk) extra.behRiskTally[r.beh_risk]++;
+      if(r.fup_status) extra.fupWearTally[r.fup_status] = (extra.fupWearTally[r.fup_status] || 0) + 1;
+      var diagLevel = getDiagSeverityForRow(r);
+      extra.diagSeverityTally[diagLevel]++;
+  });
+  // -----------------------------------------------------------------------------------
   updateKPIs(kpiOut);
   renderTable(G.dispRows);
   renderPieChart(kpiOut);
@@ -3395,9 +3410,6 @@ function loadDashboard(params) {
     updateKPIs(G.kpi); renderPieChart(G.kpi); renderSatTestChart(G.kpi); 
     try { renderSummaryTable(G.hospSummaryData); } catch(err) { console.error('Summary Error:', err); }
     renderBarChart(); renderSatBreakdownChart(); renderSatTypePieChart(); renderHeatmap();
-    
-    // เรียกวาดกราฟชุดใหม่ที่นี่
-    if(d.data.extraStats) renderExtraDashCharts(d.data.extraStats);
 
     renderTable(G.dispRows); // เรียกแสดงตารางแบบไม่มีเงื่อนไขผูกมัดล็อกอิน
     if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 300);
