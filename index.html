@@ -4136,8 +4136,28 @@ function confirmDel(){ google.script.run.withSuccessHandler(function(r){ var res
 function doExportCSV() {
   if (!G.dispRows.length) { toast('ไม่มีข้อมูลให้ส่งออก','err'); return; }
   
-  var hdr = '#,เลขบัตร,ชื่อ-สกุล,ชั้น,โรงเรียน,รหัสโรงเรียน,อำเภอ,รพ.สต.,ชื่อ รพ.สต.,สิทธิรักษา,VAขวา(ตาเปล่า),VAซ้าย(ตาเปล่า),VAสองตา(ตาเปล่า),VAขวา(ใส่แว่น),VAซ้าย(ใส่แว่น),VAสองตา(ใส่แว่น),PHขวา,PHซ้าย,วินิจฉัย,การส่งต่อ,สถานะ,ระดับเสี่ยงหน้าจอ,การใส่แว่นตา,พึงพอใจ,Pre,Post,Gain%,วันตรวจ';
+  // 1. เพิ่มหัวคอลัมน์ "สัญชาติ" ต่อท้ายสุด
+  var hdr = '#,เลขบัตร,ชื่อ-สกุล,ชั้น,โรงเรียน,รหัสโรงเรียน,อำเภอ,รพ.สต.,ชื่อ รพ.สต.,สิทธิรักษา,VAขวา(ตาเปล่า),VAซ้าย(ตาเปล่า),VAสองตา(ตาเปล่า),VAขวา(ใส่แว่น),VAซ้าย(ใส่แว่น),VAสองตา(ใส่แว่น),PHขวา,PHซ้าย,วินิจฉัย,การส่งต่อ,สถานะ,ระดับเสี่ยงหน้าจอ,การใส่แว่นตา,พึงพอใจ,Pre,Post,Gain%,วันตรวจ,สัญชาติ';
   
+  // 2. ฟังก์ชันแปลง VA จากเมตร (6/x) เป็นฟุต (20/x)
+  function convertVaToFeet(va) {
+    if (!va) return '';
+    var v = String(va).trim();
+    // 💡 สามารถแก้ไขตัวเลขด้านหลังให้ตรงกับภาพเกณฑ์ VA ของคุณได้เลย
+    var map = {
+      '6/6': '20/20',
+      '6/9': '20/30',
+      '6/12': '20/40',
+      '6/18': '20/50',  // หรือ 20/60 แล้วแต่เกณฑ์ในภาพ
+      '6/24': '20/70',
+      '6/36': '20/100',
+      '6/60': '20/200',
+      '< 6/60': '< 20/200'
+    };
+    // ถ้าพบค่าเมตรตรงกับคีย์ให้แปลง ถ้าไม่พบ (เป็นฟุตอยู่แล้ว) คืนค่าเดิม
+    return map[v] || v;
+  }
+
   var rows = G.dispRows.map(function(r, i) { 
       return [
           i + 1,
@@ -4150,14 +4170,15 @@ function doExportCSV() {
           '"=""' + (r.hospcode || '') + '"""',
           '"' + (r.hosp_name || '') + '"',
           '"' + (r.treatment || '') + '"',
-          '"=""' + (r.va_r_naked || '') + '"""',
-          '"=""' + (r.va_l_naked || '') + '"""',
-          '"=""' + (r.va_naked_OU || '') + '"""',
-          '"=""' + (r.va_r_glasses || '') + '"""',
-          '"=""' + (r.va_l_glasses || '') + '"""',
-          '"=""' + (r.va_glasses_OU || '') + '"""',
-          '"=""' + (r.ph_r || '') + '"""',
-          '"=""' + (r.ph_l || '') + '"""',
+          // 3. ครอบฟังก์ชันแปลง VA ในคอลัมน์สายตาทั้งหมด
+          '"=""' + convertVaToFeet(r.va_r_naked) + '"""',
+          '"=""' + convertVaToFeet(r.va_l_naked) + '"""',
+          '"=""' + convertVaToFeet(r.va_naked_OU) + '"""',
+          '"=""' + convertVaToFeet(r.va_r_glasses) + '"""',
+          '"=""' + convertVaToFeet(r.va_l_glasses) + '"""',
+          '"=""' + convertVaToFeet(r.va_glasses_OU) + '"""',
+          '"=""' + convertVaToFeet(r.ph_r) + '"""',
+          '"=""' + convertVaToFeet(r.ph_l) + '"""',
           '"' + (r.diagnosis || '') + '"',
           '"' + (r.referral || '') + '"',
           '"' + (SL[r.status] || r.status || '') + '"',
@@ -4167,7 +4188,9 @@ function doExportCSV() {
           '"' + (r.pre !== null ? r.pre : '') + '"',
           '"' + (r.post !== null ? r.post : '') + '"',
           '"' + (r.gain !== null ? r.gain : '') + '"',
-          '"' + (r.screen_date || '') + '"'
+          '"' + (r.screen_date || '') + '"',
+          // 4. เพิ่มคอลัมน์สัญชาติต่อท้าย
+          '"' + (r.nationality || '') + '"'
       ].join(','); 
   });
   
