@@ -745,7 +745,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
     <div class="tbl-sec" id="indvTableSec" style="display:none">
       <div class="tbl-ctrl">
-    <input class="srch" id="srchBox" placeholder="🔍 ค้นหา... (กำลังพัฒนาเพื่อรองรับ API)">
+    <input class="srch" id="srchBox" placeholder="🔍 ค้นหาชื่อ หรือ เลขบัตร ปชช...." oninput="debounceSearch()">
     
     <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
         <button class="btn-sec" id="btnPrevPage" onclick="changePage(-1)">◀ ก่อนหน้า</button>
@@ -6302,6 +6302,16 @@ let currentPage = 1;
 let currentLimit = 50;
 let totalPages = 1;
 
+let searchTimeout;
+// ฟังก์ชันหน่วงเวลา รอให้พิมพ์เสร็จ 0.5 วินาที ค่อยส่งไปค้นหา
+function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(function() {
+        currentPage = 1; // กลับไปหน้าแรกเสมอเมื่อค้นหา
+        loadTablePage(1);
+    }, 500);
+}
+
 function loadTablePage(page) {
     document.getElementById('tBody').innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--muted2)">⏳ กำลังดึงข้อมูลหน้า ' + page + '...</td></tr>';
     
@@ -6310,7 +6320,8 @@ function loadTablePage(page) {
         limit: currentLimit,
         hospcode: document.getElementById('fHosp').value,
         amphoe: document.getElementById('fAmp').value,
-        school: document.getElementById('fSch').value
+        school: document.getElementById('fSch').value,
+        search: document.getElementById('srchBox').value.trim() // 👈 เพิ่มบรรทัดนี้เพื่อส่งคำค้นหา
     };
 
     google.script.run.withSuccessHandler(function(r) {
@@ -6320,12 +6331,10 @@ function loadTablePage(page) {
         currentPage = res.data.page;
         totalPages = res.data.totalPages || 1;
         
-        // อัปเดตข้อความบอกหน้า
         document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
         document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
         document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
         
-        // ส่งให้ฟังก์ชัน renderTable เดิมเพื่อวาดตาราง (อาจต้องแก้ property ให้ตรงกับ JSON ที่รับมา)
         renderTable(res.data.rows);
     }).getScreeningPaginated(params);
 }
