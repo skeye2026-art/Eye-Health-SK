@@ -2334,7 +2334,8 @@ function applyFilters() {
   });
 
   updateKPIs(kpiOut);
-  renderTable(G.dispRows);
+    // เรียกตารางแบบ Pagination แทนการเรนเดอร์ทั้งหมด
+  loadTablePage(1); 
   renderPieChart(kpiOut);
   renderSatTestChart(kpiOut); // <-- เพิ่มบรรทัดนี้เพื่อให้กราฟอัปเดต
   renderBarChart();
