@@ -744,7 +744,16 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     </div>
 
     <div class="tbl-sec" id="indvTableSec" style="display:none">
-      <div class="tbl-ctrl"><input class="srch" id="srchBox" placeholder="🔍 ค้นหาชื่อ / เลขบัตร / รพ.สต. / โรงเรียน ..." oninput="applyFilters()"><button class="btn-exp btn-print-doc" onclick="openPrintModal()">🖨 พิมพ์แบบฟอร์ม</button><button class="btn-exp" onclick="doExportCSV()">📥 Export CSV</button></div>
+      <div class="tbl-ctrl">
+    <input class="srch" id="srchBox" placeholder="🔍 ค้นหา... (กำลังพัฒนาเพื่อรองรับ API)">
+    
+    <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+        <button class="btn-sec" id="btnPrevPage" onclick="changePage(-1)">◀ ก่อนหน้า</button>
+        <span id="pageInfo" style="font-size:12px; font-weight:bold; color:var(--primary);">หน้า 1 / 1</span>
+        <button class="btn-sec" id="btnNextPage" onclick="changePage(1)">ถัดไป ▶</button>
+    </div>
+    
+    <button class="btn-exp btn-print-doc" onclick="openPrintModal()">🖨 พิมพ์แบบฟอร์ม</button><button class="btn-exp" onclick="doExportCSV()">📥 Export CSV</button></div>
       <div class="tbl-wrap">
         <table class="dtbl" id="dtbl">
           <thead><tr>
@@ -1594,7 +1603,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 // ✨ Features: Auto-Retry + Double-Click Guard + Loading Indicator
 // ==============================================================
 const CONFIG = {
-  GAS_API_URL: "https://script.google.com/macros/s/AKfycbyNIf1Yg-vuU8yshG31p8go_s8lShYnKrLoNpcRJatIy8te109--YGX7hrM5Fg87UWVTw/exec",
+  GAS_API_URL: "https://script.google.com/macros/s/AKfycbwprr5FwI-xWZahSm8LV63f0U9_AB_IlPuVoKsK0LcPEW1CTrUPu4N13ARI01tZvU4/exec",
   MAX_RETRY: 5,           // จำนวนครั้งสูงสุดที่จะลองใหม่
   RETRY_BASE_MS: 3000     // หน่วงเวลาฐาน: 2s → 4s → 6s + jitter
 };
@@ -6286,6 +6295,65 @@ async function exportOnePageAsImage() {
     }, 800); // ดีเลย์รอให้ Browser วาดรูป Base64 ลงจอให้เรียบร้อยก่อนแคปภาพ
   });
 }
+
+// ในแท็ก <script>
+let currentPage = 1;
+let currentLimit = 50;
+let totalPages = 1;
+
+function loadTablePage(page) {
+    document.getElementById('tBody').innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--muted2)">⏳ กำลังดึงข้อมูลหน้า ' + page + '...</td></tr>';
+    
+    var params = {
+        page: page,
+        limit: currentLimit,
+        hospcode: document.getElementById('fHosp').value,
+        amphoe: document.getElementById('fAmp').value,
+        school: document.getElementById('fSch').value
+    };
+
+    google.script.run.withSuccessHandler(function(r) {
+        var res = JSON.parse(r);
+        if(!res.ok) { toast('โหลดตารางล้มเหลว: ' + res.msg, 'err'); return; }
+        
+        currentPage = res.data.page;
+        totalPages = res.data.totalPages || 1;
+        
+        // อัปเดตข้อความบอกหน้า
+        document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
+        document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
+        document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
+        
+        // ส่งให้ฟังก์ชัน renderTable เดิมเพื่อวาดตาราง (อาจต้องแก้ property ให้ตรงกับ JSON ที่รับมา)
+        renderTable(res.data.rows);
+    }).getScreeningPaginated(params);
+}
+
+function changePage(direction) {
+    let newPage = currentPage + direction;
+    if(newPage >= 1 && newPage <= totalPages) {
+        loadTablePage(newPage);
+    }
+}
+
+function getDashboardKPI(params) {
+  try {
+    var payload = {};
+    if (params.hospcode) payload.p_hospcode = params.hospcode;
+    if (params.amphoe) payload.p_amphoe = params.amphoe;
+
+    // ยิง API ไปที่ RPC function
+    var res = supaFetch('rpc/get_dashboard_kpi', 'POST', payload);
+    
+    if (res.ok) {
+        return resp_(true, res.data); // จะได้ JSON: { total: 1000, normal: 800, abnormal: 200, ... }
+    }
+    return resp_(false, null, res.msg);
+  } catch(e) {
+    return resp_(false, null, e.message);
+  }
+}
+
 </script>
 </body>
 </html>
