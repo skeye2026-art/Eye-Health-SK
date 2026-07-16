@@ -2377,7 +2377,13 @@ function clearFilters() {
   onAmpChange();
   applyFilters();
 }
-function forceRefresh() { clearFilters(); loadDashboard({}); toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf'); }
+function forceRefresh() {
+  // ล้างข้อมูลเก่าในหน่วยความจำก่อน ไม่ให้ applyFilters() ใน clearFilters() วาดข้อมูลเก่าซ้ำ (ทำให้ดูเหมือนไม่รีเฟรช)
+  G.allRows = []; G.dispRows = [];
+  clearFilters();
+  toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf');
+  loadDashboard({});
+}
 function mapCsvToRowDynamic(headers, cols) {
     var HEADER_MAP = {
         "level_edu": 0, "ระดับชั้น": 0,
@@ -2794,7 +2800,6 @@ function triggerFlow(nextStep, msg, nextAction) {
 
 function closeFlow() { document.getElementById('flowMov').classList.remove('open'); }
 
-// 🟢 วางโค้ดนี้แทน window.onload ตัวเก่า 🟢
 window.onload = async function () {
     setDate(); buildSatQ(); buildTestQ('pre'); buildTestQ('post');
     document.addEventListener('keydown', function(e){
@@ -2803,8 +2808,21 @@ window.onload = async function () {
     flatpickr(".datepicker", { dateFormat: "d/m/Y", locale: "th", formatDate: function(date, format, locale) { var d = String(date.getDate()).padStart(2, '0'); var m = String(date.getMonth() + 1).padStart(2, '0'); var y = date.getFullYear(); if(y < 2400) y += 543; return d + '/' + m + '/' + y; }, parseDate: function(datestr, format) { var parts = datestr.split('/'); if(parts.length === 3) { var y = parseInt(parts[2], 10); if (y > 2400) y -= 543; return new Date(y, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10)); } return new Date(); } });
     ChartDataLabels && Chart.register(ChartDataLabels); bindAutoDiagnose();
 
+    // 🔐 [ย้ายขึ้นมาก่อน] อ่าน Session จาก token แบบ sync ไม่ต้องรอ Supabase
+    let token = sessionStorage.getItem('EYE_SESSION_TOKEN') || localStorage.getItem('EYE_SESSION_TOKEN');
+    G.session = {loggedIn: false, user: '', role: '', hospcode: ''};
+    if(token) {
+        try {
+            let payload = JSON.parse(atob(token.split('.')[1]));
+            if(Date.now() <= payload.exp) G.session = {loggedIn: true, user: payload.user, role: payload.role, hospcode: payload.hospcode};
+        } catch(e){}
+    }
+
+    // 🚀 [ยิงคู่ขนาน] เริ่มดึง Dashboard จาก GAS ทันที ไม่ต้องรอ Supabase settings ให้เสร็จก่อน
+    loadDashboard({});
+
     try {
-        // 🚀 โหลดข้อมูลตั้งค่าระบบตรงจาก Supabase (ข้าม GAS = ไวปรี๊ด ไม่ติดคอขวด 10 วินาทีอีกต่อไป)
+        // โหลดข้อมูลตั้งค่าระบบตรงจาก Supabase (ทำงานคู่ขนานกับ loadDashboard ด้านบน)
         const [setRes, hospRes, schRes, vaRes, linkRes, vidRes] = await Promise.all([
             fetchSupa('settings'), fetchSupa('hosp_data'), fetchSupa('school_data'), 
             fetchSupa('va_mapping'), fetchSupa('links_data', '*&order=ord.asc'), fetchSupa('video_data', '*&order=ord.asc')
@@ -2821,24 +2839,11 @@ window.onload = async function () {
         G.links = linkRes.map(l => ({ id: l.id, label: l.label, url: l.url, icon: l.iconurl, order: l.ord }));
         G.videos = vidRes.map(v => ({ id: v.id, label: v.label, url: v.url, order: v.ord }));
 
-        // 🔐 จัดการ Session เช็คการล็อกอิน
-        let token = sessionStorage.getItem('EYE_SESSION_TOKEN') || localStorage.getItem('EYE_SESSION_TOKEN');
-        G.session = {loggedIn: false, user: '', role: '', hospcode: ''};
-        if(token) {
-            try {
-                let payload = JSON.parse(atob(token.split('.')[1]));
-                if(Date.now() <= payload.exp) G.session = {loggedIn: true, user: payload.user, role: payload.role, hospcode: payload.hospcode};
-            } catch(e){}
-        }
-
-        // 🎨 ประกอบหน้า UI ขึ้นมาทันที
+        // 🎨 ประกอบหน้า UI ขึ้นมาทันที (Session ตั้งไว้แล้วด้านบน)
         applySettings(); buildDropdowns(); updateAuthUI(); initMap(); 
         renderLinks(G.links); renderVideoPlaylist(G.videos);
         if(G.videos.length > 0) renderVideo(G.videos[0].url); else renderVideo('');
         if(G.settings.marquee_imgs) renderImageMarquee(G.settings.marquee_imgs);
-
-        // 📊 สั่งให้ดึง Dashboard ต่อไป...
-        loadDashboard({});
         
     } catch(e) {
         toast('การเชื่อมต่อระบบล้มเหลว: ' + e.message, 'err');
@@ -3454,6 +3459,9 @@ function loadDashboard(params) {
     loadTablePage(1); 
     
     if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 300);
+  }).withFailureHandler(function(err) {
+    toast('❌ โหลด Dashboard ล้มเหลว: ' + (err && err.message ? err.message : 'Unknown error') + ' — กรุณากด "🔄 โหลดใหม่"', 'err');
+    document.getElementById('tBody').innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--red);">❌ โหลดข้อมูลไม่สำเร็จ กรุณากด "🔄 โหลดใหม่" อีกครั้ง</td></tr>';
   }).getDashboardData(params);
 }
 
