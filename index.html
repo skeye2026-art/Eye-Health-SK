@@ -6399,12 +6399,48 @@ async function loadTablePage(page) {
             satMap[r.cid] = count > 0 ? Math.round((sum/count)*100)/100 : null;
         });
 
+        function calcStatusClient_(obj, hasFup) {
+            var diag = String(obj.diagnosis || '').trim();
+            if (diag === 'สายตาปกต') diag = 'สายตาปกติ';
+            var ref = String(obj.referral || '').trim();
+            var noRefer = ['', 'ไม่จำเป็นต้องส่งต่อ', 'ไม่ส่ง'].indexOf(ref) >= 0;
+            if (!noRefer && hasFup) return 'glasses';
+            if (!noRefer) return 'referred';
+            if (diag && diag !== 'สายตาปกติ') return 'abnormal';
+            return 'normal';
+        }
+
         let formattedRows = rows.map(obj => {
             let cid = String(obj.cid).replace(/\D/g, '');
             let hc = String(obj.hospcode || '').trim();
             let hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ' };
+            let pre = preMap[cid] || null, post = postMap[cid] || null;
+            let gain = (pre !== null && post !== null) ? (pre >= 10 ? 100 : Math.round((post-pre)/(10-pre)*100)) : null;
             return {
-                cid: cid, student_name: String(obj.student_name || '').trim(), school_class: String(obj.school_class || '').trim(), school_name: String(obj.school_name || '').trim(), hospcode: hc, hosp_name: hInfo.name, status: 'normal', pre: preMap[cid] || null, post: postMap[cid] || null, sat: satMap[cid] || null, fup_status: fupMap[cid] || null, diagnosis: String(obj.diagnosis || '').trim(), screen_date: String(obj.screen_date || '')
+                cid: cid,
+                student_name: String(obj.student_name || '').trim(),
+                school_class: String(obj.school_class || '').trim(),
+                school_name: String(obj.school_name || '').trim(),
+                hospcode: hc, hosp_name: hInfo.name, amphoe: hInfo.amphoe,
+                sex: String(obj.sex || '').trim(),
+                treatment: String(obj.treatment || '').trim(),
+                nationality: String(obj.nationality || 'ไทย').trim(),
+                va_r_naked: String(obj.va_r_naked || '').trim(),
+                va_l_naked: String(obj.va_l_naked || '').trim(),
+                va_naked_OU: String(obj.va_naked_ou || '').trim(),
+                va_r_glasses: String(obj.va_r_glasses || '').trim(),
+                va_l_glasses: String(obj.va_l_glasses || '').trim(),
+                va_glasses_OU: String(obj.va_glasses_ou || '').trim(),
+                ph_r: String(obj.ph_r || '').trim(),
+                ph_l: String(obj.ph_l || '').trim(),
+                diagnosis: String(obj.diagnosis || '').trim(),
+                referral: String(obj.referral || '').trim(),
+                examiner: String(obj.examiner || '').trim(),
+                status: calcStatusClient_(obj, !!fupMap[cid]),
+                pre: pre, post: post, gain: gain,
+                sat: satMap[cid] || null,
+                fup_status: fupMap[cid] || null,
+                screen_date: String(obj.screen_date || '')
             };
         });
 
