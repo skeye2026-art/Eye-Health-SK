@@ -3398,14 +3398,15 @@ function renderHeatmap() {
 
 function loadDashboard(params) {
   if (G.session.loggedIn && G.session.hospcode !== 'all') params.userHosp = G.session.hospcode;
-  document.getElementById('tBody').innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--muted2)">⏳ กำลังโหลด...</td></tr>';
+  document.getElementById('tBody').innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--accent);font-weight:bold;">⚡ กำลังโหลดข้อมูลพริบตาเดียวจาก Supabase...</td></tr>';
   document.getElementById('hospSumBody').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:12px;">⏳ กำลังโหลด...</td></tr>';
 
   google.script.run.withSuccessHandler(function(r) {
     var d = JSON.parse(r); if (!d.ok) { toast('โหลดข้อมูลไม่สำเร็จ', 'err'); return; }
     G.chartData = { amphoe: d.data.barChartAmphoe, hosp: d.data.barChartHosp, school: d.data.barChartSchool }; G.kpi = d.data.kpi; G.hospSummaryData = d.data.hospSummary; G.satCharts = d.data.satCharts;
     G.allRows = d.data.rows; G.dispRows = d.data.rows;
-    // 💡 Enrich G.kpi ด้วยจำนวนคนที่ตอบแบบประเมิน/ทำแบบทดสอบ (จาก allRows)
+    
+    // Enrich G.kpi ด้วยจำนวนคนที่ตอบแบบประเมิน/ทำแบบทดสอบ
     (function() {
       var sc=0, pc=0, poc=0, glC=0;
       for(var i=0; i<G.allRows.length; i++) {
@@ -3423,11 +3424,19 @@ function loadDashboard(params) {
       G.kpi.traineePct = Math.round(pc/tt*100);
       G.kpi.traineePctGlasses = glC > 0 ? Math.round(pc/glC*100) : null;
     })();
-    updateKPIs(G.kpi); renderPieChart(G.kpi); renderSatTestChart(G.kpi); 
+    
+    updateKPIs(G.kpi); 
+    renderPieChart(G.kpi); 
+    renderSatTestChart(G.kpi);  
     try { renderSummaryTable(G.hospSummaryData); } catch(err) { console.error('Summary Error:', err); }
-    renderBarChart(); renderSatBreakdownChart(); renderSatTypePieChart(); renderHeatmap();
+    renderBarChart(); 
+    renderSatBreakdownChart(); 
+    renderSatTypePieChart(); 
+    renderHeatmap();
 
-    renderTable(G.dispRows); // เรียกแสดงตารางแบบไม่มีเงื่อนไขผูกมัดล็อกอิน
+    // 🚀 บังคับสั่งดึงข้อมูลตารางหน้าแรกแบบความเร็วสูงโดยไม่ผ่านตัวกลาง GAS
+    loadTablePage(1); 
+    
     if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 300);
   }).getDashboardData(params);
 }
