@@ -3971,97 +3971,55 @@ function onCidInput(cid) {
 function getRad(name) { var els = document.querySelectorAll('input[name="'+name+'"]'); for (var i=0;i<els.length;i++){ if(els[i].checked) return els[i].value; } return ''; }
 function setRad(name, val) { var els = document.querySelectorAll('input[name="'+name+'"]'); for(var i=0;i<els.length;i++){ if(els[i].value===val) els[i].checked=true; } }
 function saveScr() {
-  // 1. ตรวจสอบข้อมูลก่อนเริ่มทำงาน
-  var cid = document.getElementById('s-cid').value.replace(/\D/g, '').trim(); 
-  if (!/^\d{13}$/.test(cid)) { toast('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก', 'err'); return; } 
-  if (!_editMode && G.allRows.find(function(r){ return r.cid === cid; })) { toast('⚠ เลขบัตรประชาชนนี้มีในระบบแล้ว ไม่สามารถบันทึกซ้ำได้', 'err'); return; }
-  var hcVal = document.getElementById('s-hc').value; 
-  if (!hcVal) { toast('กรุณาเลือก รพ.สต.', 'err'); return; }
-
-  // 2. เริ่มสถานะ Loading (ปิดปุ่ม ป้องกันกดซ้ำ)
   toggleLoading('btnSScr', true);
-
-  // 3. เตรียมข้อมูล
-  var d = { 
-    cid: cid, 
-    pname: document.getElementById('s-pname').value, 
-    fname: document.getElementById('s-fname').value.trim(), 
-    lname: document.getElementById('s-lname').value.trim(), 
-    birthday: document.getElementById('s-bd').value, 
-    age_years: document.getElementById('s-age').value, 
-    sex: document.getElementById('s-sex').value, 
-    level_edu: document.getElementById('s-lev').value, 
-    room: document.getElementById('s-cls').value, 
-    school_name: document.getElementById('s-sch').value, 
-    hospcode: hcVal, 
-    screen_date: document.getElementById('s-dt').value, 
-    examiner: document.getElementById('s-exam').value, 
-    position: document.getElementById('s-pos').value, 
-    address: document.getElementById('s-addr').value, 
-    moo: document.getElementById('s-moo').value, 
-    aid: document.getElementById('s-aid').value, 
-    unit: document.getElementById('s-unit').value, 
-    lat_s: document.getElementById('s-schl-lat').value, 
-    lon_s: document.getElementById('s-schl-lon').value, 
-    tambon: document.getElementById('s-tambon').value, 
-    amphoe: document.getElementById('s-amphoe').value, 
-    province: document.getElementById('s-prov').value, 
-    remarks: document.getElementById('s-remark').value, 
-    hx_glasses: document.getElementById('hx-g').checked, 
-    hx_injury: document.getElementById('hx-i').checked, 
-    hx_red_eye: document.getElementById('hx-r').checked, 
-    hx_headache: document.getElementById('hx-h').checked, 
-    hx_amblyopia: document.getElementById('hx-a').checked, 
-    hx_family: document.getElementById('hx-f').checked, 
-    va_r_naked: document.getElementById('vr-n').value, 
-    va_l_naked: document.getElementById('vl-n').value, 
-    va_r_glasses: document.getElementById('vr-g').value, 
-    va_l_glasses: document.getElementById('vl-g').value, 
-    ph_r: document.getElementById('vr-p').value, 
-    ph_l: document.getElementById('vl-p').value, 
-    va_naked_OU: document.getElementById('vou-naked').value, 
-    va_glasses_OU: document.getElementById('vou-glasses').value, 
-    cover_test: getRad('ex-cov'), 
-    hirschberg: getRad('ex-hir'), 
-    color_vision: getRad('ex-col'), 
-    stereopsis: getRad('ex-ste'), 
-    diagnosis: document.getElementById('s-diag').value, 
-    referral: document.getElementById('s-ref').value, 
-    treatment: document.getElementById('s-treat').value,
-    nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย'
-  };
-
-  // 4. เลือกฟังก์ชันที่จะเรียก (Edit หรือ Save)
-  var action = _editMode ? 'updateScreeningData' : 'saveScreeningData';
-  var successText = _editMode ? '💾 อัปเดตข้อมูล' : '💾 บันทึก';
-
-  google.script.run
-    .withSuccessHandler(function(r) {
-        toggleLoading('btnSScr', false, successText); // ปลดล็อกปุ่ม
-        var res = JSON.parse(r); 
-        if (res.ok) { 
-            toast(res.msg, 'ok'); 
-            closePanel('scr'); 
-            forceRefresh(); 
-            
-            // --- Flow เดิมที่คุณต้องการคงไว้ ---
-            activeFlow = { active: true, cid: d.cid, status: res.data.status };
-            setTimeout(function() {
-                triggerFlow('beh', 'บันทึกสำเร็จ! ลำดับต่อไปกรุณาทำ <b>แบบสอบถามพฤติกรรมการใช้หน้าจออิเล็กทรอนิกส์</b>', function() {
-                    openPanel('beh');
-                    document.getElementById('beh-cid').value = activeFlow.cid;
-                    checkBehEligible(activeFlow.cid);
-                });
-            }, 600);
-            // ---------------------------------
-        } else {
-            toast(res.msg, 'err'); 
-        }
-    })
-    .withFailureHandler(function(err) {
-        toggleLoading('btnSScr', false, successText); // ปลดล็อกปุ่มหาก Error
-        toast('เกิดข้อผิดพลาด: ' + err.message, 'err');
-    })[action](d);
+  var btn = document.getElementById('btnSScr'); 
+  // 🎯 ดึงแค่ตัวเลข
+  var cid = document.getElementById('s-cid').value.replace(/\D/g, '').trim(); 
+  
+  if (!/^\d{13}$/.test(cid)) { toast('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก', 'err'); return; } 
+  // ... ส่วนที่เหลือของโค้ดคงเดิม ... 
+  if (!_editMode && G.allRows.find(function(r){ return r.cid === cid; })) { toast('⚠ เลขบัตรประชาชนนี้มีในระบบแล้ว ไม่สามารถบันทึกซ้ำได้', 'err'); return; } // เช็คข้อมูลซ้ำ
+  var hcVal = document.getElementById('s-hc').value; if (!hcVal) { toast('กรุณาเลือก รพ.สต.', 'err'); return; }
+  // เพิ่มการบันทึก treatment
+  var d = { cid: cid, pname: document.getElementById('s-pname').value, fname: document.getElementById('s-fname').value.trim(), lname: document.getElementById('s-lname').value.trim(), birthday: document.getElementById('s-bd').value, age_years: document.getElementById('s-age').value, sex: document.getElementById('s-sex').value, level_edu: document.getElementById('s-lev').value, room: document.getElementById('s-cls').value, school_name: document.getElementById('s-sch').value, hospcode: hcVal, screen_date: document.getElementById('s-dt').value, examiner: document.getElementById('s-exam').value, position: document.getElementById('s-pos').value, address: document.getElementById('s-addr').value, moo: document.getElementById('s-moo').value, aid: document.getElementById('s-aid').value, unit: document.getElementById('s-unit').value, lat_s: document.getElementById('s-schl-lat').value, lon_s: document.getElementById('s-schl-lon').value, tambon: document.getElementById('s-tambon').value, amphoe: document.getElementById('s-amphoe').value, province: document.getElementById('s-prov').value, remarks: document.getElementById('s-remark').value, hx_glasses: document.getElementById('hx-g').checked, hx_injury: document.getElementById('hx-i').checked, hx_red_eye: document.getElementById('hx-r').checked, hx_headache: document.getElementById('hx-h').checked, hx_amblyopia: document.getElementById('hx-a').checked, hx_family: document.getElementById('hx-f').checked, va_r_naked: document.getElementById('vr-n').value, va_l_naked: document.getElementById('vl-n').value, va_r_glasses: document.getElementById('vr-g').value, va_l_glasses: document.getElementById('vl-g').value, ph_r: document.getElementById('vr-p').value, ph_l: document.getElementById('vl-p').value, va_naked_OU: document.getElementById('vou-naked').value, va_glasses_OU: document.getElementById('vou-glasses').value, cover_test: getRad('ex-cov'), hirschberg: getRad('ex-hir'), color_vision: getRad('ex-col'), stereopsis: getRad('ex-ste'), diagnosis: document.getElementById('s-diag').value, referral: document.getElementById('s-ref').value, treatment: document.getElementById('s-treat').value,
+  nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย'};
+  btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังประมวลผล...';
+  
+  if (_editMode) { 
+      google.script.run.withSuccessHandler(function(r) { 
+          btn.disabled = false; btn.innerHTML = '💾 อัปเดตข้อมูล'; 
+          var res = JSON.parse(r); 
+          if (res.ok) { 
+              toast(res.msg, 'ok'); closePanel('scr'); forceRefresh(); 
+              
+              // --- ส่วนที่เพิ่มเข้ามาเพื่อให้แจ้งเตือน Flow ตอนแก้ไข ---
+              activeFlow = { active: true, cid: d.cid, status: res.data.status };
+              setTimeout(function() {
+                  triggerFlow('beh', 'อัปเดตข้อมูลสำเร็จ! ลำดับต่อไปกรุณาทำ <b>แบบสอบถามพฤติกรรมการใช้หน้าจออิเล็กทรอนิกส์</b>', function() {
+                      openPanel('beh');
+                      document.getElementById('beh-cid').value = activeFlow.cid;
+                      checkBehEligible(activeFlow.cid);
+                  });
+              }, 600); // ตั้งดีเลย์ 0.6 วินาที เพื่อให้จอกรองสายตาปิดลงให้เรียบร้อยก่อน
+              // ---------------------------------------------
+              
+          } else toast(res.msg, 'err'); 
+      }).updateScreeningData(d); 
+  } else { 
+      google.script.run.withSuccessHandler(function(r) { 
+          btn.disabled = false; btn.innerHTML = '💾 บันทึก'; 
+          var res = JSON.parse(r); 
+          if (res.ok) { 
+              toast(res.msg, 'ok'); closePanel('scr'); forceRefresh();
+              activeFlow = { active: true, cid: d.cid, status: res.data.status };
+              triggerFlow('beh', 'บันทึกสำเร็จ! ลำดับต่อไปกรุณาทำ <b>แบบสอบถามพฤติกรรมการใช้หน้าจออิเล็กทรอนิกส์</b>', function() {
+                  openPanel('beh');
+                  document.getElementById('beh-cid').value = activeFlow.cid;
+                  checkBehEligible(activeFlow.cid);
+              });
+          } else toast(res.msg, 'err'); 
+      }).saveScreeningData(d); 
+  }
 }
 
 function editRow(cid) {
