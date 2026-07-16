@@ -3450,7 +3450,7 @@ function loadDashboard(params) {
     renderSatBreakdownChart(); 
     renderSatTypePieChart(); 
     renderHeatmap();
-    
+
     if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 300);
   }).getDashboardData(params);
 }
