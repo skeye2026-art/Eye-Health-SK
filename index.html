@@ -1601,7 +1601,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
 const SUPABASE_URL = 'https://hiqbjnlwzjcxbvqgwifi.supabase.co/rest/v1';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpcWJqbmx3empjeGJ2cWd3aWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MjA3NDUsImV4cCI6MjA5Nzk5Njc0NX0.Nup80KSYFU7dUPc0iBHd7on3AscEJZiSfdgGeqtJcb8';
-// ฟังก์ชันดึงข้อมูลตั้งค่าจาก Supabase ตรงโดยไม่ผ่าน GAS
+// 🟢 วางโค้ดนี้ลงไป (เพิ่มใหม่)
 async function fetchSupa(table, select = '*') {
     const res = await fetch(`${SUPABASE_URL}/${table}?select=${select}`, {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
@@ -2794,6 +2794,7 @@ function triggerFlow(nextStep, msg, nextAction) {
 
 function closeFlow() { document.getElementById('flowMov').classList.remove('open'); }
 
+// 🟢 วางโค้ดนี้แทน window.onload ตัวเก่า 🟢
 window.onload = async function () {
     setDate(); buildSatQ(); buildTestQ('pre'); buildTestQ('post');
     document.addEventListener('keydown', function(e){
@@ -2803,7 +2804,7 @@ window.onload = async function () {
     ChartDataLabels && Chart.register(ChartDataLabels); bindAutoDiagnose();
 
     try {
-        // 🚀 1. โหลดข้อมูลตั้งค่าระบบตรงจาก Supabase (ข้าม GAS = ไวปรี๊ด)
+        // 🚀 โหลดข้อมูลตั้งค่าระบบตรงจาก Supabase (ข้าม GAS = ไวปรี๊ด ไม่ติดคอขวด 10 วินาทีอีกต่อไป)
         const [setRes, hospRes, schRes, vaRes, linkRes, vidRes] = await Promise.all([
             fetchSupa('settings'), fetchSupa('hosp_data'), fetchSupa('school_data'), 
             fetchSupa('va_mapping'), fetchSupa('links_data', '*&order=ord.asc'), fetchSupa('video_data', '*&order=ord.asc')
@@ -2820,7 +2821,7 @@ window.onload = async function () {
         G.links = linkRes.map(l => ({ id: l.id, label: l.label, url: l.url, icon: l.iconurl, order: l.ord }));
         G.videos = vidRes.map(v => ({ id: v.id, label: v.label, url: v.url, order: v.ord }));
 
-        // 🔐 2. จัดการ Session (เช็คการล็อกอินบนหน้าเว็บทันที)
+        // 🔐 จัดการ Session เช็คการล็อกอิน
         let token = sessionStorage.getItem('EYE_SESSION_TOKEN') || localStorage.getItem('EYE_SESSION_TOKEN');
         G.session = {loggedIn: false, user: '', role: '', hospcode: ''};
         if(token) {
@@ -2830,13 +2831,13 @@ window.onload = async function () {
             } catch(e){}
         }
 
-        // 🎨 3. ประกอบร่าง UI (เมนู, โลโก้, รูปภาพ จะโผล่ขึ้นมาทันที)
+        // 🎨 ประกอบหน้า UI ขึ้นมาทันที
         applySettings(); buildDropdowns(); updateAuthUI(); initMap(); 
         renderLinks(G.links); renderVideoPlaylist(G.videos);
         if(G.videos.length > 0) renderVideo(G.videos[0].url); else renderVideo('');
         if(G.settings.marquee_imgs) renderImageMarquee(G.settings.marquee_imgs);
 
-        // 📊 4. โหลดกราฟสถิติตามมา (ทำหลังจากโครงสร้างเว็บขึ้นมาเรียบร้อยแล้ว)
+        // 📊 สั่งให้ดึง Dashboard ต่อไป...
         loadDashboard({});
         
     } catch(e) {
@@ -6324,50 +6325,35 @@ async function exportOnePageAsImage() {
   });
 }
 
-// ในแท็ก <script>
+// --- ส่วนท้ายของ <script> ---
 let currentPage = 1;
-let currentLimit = 50;
 let totalPages = 1;
 
 let searchTimeout;
-// ฟังก์ชันหน่วงเวลา รอให้พิมพ์เสร็จ 0.5 วินาที ค่อยส่งไปค้นหา
 function debounceSearch() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(function() {
-        currentPage = 1; // กลับไปหน้าแรกเสมอเมื่อค้นหา
-        loadTablePage(1);
-    }, 500);
-}
-let searchTimeout;
-// ฟังก์ชันหน่วงเวลา รอให้พิมพ์เสร็จ 0.5 วินาที ค่อยส่งไปค้นหา
-function debounceSearch() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(function() {
-        currentPage = 1; // กลับไปหน้าแรกเสมอเมื่อค้นหา
+        currentPage = 1;
         loadTablePage(1);
     }, 500);
 }
 
-// 🟢 โค้ดที่หายไป นำมาวางต่อท้ายตรงนี้เลยครับ 🟢
 async function loadTablePage(page) {
-    // โชว์ข้อความให้รู้ว่ากำลังโหลดตรงจากฐานข้อมูล
-    document.getElementById('tBody').innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--accent);font-weight:bold;">⚡ กำลังโหลดข้อมูลพริบตาเดียวจาก Supabase...</td></tr>';
+    let tBody = document.getElementById('tBody');
+    if(!tBody) return;
+    tBody.innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--accent);font-weight:bold;">⚡ กำลังโหลดข้อมูลพริบตาเดียวจาก Supabase...</td></tr>';
     
-    // ตั้งค่าหน้าเพจ
     currentPage = page || 1;
     let limit = 50;
     let from = (currentPage - 1) * limit;
     let to = from + limit - 1;
 
-    // ดึงค่าการกรองจากหน้าเว็บ
     let hospcode = document.getElementById('fHosp') ? document.getElementById('fHosp').value : '';
     let amphoe = document.getElementById('fAmp') ? document.getElementById('fAmp').value : '';
     let school = document.getElementById('fSch') ? document.getElementById('fSch').value : '';
     let search = document.getElementById('srchBox') ? document.getElementById('srchBox').value.trim() : '';
 
     let ep = 'screening_data?select=*&order=cid.asc';
-    
-    // จัดการสิทธิ์การมองเห็น (Admin เห็นหมด / User เห็นเฉพาะ รพ. ตัวเอง)
     let sessionRole = (typeof G !== 'undefined' && G.session && G.session.role) ? G.session.role : 'guest';
     let sessionHosp = (typeof G !== 'undefined' && G.session && G.session.hospcode) ? G.session.hospcode : 'all';
 
@@ -6382,27 +6368,17 @@ async function loadTablePage(page) {
     if (search) ep += '&or=(cid.ilike.*' + search + '*,student_name.ilike.*' + search + '*)';
 
     try {
-        // ยิงดึงข้อมูลหลัก (ตารางคัดกรอง) จาก Supabase โดยตรง
         const res = await fetch(`${SUPABASE_URL}/${ep}`, {
             method: 'GET',
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Range-Unit': 'items',
-                'Range': from + '-' + to,
-                'Prefer': 'count=exact'
-            }
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Range-Unit': 'items', 'Range': from + '-' + to, 'Prefer': 'count=exact' }
         });
 
         if (!res.ok) throw new Error('Supabase Error: ' + res.status);
         const rows = await res.json();
-        
-        // คำนวณจำนวนหน้าทั้งหมด
         const contentRange = res.headers.get('Content-Range') || '0-0/0';
         const totalCount = parseInt(contentRange.split('/')[1]) || 0;
         totalPages = Math.ceil(totalCount / limit) || 1;
 
-        // ดึงคะแนนต่างๆ มาประกบ
         let cids = rows.map(r => String(r.cid).replace(/\D/g, '')).filter(Boolean);
         let cidQuery = cids.length > 0 ? 'cid=in.(' + cids.join(',') + ')' : 'cid=is.null';
 
@@ -6425,63 +6401,30 @@ async function loadTablePage(page) {
             satMap[r.cid] = count > 0 ? Math.round((sum/count)*100)/100 : null;
         });
 
-        // จัด Format
         let formattedRows = rows.map(obj => {
             let cid = String(obj.cid).replace(/\D/g, '');
-            let pre = preMap[cid] !== undefined ? preMap[cid] : null;
-            let post = postMap[cid] !== undefined ? postMap[cid] : null;
-            let gain = (pre !== null && post !== null) ? (pre>=10 ? 100 : Math.round((post-pre)/(10-pre)*100)) : null;
             let hc = String(obj.hospcode || '').trim();
             let hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ' };
-
-            let status = 'normal';
-            let diag = String(obj.diagnosis || '').trim();
-            let ref = String(obj.referral || '').trim();
-            let noRef = ['', 'ไม่จำเป็นต้องส่งต่อ', 'ไม่ส่ง'].includes(ref);
-            if (!noRef && fupMap[cid]) status = 'glasses';
-            else if (!noRef) status = 'referred';
-            else if (diag && diag !== 'สายตาปกติ') status = 'abnormal';
-
-            let formatDateTH = (d) => {
-                if(!d) return '';
-                let parts = String(d).split('T')[0].split('-'); 
-                if(parts.length===3) {
-                    let y = parseInt(parts[0]); if(y < 2500) y += 543;
-                    return `${parts[2]}/${parts[1]}/${y}`;
-                }
-                return d;
-            };
-
             return {
-                cid: cid, student_name: String(obj.student_name || '').trim(), age_years: String(obj.age_years || '').trim(),
-                school_class: String(obj.school_class || '').trim(), school_name: String(obj.school_name || '').trim(), school_code: String(obj.school_code || '').trim(),
-                hospcode: hc, hosp_name: hInfo.name, amphoe: hInfo.amphoe, sex: String(obj.sex || '').trim(), diagnosis: diag, referral: ref,
-                screen_date: formatDateTH(obj.screen_date), status: status, pre: pre, post: post, gain: gain, sat: satMap[cid] !== undefined ? satMap[cid] : null,
-                examiner: String(obj.examiner || '').trim(), treatment: String(obj.treatment || '').trim(), nationality: String(obj.nationality || 'ไทย').trim(),
-                beh_risk: null, fup_status: fupMap[cid] || null, va_r_naked: String(obj.va_r_naked || '').trim(), va_l_naked: String(obj.va_l_naked || '').trim(),
-                va_naked_OU: String(obj.va_naked_ou || '').trim(), va_r_glasses: String(obj.va_r_glasses || '').trim(), va_l_glasses: String(obj.va_l_glasses || '').trim(),
-                va_glasses_OU: String(obj.va_glasses_ou || '').trim(), ph_r: String(obj.ph_r || '').trim(), ph_l: String(obj.ph_l || '').trim()
+                cid: cid, student_name: String(obj.student_name || '').trim(), school_class: String(obj.school_class || '').trim(), school_name: String(obj.school_name || '').trim(), hospcode: hc, hosp_name: hInfo.name, status: 'normal', pre: preMap[cid] || null, post: postMap[cid] || null, sat: satMap[cid] || null, fup_status: fupMap[cid] || null, diagnosis: String(obj.diagnosis || '').trim(), screen_date: String(obj.screen_date || '')
             };
         });
 
-        // อัปเดต UI 
         document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
         document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
         document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
-        
         renderTable(formattedRows);
-
     } catch (e) {
+        console.error(e);
         if(typeof toast === 'function') toast('โหลดตารางล้มเหลว: ' + e.message, 'err');
     }
 }
 
 function changePage(direction) {
     let newPage = currentPage + direction;
-    if(newPage >= 1 && newPage <= totalPages) {
-        loadTablePage(newPage);
-    }
+    if(newPage >= 1 && newPage <= totalPages) loadTablePage(newPage);
 }
+
 </script>
 </body>
 </html>
