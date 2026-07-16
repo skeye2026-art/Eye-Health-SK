@@ -2837,8 +2837,9 @@ window.onload = async function () {
         if(G.videos.length > 0) renderVideo(G.videos[0].url); else renderVideo('');
         if(G.settings.marquee_imgs) renderImageMarquee(G.settings.marquee_imgs);
 
-        // 📊 สั่งให้ดึง Dashboard ต่อไป...
+        // 📊 สั่งให้ดึง Dashboard และตารางรายชื่อพร้อมกัน (ขนาน) — เร็วขึ้นเพราะไม่ต้องรอต่อคิว
         loadDashboard({});
+        loadTablePage(1);
         
     } catch(e) {
         toast('การเชื่อมต่อระบบล้มเหลว: ' + e.message, 'err');
@@ -3449,9 +3450,6 @@ function loadDashboard(params) {
     renderSatBreakdownChart(); 
     renderSatTypePieChart(); 
     renderHeatmap();
-
-    // 🚀 บังคับสั่งดึงข้อมูลตารางหน้าแรกแบบความเร็วสูงโดยไม่ผ่านตัวกลาง GAS
-    loadTablePage(1); 
     
     if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 300);
   }).getDashboardData(params);
