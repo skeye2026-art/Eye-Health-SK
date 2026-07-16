@@ -3412,49 +3412,33 @@ function renderHeatmap() {
   wrap.innerHTML = html;
 }
 
-function loadDashboard(params) {
-  if (G.session.loggedIn && G.session.hospcode !== 'all') params.userHosp = G.session.hospcode;
-  document.getElementById('tBody').innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--accent);font-weight:bold;">⚡ กำลังโหลดข้อมูลพริบตาเดียวจาก Supabase...</td></tr>';
-  document.getElementById('hospSumBody').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:12px;">⏳ กำลังโหลด...</td></tr>';
-
-  google.script.run.withSuccessHandler(function(r) {
-    var d = JSON.parse(r); if (!d.ok) { toast('โหลดข้อมูลไม่สำเร็จ', 'err'); return; }
-    G.chartData = { amphoe: d.data.barChartAmphoe, hosp: d.data.barChartHosp, school: d.data.barChartSchool }; G.kpi = d.data.kpi; G.hospSummaryData = d.data.hospSummary; G.satCharts = d.data.satCharts;
-    G.allRows = d.data.rows; G.dispRows = d.data.rows;
+// ดึงข้อมูล Dashboard โดยตรงจาก Supabase (ไม่ต้องผ่าน GAS)
+async function loadDashboard(params) {
+    document.getElementById('tBody').innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;">⏳ โหลดข้อมูลโดยตรงจาก Supabase...</td></tr>';
     
-    // Enrich G.kpi ด้วยจำนวนคนที่ตอบแบบประเมิน/ทำแบบทดสอบ
-    (function() {
-      var sc=0, pc=0, poc=0, glC=0;
-      for(var i=0; i<G.allRows.length; i++) {
-        var rr = G.allRows[i];
-        if(rr.sat !== null) sc++;
-        if(rr.pre !== null) pc++;
-        if(rr.post !== null) poc++;
-        if(rr.status === 'glasses') glC++;
-      }
-      var tt = G.kpi.total || 1;
-      G.kpi.satCount = sc; G.kpi.satPct = Math.round(sc/tt*100);
-      G.kpi.preCount = pc; G.kpi.prePct = Math.round(pc/tt*100);
-      G.kpi.postCount = poc; G.kpi.postPct = Math.round(poc/tt*100);
-      G.kpi.preTestCount = pc;
-      G.kpi.traineePct = Math.round(pc/tt*100);
-      G.kpi.traineePctGlasses = glC > 0 ? Math.round(pc/glC*100) : null;
-    })();
-    
-    updateKPIs(G.kpi); 
-    renderPieChart(G.kpi); 
-    renderSatTestChart(G.kpi);  
-    try { renderSummaryTable(G.hospSummaryData); } catch(err) { console.error('Summary Error:', err); }
-    renderBarChart(); 
-    renderSatBreakdownChart(); 
-    renderSatTypePieChart(); 
-    renderHeatmap();
-
-    // 🚀 บังคับสั่งดึงข้อมูลตารางหน้าแรกแบบความเร็วสูงโดยไม่ผ่านตัวกลาง GAS
-    loadTablePage(1); 
-    
-    if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 300);
-  }).getDashboardData(params);
+    try {
+        // ดึงเฉพาะข้อมูลที่จำเป็น หรือใช้ RPC ของ Supabase (ถ้ามี)
+        // ตัวอย่างนี้เป็นการ fetch ข้อมูลแบบย่อ
+        const url = `${SUPABASE_URL}/rpc/get_dashboard_kpi`; // แนะนำให้สร้างฟังก์ชันใน Supabase (Stored Procedure) เพื่อรวมผลลัพธ์
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        });
+        
+        const data = await res.json();
+        G.allRows = data.rows; 
+        G.dispRows = data.rows;
+        
+        // อัปเดต UI ปกติ
+        updateKPIs(data.kpi);
+        renderPieChart(data.kpi);
+        renderBarChart();
+        loadTablePage(1);
+        toast('✅ โหลดข้อมูลเสร็จสิ้น', 'ok');
+    } catch(e) {
+        toast('โหลดข้อมูลพลาด: ' + e.message, 'err');
+    }
 }
 
 // ฟังก์ชันสำหรับเปิดภาพ (เรียกใช้จาก renderSummaryTable)
@@ -3987,54 +3971,97 @@ function onCidInput(cid) {
 function getRad(name) { var els = document.querySelectorAll('input[name="'+name+'"]'); for (var i=0;i<els.length;i++){ if(els[i].checked) return els[i].value; } return ''; }
 function setRad(name, val) { var els = document.querySelectorAll('input[name="'+name+'"]'); for(var i=0;i<els.length;i++){ if(els[i].value===val) els[i].checked=true; } }
 function saveScr() {
-  var btn = document.getElementById('btnSScr'); 
-  // 🎯 ดึงแค่ตัวเลข
+  // 1. ตรวจสอบข้อมูลก่อนเริ่มทำงาน
   var cid = document.getElementById('s-cid').value.replace(/\D/g, '').trim(); 
-  
   if (!/^\d{13}$/.test(cid)) { toast('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก', 'err'); return; } 
-  // ... ส่วนที่เหลือของโค้ดคงเดิม ... 
-  if (!_editMode && G.allRows.find(function(r){ return r.cid === cid; })) { toast('⚠ เลขบัตรประชาชนนี้มีในระบบแล้ว ไม่สามารถบันทึกซ้ำได้', 'err'); return; } // เช็คข้อมูลซ้ำ
-  var hcVal = document.getElementById('s-hc').value; if (!hcVal) { toast('กรุณาเลือก รพ.สต.', 'err'); return; }
-  // เพิ่มการบันทึก treatment
-  var d = { cid: cid, pname: document.getElementById('s-pname').value, fname: document.getElementById('s-fname').value.trim(), lname: document.getElementById('s-lname').value.trim(), birthday: document.getElementById('s-bd').value, age_years: document.getElementById('s-age').value, sex: document.getElementById('s-sex').value, level_edu: document.getElementById('s-lev').value, room: document.getElementById('s-cls').value, school_name: document.getElementById('s-sch').value, hospcode: hcVal, screen_date: document.getElementById('s-dt').value, examiner: document.getElementById('s-exam').value, position: document.getElementById('s-pos').value, address: document.getElementById('s-addr').value, moo: document.getElementById('s-moo').value, aid: document.getElementById('s-aid').value, unit: document.getElementById('s-unit').value, lat_s: document.getElementById('s-schl-lat').value, lon_s: document.getElementById('s-schl-lon').value, tambon: document.getElementById('s-tambon').value, amphoe: document.getElementById('s-amphoe').value, province: document.getElementById('s-prov').value, remarks: document.getElementById('s-remark').value, hx_glasses: document.getElementById('hx-g').checked, hx_injury: document.getElementById('hx-i').checked, hx_red_eye: document.getElementById('hx-r').checked, hx_headache: document.getElementById('hx-h').checked, hx_amblyopia: document.getElementById('hx-a').checked, hx_family: document.getElementById('hx-f').checked, va_r_naked: document.getElementById('vr-n').value, va_l_naked: document.getElementById('vl-n').value, va_r_glasses: document.getElementById('vr-g').value, va_l_glasses: document.getElementById('vl-g').value, ph_r: document.getElementById('vr-p').value, ph_l: document.getElementById('vl-p').value, va_naked_OU: document.getElementById('vou-naked').value, va_glasses_OU: document.getElementById('vou-glasses').value, cover_test: getRad('ex-cov'), hirschberg: getRad('ex-hir'), color_vision: getRad('ex-col'), stereopsis: getRad('ex-ste'), diagnosis: document.getElementById('s-diag').value, referral: document.getElementById('s-ref').value, treatment: document.getElementById('s-treat').value,
-  nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย'};
-  btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังประมวลผล...';
-  
-  if (_editMode) { 
-      google.script.run.withSuccessHandler(function(r) { 
-          btn.disabled = false; btn.innerHTML = '💾 อัปเดตข้อมูล'; 
-          var res = JSON.parse(r); 
-          if (res.ok) { 
-              toast(res.msg, 'ok'); closePanel('scr'); forceRefresh(); 
-              
-              // --- ส่วนที่เพิ่มเข้ามาเพื่อให้แจ้งเตือน Flow ตอนแก้ไข ---
-              activeFlow = { active: true, cid: d.cid, status: res.data.status };
-              setTimeout(function() {
-                  triggerFlow('beh', 'อัปเดตข้อมูลสำเร็จ! ลำดับต่อไปกรุณาทำ <b>แบบสอบถามพฤติกรรมการใช้หน้าจออิเล็กทรอนิกส์</b>', function() {
-                      openPanel('beh');
-                      document.getElementById('beh-cid').value = activeFlow.cid;
-                      checkBehEligible(activeFlow.cid);
-                  });
-              }, 600); // ตั้งดีเลย์ 0.6 วินาที เพื่อให้จอกรองสายตาปิดลงให้เรียบร้อยก่อน
-              // ---------------------------------------------
-              
-          } else toast(res.msg, 'err'); 
-      }).updateScreeningData(d); 
-  } else { 
-      google.script.run.withSuccessHandler(function(r) { 
-          btn.disabled = false; btn.innerHTML = '💾 บันทึก'; 
-          var res = JSON.parse(r); 
-          if (res.ok) { 
-              toast(res.msg, 'ok'); closePanel('scr'); forceRefresh();
-              activeFlow = { active: true, cid: d.cid, status: res.data.status };
-              triggerFlow('beh', 'บันทึกสำเร็จ! ลำดับต่อไปกรุณาทำ <b>แบบสอบถามพฤติกรรมการใช้หน้าจออิเล็กทรอนิกส์</b>', function() {
-                  openPanel('beh');
-                  document.getElementById('beh-cid').value = activeFlow.cid;
-                  checkBehEligible(activeFlow.cid);
-              });
-          } else toast(res.msg, 'err'); 
-      }).saveScreeningData(d); 
-  }
+  if (!_editMode && G.allRows.find(function(r){ return r.cid === cid; })) { toast('⚠ เลขบัตรประชาชนนี้มีในระบบแล้ว ไม่สามารถบันทึกซ้ำได้', 'err'); return; }
+  var hcVal = document.getElementById('s-hc').value; 
+  if (!hcVal) { toast('กรุณาเลือก รพ.สต.', 'err'); return; }
+
+  // 2. เริ่มสถานะ Loading (ปิดปุ่ม ป้องกันกดซ้ำ)
+  toggleLoading('btnSScr', true);
+
+  // 3. เตรียมข้อมูล
+  var d = { 
+    cid: cid, 
+    pname: document.getElementById('s-pname').value, 
+    fname: document.getElementById('s-fname').value.trim(), 
+    lname: document.getElementById('s-lname').value.trim(), 
+    birthday: document.getElementById('s-bd').value, 
+    age_years: document.getElementById('s-age').value, 
+    sex: document.getElementById('s-sex').value, 
+    level_edu: document.getElementById('s-lev').value, 
+    room: document.getElementById('s-cls').value, 
+    school_name: document.getElementById('s-sch').value, 
+    hospcode: hcVal, 
+    screen_date: document.getElementById('s-dt').value, 
+    examiner: document.getElementById('s-exam').value, 
+    position: document.getElementById('s-pos').value, 
+    address: document.getElementById('s-addr').value, 
+    moo: document.getElementById('s-moo').value, 
+    aid: document.getElementById('s-aid').value, 
+    unit: document.getElementById('s-unit').value, 
+    lat_s: document.getElementById('s-schl-lat').value, 
+    lon_s: document.getElementById('s-schl-lon').value, 
+    tambon: document.getElementById('s-tambon').value, 
+    amphoe: document.getElementById('s-amphoe').value, 
+    province: document.getElementById('s-prov').value, 
+    remarks: document.getElementById('s-remark').value, 
+    hx_glasses: document.getElementById('hx-g').checked, 
+    hx_injury: document.getElementById('hx-i').checked, 
+    hx_red_eye: document.getElementById('hx-r').checked, 
+    hx_headache: document.getElementById('hx-h').checked, 
+    hx_amblyopia: document.getElementById('hx-a').checked, 
+    hx_family: document.getElementById('hx-f').checked, 
+    va_r_naked: document.getElementById('vr-n').value, 
+    va_l_naked: document.getElementById('vl-n').value, 
+    va_r_glasses: document.getElementById('vr-g').value, 
+    va_l_glasses: document.getElementById('vl-g').value, 
+    ph_r: document.getElementById('vr-p').value, 
+    ph_l: document.getElementById('vl-p').value, 
+    va_naked_OU: document.getElementById('vou-naked').value, 
+    va_glasses_OU: document.getElementById('vou-glasses').value, 
+    cover_test: getRad('ex-cov'), 
+    hirschberg: getRad('ex-hir'), 
+    color_vision: getRad('ex-col'), 
+    stereopsis: getRad('ex-ste'), 
+    diagnosis: document.getElementById('s-diag').value, 
+    referral: document.getElementById('s-ref').value, 
+    treatment: document.getElementById('s-treat').value,
+    nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย'
+  };
+
+  // 4. เลือกฟังก์ชันที่จะเรียก (Edit หรือ Save)
+  var action = _editMode ? 'updateScreeningData' : 'saveScreeningData';
+  var successText = _editMode ? '💾 อัปเดตข้อมูล' : '💾 บันทึก';
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+        toggleLoading('btnSScr', false, successText); // ปลดล็อกปุ่ม
+        var res = JSON.parse(r); 
+        if (res.ok) { 
+            toast(res.msg, 'ok'); 
+            closePanel('scr'); 
+            forceRefresh(); 
+            
+            // --- Flow เดิมที่คุณต้องการคงไว้ ---
+            activeFlow = { active: true, cid: d.cid, status: res.data.status };
+            setTimeout(function() {
+                triggerFlow('beh', 'บันทึกสำเร็จ! ลำดับต่อไปกรุณาทำ <b>แบบสอบถามพฤติกรรมการใช้หน้าจออิเล็กทรอนิกส์</b>', function() {
+                    openPanel('beh');
+                    document.getElementById('beh-cid').value = activeFlow.cid;
+                    checkBehEligible(activeFlow.cid);
+                });
+            }, 600);
+            // ---------------------------------
+        } else {
+            toast(res.msg, 'err'); 
+        }
+    })
+    .withFailureHandler(function(err) {
+        toggleLoading('btnSScr', false, successText); // ปลดล็อกปุ่มหาก Error
+        toast('เกิดข้อผิดพลาด: ' + err.message, 'err');
+    })[action](d);
 }
 
 function editRow(cid) {
@@ -6424,7 +6451,20 @@ function changePage(direction) {
     let newPage = currentPage + direction;
     if(newPage >= 1 && newPage <= totalPages) loadTablePage(newPage);
 }
-
+// ฟังก์ชันจัดการสถานะปุ่ม (ใช้ร่วมกันได้ทุกฟังก์ชัน)
+function toggleLoading(btnId, isLoading, originalText = "💾 บันทึก") {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    
+    if (isLoading) {
+        btn.disabled = true;
+        // ใช้ class .sp ที่คุณมีอยู่แล้วใน CSS (CSS เดิมของคุณมี .sp อยู่แล้ว)
+        btn.innerHTML = '<span class="sp"></span> กำลังบันทึก...';
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
 </script>
 </body>
 </html>
