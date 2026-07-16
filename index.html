@@ -590,7 +590,8 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   <aside class="sidebar">
     <div class="sb-title">🔍 กรองข้อมูล</div>
     <div class="fl">อำเภอ</div><select class="fsel" id="fAmp" onchange="onAmpChange()"><option value="">ทั้งหมด</option></select>
-    <div class="fl">รพ.สต.</div><select class="fsel" id="fHosp" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
+    <div class="fl">ตำบล</div><select class="fsel" id="fTambon" onchange="onTambonChange()"><option value="">ทั้งหมด</option></select>
+    <div class="fl">รพ.สต.</div><select class="fsel" id="fHosp" onchange="onHospFilterChange()"><option value="">ทั้งหมด</option></select>
     <div class="fl">โรงเรียน</div><select class="fsel" id="fSch" onchange="applyFilters()"><option value="">ทั้งหมด</option></select>
     <div class="fl">สถานะ</div><select class="fsel" id="fStat" onchange="applyFilters()"><option value="">ทั้งหมด</option><option value="normal">ปกติ</option><option value="abnormal">ผิดปกติ</option><option value="referred">ส่งต่อ</option><option value="glasses">ตัดแว่น</option></select>
     <div class="fl">เพศ</div><select class="fsel" id="fSex" onchange="applyFilters()"><option value="">ทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
@@ -1181,12 +1182,13 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <button class="ph-x" onclick="closePanel('fupdash')">✕</button>
   </div>
   <div class="pb">
-    <div class="beh-filter" style="background:#fdf2f8; border-color:#fbcfe8; grid-template-columns: repeat(4, 1fr);">
-      <select id="fdf-amphoe" onchange="onFupAmpChange()" style="border-color:#f9a8d4;"><option value="">อำเภอ ทั้งหมด</option></select>
-      <select id="fdf-hosp" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
-      <select id="fdf-school" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">โรงเรียนทั้งหมด</option></select>
-      <select id="fdf-sex" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
-    </div>
+    <div class="beh-filter" style="background:#fdf2f8; border-color:#fbcfe8; grid-template-columns: repeat(5, 1fr);">
+  <select id="fdf-amphoe" onchange="onFupAmpChange()" style="border-color:#f9a8d4;"><option value="">อำเภอ ทั้งหมด</option></select>
+  <select id="fdf-tambon" onchange="onFupTambonChange()" style="border-color:#f9a8d4;"><option value="">ตำบล ทั้งหมด</option></select>
+  <select id="fdf-hosp" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
+  <select id="fdf-school" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">โรงเรียนทั้งหมด</option></select>
+  <select id="fdf-sex" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
+</div>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <select id="fdf-class" onchange="loadFupDashboard()" style="padding:6px 8px; border:1px solid #f9a8d4; border-radius:6px; font-size:12px; background:#fff; width:24%;"><option value="">ชั้นทั้งหมด</option></select>
       <button class="btn-clr" style="margin:0; padding:4px 15px; border-color:#fbcfe8; color:#be185d;" onclick="clearFupFilters()">✕ ล้างตัวกรองติดตามแว่น</button>
@@ -1236,13 +1238,17 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <button class="ph-x" onclick="closePanel('behdash')">✕</button>
   </div>
   <div class="pb">
-    <div class="beh-filter" style="grid-template-columns: repeat(5, 1fr);">
-      <select id="bf-amphoe" onchange="onBehAmpChange()"><option value="">อำเภอ ทั้งหมด</option></select>
-      <select id="bf-hosp" onchange="loadBehDashboard()"><option value="">รพ.สต. ทั้งหมด</option></select>
-      <select id="bf-school" onchange="loadBehDashboard()"><option value="">โรงเรียนทั้งหมด</option></select>
-      <select id="bf-sex" onchange="loadBehDashboard()"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
-      <select id="bf-class" onchange="loadBehDashboard()"><option value="">ชั้นทั้งหมด</option></select>
-    </div>
+    <div class="beh-filter" style="grid-template-columns: repeat(4, 1fr);">
+  <select id="bf-amphoe" onchange="onBehAmpChange()"><option value="">อำเภอ ทั้งหมด</option></select>
+  <select id="bf-tambon" onchange="onBehTambonChange()"><option value="">ตำบล ทั้งหมด</option></select>
+  <select id="bf-hosp" onchange="onBehHospChange()"><option value="">รพ.สต. ทั้งหมด</option></select>
+  <select id="bf-school" onchange="loadBehDashboard()"><option value="">โรงเรียนทั้งหมด</option></select>
+</div>
+<div class="beh-filter" style="grid-template-columns: repeat(3, 1fr); margin-top:8px;">
+  <select id="bf-sex" onchange="loadBehDashboard()"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
+  <select id="bf-class" onchange="loadBehDashboard()"><option value="">ชั้นทั้งหมด</option></select>
+  <select id="bf-status" onchange="loadBehDashboard()"><option value="">ผลคัดกรองทั้งหมด</option><option value="normal">ปกติ</option><option value="abnormal">ผิดปกติ</option><option value="referred">ส่งต่อ</option><option value="glasses">ตัดแว่น</option></select>
+</div>
     <div style="text-align:right; margin-bottom:12px;"><button class="btn-clr" style="display:inline-block; width:auto; margin:0; padding:4px 15px;" onclick="clearBehFilters()">✕ ล้างตัวกรองพฤติกรรม</button></div>
 
     <div class="beh-kpi">
@@ -2228,6 +2234,7 @@ function toast(msg, type) { var wrap = document.getElementById('toastWrap'); if 
 function applyFilters() {
   var cf = G_chartFilter || {};
   var amp = document.getElementById('fAmp').value;
+  var tam = document.getElementById('fTambon').value;
   var hc = document.getElementById('fHosp').value;
   var sch = document.getElementById('fSch').value;
   var stat = document.getElementById('fStat').value;
@@ -2258,6 +2265,7 @@ function applyFilters() {
     if (cf.satType && String(r.sat_type || '') !== cf.satType) return false;
 
     if (amp && r.amphoe !== amp) return false;
+    if (tam && r.tambon !== tam) return false;
     if (hc && r.hospcode !== hc) return false;
     if (sch && r.school_name !== sch) return false;
 
@@ -2358,6 +2366,7 @@ function applyFilters() {
 function clearFilters() {
   ['fAmp','fHosp','fSch','fStat','fSex'].forEach(function(id){
     document.getElementById(id).value = '';
+    document.getElementById('fTambon').value = '';
   });
 
   document.getElementById('srchBox').value = '';
@@ -3251,6 +3260,7 @@ function buildDropdowns() {
   document.getElementById('vr-n').value = '20/20'; document.getElementById('vl-n').value = '20/20';
   var amps = []; G.hospList.forEach(function(h){ if(h.amphoe && amps.indexOf(h.amphoe)===-1) amps.push(h.amphoe); }); amps.sort();
   var ampSel = document.getElementById('fAmp'); amps.forEach(function(a) { ampSel.innerHTML += '<option>' + a + '</option>'; });
+  rebuildTambonOptions_('');   // ⬅️ เพิ่มบรรทัดนี้
   var hcHtml = '<option value="">ทั้งหมด</option>'; var formHcHtml = '<option value="">— เลือก รพ.สต. —</option>';
   G.hospList.forEach(function(h) { var txt = h.hospcode + ' ' + h.name; hcHtml += '<option value="' + h.hospcode + '">' + txt + '</option>'; formHcHtml += '<option value="' + h.hospcode + '">' + txt + '</option>'; });
   document.getElementById('fHosp').innerHTML = hcHtml; document.getElementById('s-hc').innerHTML = formHcHtml; document.getElementById('sat-hc').innerHTML = formHcHtml; document.getElementById('loc-hc').innerHTML = formHcHtml;
@@ -3277,8 +3287,49 @@ function fillSchoolCoords() {
 }
 
 function getGeo(latId, lonId) { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(function(position) { document.getElementById(latId).value = position.coords.latitude; document.getElementById(lonId).value = position.coords.longitude; }); } else { toast("บราว์เซอร์ของคุณไม่รองรับการระบุพิกัด", "err"); } }
-function onAmpChange() { var amp = document.getElementById('fAmp').value; var hSel = document.getElementById('fHosp'); hSel.innerHTML = '<option value="">ทั้งหมด</option>'; G.hospList.filter(function(h) { return !amp || h.amphoe === amp; }).forEach(function(h) { hSel.innerHTML += '<option value="' + h.hospcode + '">' + h.hospcode + ' ' + h.name + '</option>'; }); applyFilters(); }
-
+function onAmpChange() {
+  var amp = document.getElementById('fAmp').value;
+  rebuildTambonOptions_(amp);
+  document.getElementById('fTambon').value = '';
+  rebuildHospOptions_(amp, '');
+  document.getElementById('fHosp').value = '';
+  rebuildSchoolOptions_();
+  applyFilters();
+}
+function onTambonChange() {
+  var amp = document.getElementById('fAmp').value;
+  var tam = document.getElementById('fTambon').value;
+  rebuildHospOptions_(amp, tam);
+  document.getElementById('fHosp').value = '';
+  rebuildSchoolOptions_();
+  applyFilters();
+}
+function onHospFilterChange() {
+  rebuildSchoolOptions_();
+  applyFilters();
+}
+function rebuildTambonOptions_(amp) {
+  var tambons = []; G.hospList.forEach(function(h){ if((!amp||h.amphoe===amp) && h.tambon && tambons.indexOf(h.tambon)===-1) tambons.push(h.tambon); });
+  tambons.sort();
+  var html = '<option value="">ทั้งหมด</option>'; tambons.forEach(function(t){ html += '<option>'+t+'</option>'; });
+  document.getElementById('fTambon').innerHTML = html;
+}
+function rebuildHospOptions_(amp, tam) {
+  var html = '<option value="">ทั้งหมด</option>';
+  G.hospList.filter(function(h){ return (!amp||h.amphoe===amp) && (!tam||h.tambon===tam); })
+    .forEach(function(h){ html += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
+  document.getElementById('fHosp').innerHTML = html;
+}
+function rebuildSchoolOptions_() {
+  var hc = document.getElementById('fHosp').value;
+  var amp = document.getElementById('fAmp').value;
+  var tam = document.getElementById('fTambon').value;
+  var validHc = {}; G.hospList.forEach(function(h){ if((!amp||h.amphoe===amp)&&(!tam||h.tambon===tam)&&(!hc||h.hospcode===hc)) validHc[h.hospcode]=true; });
+  var schools = {}; G.allRows.forEach(function(r){ if(validHc[r.hospcode] && r.school_name) schools[r.school_name]=true; });
+  var html = '<option value="">ทั้งหมด</option>';
+  Object.keys(schools).sort().forEach(function(s){ html += '<option>'+s+'</option>'; });
+  document.getElementById('fSch').innerHTML = html;
+}
 function updateAuthUI() {
   // [v6.3] Reset admin-only buttons ก่อนเสมอ ป้องกัน state ค้างจาก session เดิม
   ['btnLineMgr', 'btnLinkMgr', 'btnVidMgr', 'btnLoc', 'btnConv', 'btnSysSet'].forEach(function(id) {
@@ -3645,6 +3696,7 @@ function renderBarChart() {
         var el = document.getElementById('fAmp'); 
         el.value = (el.value === amp) ? '' : amp; 
         onAmpChange(); // เพิ่ม: เพื่อให้ รพ.สต. ใน drop down เปลี่ยนตามอำเภอ
+        return;         // ⬅️ เพิ่มบรรทัดนี้ ป้องกันไหลไปเรียก applyFilters() ซ้ำด้านล่าง
     } else { 
         var stats = ['normal','abnormal','referred','glasses']; 
         var stat = stats[idx]; 
@@ -3730,7 +3782,7 @@ function renderBarChart() {
   // ขยายความกว้างกล่อง เพื่อไม่ให้กราฟเบียด (200px ต่อ 1 โรงเรียน)
   var schoolContainer = document.getElementById('schoolChartContainer');
   if(schoolContainer) {
-      var calcWidthSchool = sLabels.length * 200; 
+      var calcWidthSchool = sLabels.length * 280; 
       if (calcWidthSchool < schoolContainer.parentElement.clientWidth) calcWidthSchool = schoolContainer.parentElement.clientWidth;
       schoolContainer.style.width = calcWidthSchool + 'px';
   }
@@ -3750,15 +3802,15 @@ function renderBarChart() {
       }, 
       plugins: { 
         legend: { position: 'bottom', labels: { font: { size: 11, family: 'Sarabun' } } }, 
-        datalabels: { display: function(ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; }, color: '#ffffff', font: { weight: 'bold', size: 12, family: 'Sarabun' }, textStrokeColor: 'rgba(0,0,0,0.6)', textStrokeWidth: 2 } 
+        datalabels: { display: function(ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; }, color: '#ffffff', font: { weight: 'bold', size: 13, family: 'Sarabun' }, textStrokeColor: 'rgba(0,0,0,0.6)', textStrokeWidth: 2 } 
       }, 
       scales: { 
         x: { 
           stacked: false, 
           ticks: { 
-            font: { family: 'Sarabun', size: 9 }, // แก้ไขตรงนี้: ลดขนาดจาก 11 เป็น 9 เพื่อให้ชื่อแสดงครบ
-            maxRotation: 45, 
-            minRotation: 45 
+            font: { family: 'Sarabun', size: 11 }, // แก้ไขตรงนี้: ลดขนาดจาก 11 เป็น 9 เพื่อให้ชื่อแสดงครบ
+            maxRotation: 35, 
+            minRotation: 35 
           } 
         }, 
         y: { stacked: false, beginAtZero: true } 
@@ -4752,19 +4804,39 @@ function openBehDashboard() {
     document.getElementById('bf-hosp').disabled = false;
     document.getElementById('bf-amphoe').disabled = false;
   }
-
+  rebuildTambonSel_('bf-tambon', document.getElementById('bf-amphoe').value);   // ⬅️ เพิ่มบรรทัดนี้
   openPanel('behdash');
   loadBehDashboard();
 }
 
 function onBehAmpChange() {
   var amp = document.getElementById('bf-amphoe').value;
-  var hSel = document.getElementById('bf-hosp');
-  hSel.innerHTML = '<option value="">รพ.สต. ทั้งหมด</option>';
-  G.hospList.filter(function(h) { return !amp || h.amphoe === amp; }).forEach(function(h) {
-    hSel.innerHTML += '<option value="' + h.hospcode + '">' + h.hospcode + ' ' + h.name + '</option>';
-  });
+  rebuildTambonSel_('bf-tambon', amp);
+  document.getElementById('bf-tambon').value = '';
+  rebuildHospSel_('bf-hosp', amp, '');
+  document.getElementById('bf-hosp').value = '';
   loadBehDashboard();
+}
+function onBehTambonChange() {
+  var amp = document.getElementById('bf-amphoe').value;
+  var tam = document.getElementById('bf-tambon').value;
+  rebuildHospSel_('bf-hosp', amp, tam);
+  document.getElementById('bf-hosp').value = '';
+  loadBehDashboard();
+}
+function onBehHospChange() { loadBehDashboard(); }
+// helper ใช้ร่วมกับข้อ 4 ด้วย
+function rebuildTambonSel_(id, amp) {
+  var tambons = []; G.hospList.forEach(function(h){ if((!amp||h.amphoe===amp)&&h.tambon&&tambons.indexOf(h.tambon)===-1) tambons.push(h.tambon); });
+  tambons.sort();
+  var html = '<option value="">ตำบล ทั้งหมด</option>'; tambons.forEach(function(t){ html += '<option>'+t+'</option>'; });
+  document.getElementById(id).innerHTML = html;
+}
+function rebuildHospSel_(id, amp, tam) {
+  var html = '<option value="">รพ.สต. ทั้งหมด</option>';
+  G.hospList.filter(function(h){ return (!amp||h.amphoe===amp)&&(!tam||h.tambon===tam); })
+    .forEach(function(h){ html += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
+  document.getElementById(id).innerHTML = html;
 }
 
 function clearBehFilters() {
@@ -4772,6 +4844,7 @@ function clearBehFilters() {
   document.getElementById('bf-school').value = '';
   document.getElementById('bf-sex').value = '';
   document.getElementById('bf-class').value = '';
+  document.getElementById('bf-status').value = '';   // ⬅️ เพิ่มบรรทัดนี้
   if (!(G.session.loggedIn && G.session.role === 'user')) document.getElementById('bf-hosp').value = '';
   GB.riskFilter = '';
   onBehAmpChange();
@@ -4784,13 +4857,15 @@ function toggleBehRisk(level) {
 
 function loadBehDashboard() {
   var params = {
-    amphoe: document.getElementById('bf-amphoe').value,
-    hospcode: document.getElementById('bf-hosp').value,
-    school: document.getElementById('bf-school').value,
-    sex: document.getElementById('bf-sex').value,
-    school_class: document.getElementById('bf-class').value,
-    risk: GB.riskFilter
-  };
+  amphoe: document.getElementById('bf-amphoe').value,
+  tambon: document.getElementById('bf-tambon').value,
+  hospcode: document.getElementById('bf-hosp').value,
+  school: document.getElementById('bf-school').value,
+  sex: document.getElementById('bf-sex').value,
+  school_class: document.getElementById('bf-class').value,
+  status: document.getElementById('bf-status').value,
+  risk: GB.riskFilter
+};
   toast('กำลังโหลดข้อมูลพฤกติกรรม...', 'inf');
   google.script.run.withSuccessHandler(function(r){
     var res = JSON.parse(r);
@@ -4998,18 +5073,24 @@ function openFupDashboard() {
     document.getElementById('fdf-hosp').disabled = false;
     document.getElementById('fdf-amphoe').disabled = false;
   }
-  
+  rebuildTambonSel_('fdf-tambon', document.getElementById('fdf-amphoe').value);   // ⬅️ เพิ่มบรรทัดนี้
   openPanel('fupdash');
   loadFupDashboard();
 }
 
 function onFupAmpChange() {
   var amp = document.getElementById('fdf-amphoe').value;
-  var hSel = document.getElementById('fdf-hosp');
-  hSel.innerHTML = '<option value="">รพ.สต. ทั้งหมด</option>';
-  G.hospList.filter(function(h) { return !amp || h.amphoe === amp; }).forEach(function(h) {
-    hSel.innerHTML += '<option value="' + h.hospcode + '">' + h.hospcode + ' ' + h.name + '</option>';
-  });
+  rebuildTambonSel_('fdf-tambon', amp);
+  document.getElementById('fdf-tambon').value = '';
+  rebuildHospSel_('fdf-hosp', amp, '');
+  document.getElementById('fdf-hosp').value = '';
+  loadFupDashboard();
+}
+function onFupTambonChange() {
+  var amp = document.getElementById('fdf-amphoe').value;
+  var tam = document.getElementById('fdf-tambon').value;
+  rebuildHospSel_('fdf-hosp', amp, tam);
+  document.getElementById('fdf-hosp').value = '';
   loadFupDashboard();
 }
 
@@ -5024,12 +5105,13 @@ function clearFupFilters() {
 
 function loadFupDashboard() {
   var params = {
-    amphoe: document.getElementById('fdf-amphoe').value,
-    hospcode: document.getElementById('fdf-hosp').value,
-    school: document.getElementById('fdf-school').value,
-    sex: document.getElementById('fdf-sex').value,
-    school_class: document.getElementById('fdf-class').value
-  };
+  amphoe: document.getElementById('fdf-amphoe').value,
+  tambon: document.getElementById('fdf-tambon').value,
+  hospcode: document.getElementById('fdf-hosp').value,
+  school: document.getElementById('fdf-school').value,
+  sex: document.getElementById('fdf-sex').value,
+  school_class: document.getElementById('fdf-class').value
+};
   toast('กำลังโหลดข้อมูลติดตามผล...', 'inf');
   google.script.run.withSuccessHandler(function(r){
     var res = JSON.parse(r);
@@ -6349,6 +6431,7 @@ async function loadTablePage(page) {
     let hospcode = document.getElementById('fHosp') ? document.getElementById('fHosp').value : '';
     let amphoe = document.getElementById('fAmp') ? document.getElementById('fAmp').value : '';
     let school = document.getElementById('fSch') ? document.getElementById('fSch').value : '';
+    let tambon = document.getElementById('fTambon') ? document.getElementById('fTambon').value : '';
     let search = document.getElementById('srchBox') ? document.getElementById('srchBox').value.trim() : '';
 
     let ep = 'screening_data?select=*&order=cid.asc';
@@ -6362,6 +6445,7 @@ async function loadTablePage(page) {
     }
     
     if (amphoe) ep += '&amphoe=eq.' + amphoe;
+    if (tambon) ep += '&tambon=eq.' + tambon;
     if (school) ep += '&school_name=eq.' + school;
     if (search) ep += '&or=(cid.ilike.*' + search + '*,student_name.ilike.*' + search + '*)';
 
