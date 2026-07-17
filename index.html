@@ -3565,23 +3565,22 @@ async function loadDashboardDirect_(params) {
   }
 
   var results = await Promise.all([
-//     Promise.resolve(scrRows),
-//     fetchSupaAll('hosp_data'),
-//     fetchSupaAll('satisfaction_data', '*' + joinSuffix),
-//     fetchSupaAll('pre_test', '*' + joinSuffix),
-//     fetchSupaAll('post_test', '*' + joinSuffix),
-//     fetchSupaAll('behavior_data', '*' + joinSuffix),
-//     fetchSupaAll('followup_data', '*' + joinSuffix)
-//   ]);
-//
-//   // 🆕 เก็บข้อมูลดิบไว้ใช้กับ Dashboard พฤติกรรม/ติดตามผลแว่นตา โดยไม่ต้องยิง GAS ซ้ำ
-//   G.behRows = results[5];
-//   G.fupRows = results[6];
-//
-//   return computeDashboardStats_(
-//     results[0], results[1], results[2], results[3], results[4], results[5], results[6],
-//     params, userHosp
-//   );
+    Promise.resolve(scrRows),
+    fetchSupaAll('hosp_data'),
+    fetchSupaAll('satisfaction_data', '*' + joinSuffix),
+    fetchSupaAll('pre_test', '*' + joinSuffix),
+    fetchSupaAll('post_test', '*' + joinSuffix),
+    fetchSupaAll('behavior_data', '*' + joinSuffix),
+    fetchSupaAll('followup_data', '*' + joinSuffix)
+  ]);
+
+  G.behRows = results[5];
+  G.fupRows = results[6];
+
+  return computeDashboardStats_(
+    results[0], results[1], results[2], results[3], results[4], results[5], results[6],
+    params, userHosp
+  );
 }
  
 // ---- ดึงข้อมูลทั้งตาราง แบ่งหน้าอัตโนมัติ (เกิน 1000 แถว) เหมือน supaFetch ฝั่ง GAS ----
