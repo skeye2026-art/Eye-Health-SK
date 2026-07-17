@@ -5150,6 +5150,14 @@ function onBehHospChange() {
   document.getElementById('bf-school').value = '';
   loadBehDashboard();
 }
+function rebuildTambonSel_(id, amp) {
+  var tambons = [];
+  G.hospList.forEach(function (h) { if ((!amp || h.amphoe === amp) && h.tambon && tambons.indexOf(h.tambon) === -1) tambons.push(h.tambon); });
+  tambons.sort();
+  var html = '<option value="">ตำบล ทั้งหมด</option>';
+  tambons.forEach(function (t) { html += '<option>' + t + '</option>'; });
+  document.getElementById(id).innerHTML = html;
+}
 function rebuildHospSel_(id, amp, tam) {
   var html = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.filter(function(h){ return (!amp||h.amphoe===amp)&&(!tam||h.tambon===tam); })
