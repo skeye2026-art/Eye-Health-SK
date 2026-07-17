@@ -160,6 +160,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   display: none; /* เริ่มต้นต้องซ่อนไว้ */
   align-items: center; justify-content: center;
 }
+#imgModal.open { display: flex; } /* เมื่อกดแล้วให้แสดงผล */
 #imgModal.open { display: flex; }
 #imgModal img {
   max-width: 80vw; max-height: 80vh;
@@ -2385,7 +2386,7 @@ function clearFilters() {
   onAmpChange();
   applyFilters();
 }
-function forceRefresh() { clearFilters(); loadDashboard({}); toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf'); }
+function forceRefresh() { clearFilters(); loadDashboard({}, true); toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf'); }
 function mapCsvToRowDynamic(headers, cols) {
     var HEADER_MAP = {
         "level_edu": 0, "ระดับชั้น": 0,
@@ -3463,46 +3464,312 @@ function renderHeatmap() {
   wrap.innerHTML = html;
 }
 
-function loadDashboard(params) {
+// ---- cache เก็บผลลัพธ์ dashboard ไว้ชั่วคราว ป้องกันการยิง Supabase ถี่เกินไป ----
+var DASH_CACHE = { data: null, ts: 0, ttl: 45000, paramsKey: '' };
+ 
+// ---- แทนที่ฟังก์ชัน loadDashboard(params) เดิมทั้งหมดด้วยอันนี้ ----
+function loadDashboard(params, forceFresh) {
+  params = params || {};
+  var paramsKey = JSON.stringify(params) + '|' + (G.session.loggedIn ? G.session.hospcode : 'guest');
+ 
+  // ใช้ cache ถ้ายังไม่หมดอายุและ params เดิม (ยกเว้นบังคับ forceFresh เช่นตอนกดปุ่ม "โหลดใหม่")
+  if (!forceFresh && DASH_CACHE.data && DASH_CACHE.paramsKey === paramsKey &&
+      (Date.now() - DASH_CACHE.ts) < DASH_CACHE.ttl) {
+    applyDashboardResult_(DASH_CACHE.data);
+    return;
+  }
+ 
+  document.getElementById('tBody').innerHTML =
+    '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--accent);font-weight:bold;">⚡ กำลังโหลดข้อมูล...</td></tr>';
+  document.getElementById('hospSumBody').innerHTML =
+    '<tr><td colspan="12" style="text-align:center;padding:12px;">⏳ กำลังโหลด...</td></tr>';
+ 
+  loadDashboardDirect_(params)
+    .then(function (result) {
+      DASH_CACHE = { data: result, ts: Date.now(), ttl: 45000, paramsKey: paramsKey };
+      applyDashboardResult_(result);
+    })
+    .catch(function (e) {
+      console.error('loadDashboardDirect_ failed, fallback to GAS:', e);
+      loadDashboardViaGAS_(params); // สำรอง กันระบบล่มถ้า Supabase ตรงมีปัญหา (เช่น RLS policy)
+    });
+}
+ 
+// ---- สำรอง: เส้นทางเดิมผ่าน GAS (ใช้เฉพาะตอน direct fetch ล้มเหลว) ----
+function loadDashboardViaGAS_(params) {
   if (G.session.loggedIn && G.session.hospcode !== 'all') params.userHosp = G.session.hospcode;
-  document.getElementById('tBody').innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--accent);font-weight:bold;">⚡ กำลังโหลดข้อมูลพริบตาเดียวจาก Supabase...</td></tr>';
-  document.getElementById('hospSumBody').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:12px;">⏳ กำลังโหลด...</td></tr>';
-
-  google.script.run.withSuccessHandler(function(r) {
-    var d = JSON.parse(r); if (!d.ok) { toast('โหลดข้อมูลไม่สำเร็จ', 'err'); return; }
-    G.chartData = { amphoe: d.data.barChartAmphoe, hosp: d.data.barChartHosp, school: d.data.barChartSchool }; G.kpi = d.data.kpi; G.hospSummaryData = d.data.hospSummary; G.satCharts = d.data.satCharts;
-    G.allRows = d.data.rows; G.dispRows = d.data.rows;
-    
-    // Enrich G.kpi ด้วยจำนวนคนที่ตอบแบบประเมิน/ทำแบบทดสอบ
-    (function() {
-      var sc=0, pc=0, poc=0, glC=0;
-      for(var i=0; i<G.allRows.length; i++) {
-        var rr = G.allRows[i];
-        if(rr.sat !== null) sc++;
-        if(rr.pre !== null) pc++;
-        if(rr.post !== null) poc++;
-        if(rr.status === 'glasses') glC++;
-      }
-      var tt = G.kpi.total || 1;
-      G.kpi.satCount = sc; G.kpi.satPct = Math.round(sc/tt*100);
-      G.kpi.preCount = pc; G.kpi.prePct = Math.round(pc/tt*100);
-      G.kpi.postCount = poc; G.kpi.postPct = Math.round(poc/tt*100);
-      G.kpi.preTestCount = pc;
-      G.kpi.traineePct = Math.round(pc/tt*100);
-      G.kpi.traineePctGlasses = glC > 0 ? Math.round(pc/glC*100) : null;
-    })();
-    
-    updateKPIs(G.kpi); 
-    renderPieChart(G.kpi); 
-    renderSatTestChart(G.kpi);  
-    try { renderSummaryTable(G.hospSummaryData); } catch(err) { console.error('Summary Error:', err); }
-    renderBarChart(); 
-    renderSatBreakdownChart(); 
-    renderSatTypePieChart(); 
-    renderHeatmap();
-    
-    if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 300);
+  google.script.run.withSuccessHandler(function (r) {
+    var d = JSON.parse(r);
+    if (!d.ok) { toast('โหลดข้อมูลไม่สำเร็จ', 'err'); return; }
+    var result = {
+      chartData: { amphoe: d.data.barChartAmphoe, hosp: d.data.barChartHosp, school: d.data.barChartSchool },
+      kpi: d.data.kpi, hospSummaryData: d.data.hospSummary, satCharts: d.data.satCharts,
+      allRows: d.data.rows
+    };
+    DASH_CACHE = { data: result, ts: Date.now(), ttl: 45000, paramsKey: JSON.stringify(params) };
+    applyDashboardResult_(result);
+  }).withFailureHandler(function (e) {
+    toast('โหลด Dashboard ไม่สำเร็จทั้งสองทาง: ' + e.message, 'err');
   }).getDashboardData(params);
+}
+ 
+// ---- ดึง 6 ตารางตรงจาก Supabase พร้อมกัน แล้วคำนวณผลเหมือน getDashboardData() ฝั่ง GAS ----
+async function loadDashboardDirect_(params) {
+  var userHosp = (G.session.loggedIn && G.session.hospcode !== 'all') ? G.session.hospcode : '';
+ 
+  var results = await Promise.all([
+    fetchSupaAll('screening_data'),
+    fetchSupaAll('hosp_data'),
+    fetchSupaAll('satisfaction_data'),
+    fetchSupaAll('pre_test'),
+    fetchSupaAll('post_test'),
+    fetchSupaAll('behavior_data'),
+    fetchSupaAll('followup_data')
+  ]);
+ 
+  return computeDashboardStats_(
+    results[0], results[1], results[2], results[3], results[4], results[5], results[6],
+    params, userHosp
+  );
+}
+ 
+// ---- ดึงข้อมูลทั้งตาราง แบ่งหน้าอัตโนมัติ (เกิน 1000 แถว) เหมือน supaFetch ฝั่ง GAS ----
+async function fetchSupaAll(table, select) {
+  select = select || '*';
+  var PAGE = 1000, all = [], from = 0;
+  while (true) {
+    var res = await fetch(SUPABASE_URL + '/' + table + '?select=' + select, {
+      headers: {
+        'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Range-Unit': 'items', 'Range': from + '-' + (from + PAGE - 1), 'Prefer': 'count=exact'
+      }
+    });
+    if (!res.ok) throw new Error('Supabase fetch error: ' + table + ' (' + res.status + ')');
+    var chunk = await res.json();
+    all = all.concat(chunk);
+    if (chunk.length < PAGE) break;
+    from += PAGE;
+    if (from > 300000) break; // กันวนไม่รู้จบ
+  }
+  return all;
+}
+ 
+// ---- เกณฑ์คำนวณสถานะ / คะแนน / ความเสี่ยง (พอร์ตมาจาก Code.gs ทุกตัวอักษร) ----
+var ANS_KEY_CLIENT = ['ข', 'ก', 'ง', 'ข', 'ค', 'ข', 'ค', 'ค', 'ค', 'ค'];
+var NO_REFER_VALUES_CLIENT = ['', 'ไม่จำเป็นต้องส่งต่อ', 'ไม่ส่ง'];
+ 
+function calcTestScoreClient_(row) {
+  var score = 0;
+  for (var i = 1; i <= 10; i++) {
+    if (String(row['q' + i] || '').trim() === ANS_KEY_CLIENT[i - 1]) score++;
+  }
+  return score;
+}
+ 
+function calcGainClient_(pre, post) {
+  pre = Number(pre) || 0; post = Number(post) || 0;
+  if (pre >= 10) return 100;
+  return Math.round((post - pre) / (10 - pre) * 100);
+}
+ 
+function calcSatAvgClient_(row) {
+  var sum = 0, count = 0;
+  for (var i = 1; i <= 10; i++) {
+    var v = Number(row['q' + i]);
+    if (v >= 1 && v <= 5) { sum += v; count++; }
+  }
+  return count > 0 ? Math.round((sum / count) * 100) / 100 : null;
+}
+ 
+function formatDateClient_(d) {
+  if (!d) return '';
+  var str = String(d).replace(/^'/, '').trim();
+  var parts = str.split('/');
+  if (parts.length === 3) {
+    var day = parseInt(parts[0], 10), m = parseInt(parts[1], 10), y = parseInt(parts[2], 10);
+    while (y > 2650) y -= 543; while (y > 1900 && y < 2400) y += 543;
+    return String(day).padStart(2, '0') + '/' + String(m).padStart(2, '0') + '/' + y;
+  }
+  return str;
+}
+ 
+// ---- คำนวณทั้งชุด (พอร์ตจาก getDashboardData() ฝั่ง Code.gs แบบ 1:1 ให้ผลลัพธ์หน้าตาเดียวกัน) ----
+function computeDashboardStats_(scrRows, hospRows, satRows, preRows, postRows, behRows, fupRows, params, userHosp) {
+  var fHosp = params.hospcode || '', fAmphoe = params.amphoe || '', fSchool = params.school || '',
+      fStatus = params.status || '', fSex = params.sex || '';
+ 
+  var hospMap = {};
+  hospRows.forEach(function (h) {
+    var hc = String(h.hospcode || '').trim();
+    if (hc) hospMap[hc] = { name: h.name || '', tambon: h.tambon || '', amphoe: h.amphoe || '', pics: h.pics || '' };
+  });
+ 
+  var hospTally = {};
+  Object.keys(hospMap).forEach(function (hc) {
+    hospTally[hc] = { name: hospMap[hc].name, amphoe: hospMap[hc].amphoe, normal: 0, abnormal: 0, referred: 0, glasses: 0, total: 0, preSum: 0, preCount: 0, postSum: 0, postCount: 0, gainSum: 0, gainCount: 0 };
+  });
+ 
+  var preMap = {}, postMap = {};
+  preRows.forEach(function (r) {
+    var cid = String(r.cid || '').trim(); if (!cid) return;
+    var saved = Number(r.total);
+    preMap[cid] = (isNaN(saved) || saved === 0) ? calcTestScoreClient_(r) : saved;
+  });
+  var globalPreCount = preRows.filter(function (r) { return String(r.cid || '').trim(); }).length;
+  postRows.forEach(function (r) {
+    var cid = String(r.cid || '').trim(); if (!cid) return;
+    var saved = Number(r.total);
+    postMap[cid] = (isNaN(saved) || saved === 0) ? calcTestScoreClient_(r) : saved;
+  });
+ 
+  var timeMap = { 'ไม่ใช้': 0, 'ไม่ถึง 1 ชม.': 0.5, '1-2 ชม.': 1.5, '2-3 ชม.': 2.5, '3-4 ชม.': 3.5, 'มากกว่า 4 ชม.': 5 };
+  var behMap = {};
+  behRows.forEach(function (r) {
+    var cid = String(r.cid || '').trim(); if (!cid) return;
+    var distVal = String(r.q_dist || '').trim(), restVal = String(r.q_rest || '').trim();
+    var symArr = String(r.q_symptom || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var hWk = 0, hWe = 0;
+    ['q_time_wk_morn', 'q_time_wk_noon', 'q_time_wk_eve'].forEach(function (k) { var v = String(r[k] || '').trim(); if (timeMap[v] !== undefined) hWk += timeMap[v]; });
+    ['q_time_we_morn', 'q_time_we_noon', 'q_time_we_eve'].forEach(function (k) { var v = String(r[k] || '').trim(); if (timeMap[v] !== undefined) hWe += timeMap[v]; });
+    var risk = 0;
+    if (hWk > 8) risk += 3; else if (hWk > 4) risk += 2; else if (hWk > 2) risk += 1;
+    if (hWe > 8) risk += 3; else if (hWe > 4) risk += 2; else if (hWe > 2) risk += 1;
+    if (distVal === 'ใกล้กว่า 1 ฟุต') risk += 2; else if (distVal === 'ประมาณ 1 ฟุต') risk += 1;
+    if (restVal === 'ไม่ค่อยพัก') risk += 2; else if (restVal === 'พักบ้างบางครั้ง') risk += 1;
+    risk += symArr.filter(function (s) { return s !== 'ไม่มีอาการ'; }).length;
+    behMap[cid] = (risk >= 8) ? 'high' : (risk >= 4) ? 'medium' : 'low';
+  });
+ 
+  var fupMap = {};
+  fupRows.forEach(function (r) { var cid = String(r.cid || '').trim(); if (cid) fupMap[cid] = String(r.f_days || '').trim() || 'มีข้อมูล'; });
+ 
+  var satMap = {}, satIndvMap = {}, satTypeIndvMap = {};
+  var satAmphoeTally = {}, satHospTally = {}, satSchoolTally = {}, satTypeTally = {};
+  satRows.forEach(function (r) {
+    var hc = String(r.hospcode || '').trim(); var cid = String(r.cid || '').trim();
+    var school = String(r.school_name || '').trim() || 'ไม่ระบุโรงเรียน';
+    var evalType = String(r.eval_type || '').trim() || 'ประชาชนทั่วไป / อื่นๆ';
+    var avg = calcSatAvgClient_(r); if (avg === null) return;
+    var lvl = 'lvl1'; if (avg >= 4.5) lvl = 'lvl5'; else if (avg >= 3.5) lvl = 'lvl4'; else if (avg >= 2.5) lvl = 'lvl3'; else if (avg >= 1.5) lvl = 'lvl2';
+    var hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ' }; var amp = hInfo.amphoe || 'ไม่ระบุอำเภอ';
+    function tally(obj, key, name) { if (!obj[key]) obj[key] = { label: name || key, lvl5: 0, lvl4: 0, lvl3: 0, lvl2: 0, lvl1: 0, sum: 0, count: 0 }; obj[key][lvl]++; obj[key].sum += avg; obj[key].count++; }
+    tally(satAmphoeTally, amp, amp); tally(satHospTally, hc, hInfo.name || hc); tally(satSchoolTally, school, school); tally(satTypeTally, evalType, evalType);
+    if (hc) { if (!satMap[hc]) satMap[hc] = { sum: 0, count: 0 }; satMap[hc].sum += avg; satMap[hc].count++; }
+    if (cid) { satIndvMap[cid] = avg; satTypeIndvMap[cid] = evalType; }
+  });
+ 
+  var kpi = { total: 0, normal: 0, abnormal: 0, referred: 0, glasses: 0 };
+  var amphoeTally = {}, schoolTally = {}, preSumTotal = 0, postSumTotal = 0, gainSumTotal = 0, testCount = 0, tableRows = [];
+ 
+  scrRows.forEach(function (r) {
+    var cid = String(r.cid || '').replace(/\D/g, ''); var hc = String(r.hospcode || '').trim();
+    if (fHosp && hc !== fHosp) return;
+    var hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ', tambon: '', pics: '' };
+    if (fAmphoe && hInfo.amphoe !== fAmphoe) return;
+    var sName = String(r.school_name || '').trim(); if (fSchool && sName !== fSchool) return;
+    var sex = String(r.sex || '').trim(); if (fSex && sex !== fSex) return;
+    var status = calcStatusClient_(r, !!fupMap[cid]); if (fStatus && status !== fStatus) return;
+    if (!hospTally[hc]) hospTally[hc] = { name: hInfo.name, amphoe: hInfo.amphoe, normal: 0, abnormal: 0, referred: 0, glasses: 0, total: 0, preSum: 0, preCount: 0, postSum: 0, postCount: 0, gainSum: 0, gainCount: 0 };
+    hospTally[hc][status]++; hospTally[hc].total++;
+    if (userHosp && userHosp !== 'all' && hc !== userHosp) return;
+ 
+    var pre = preMap[cid] !== undefined ? preMap[cid] : null; var post = postMap[cid] !== undefined ? postMap[cid] : null;
+    var gain = (pre !== null && post !== null) ? calcGainClient_(pre, post) : null;
+    if (pre !== null && post !== null) { preSumTotal += pre; postSumTotal += post; gainSumTotal += gain; testCount++; hospTally[hc].preSum += pre; hospTally[hc].preCount++; hospTally[hc].postSum += post; hospTally[hc].postCount++; hospTally[hc].gainSum += gain; hospTally[hc].gainCount++; }
+    kpi.total++; kpi[status]++;
+    var amp = hInfo.amphoe || 'ไม่ระบุ'; if (!amphoeTally[amp]) amphoeTally[amp] = { normal: 0, abnormal: 0, referred: 0, glasses: 0, total: 0 }; amphoeTally[amp][status]++; amphoeTally[amp].total++;
+    var schKey = sName || 'ไม่ระบุโรงเรียน'; if (!schoolTally[schKey]) schoolTally[schKey] = { label: schKey, normal: 0, abnormal: 0, referred: 0, glasses: 0, total: 0 }; schoolTally[schKey][status]++; schoolTally[schKey].total++;
+ 
+    var treat = String(r.treatment || '').trim();
+    var nat = String(r.nationality || 'ไทย').trim();
+    var bRisk = behMap[cid] || null;
+    var fWear = fupMap[cid] || null;
+ 
+    tableRows.push({
+      cid: cid, student_name: String(r.student_name || ((r.pname || '') + (r.fname || '') + ' ' + (r.lname || ''))).trim(),
+      age_years: String(r.age_years || '').trim(), school_class: String(r.school_class || '').trim(),
+      school_name: sName, school_code: String(r.school_code || '').trim(), hospcode: hc, hosp_name: hInfo.name, amphoe: hInfo.amphoe, sex: sex,
+      diagnosis: String(r.diagnosis || '').trim(), referral: String(r.referral || '').trim(),
+      screen_date: formatDateClient_(r.screen_date), status: status, pre: pre, post: post, gain: gain,
+      sat: satIndvMap[cid] !== undefined ? satIndvMap[cid] : null, sat_type: satTypeIndvMap[cid] || null, examiner: String(r.examiner || '').trim(),
+      treatment: treat, nationality: nat, beh_risk: bRisk || null, fup_status: fWear || null,
+      va_r_naked: String(r.va_r_naked || '').trim(), va_l_naked: String(r.va_l_naked || '').trim(), va_naked_OU: String(r.va_naked_ou || '').trim(),
+      va_r_glasses: String(r.va_r_glasses || '').trim(), va_l_glasses: String(r.va_l_glasses || '').trim(), va_glasses_OU: String(r.va_glasses_ou || '').trim(),
+      ph_r: String(r.ph_r || '').trim(), ph_l: String(r.ph_l || '').trim(),
+      pname: String(r.pname || '').trim(), fname: String(r.fname || '').trim(), lname: String(r.lname || '').trim(), birthday: formatDateClient_(r.birthday),
+      level_edu: String(r.level_edu || '').trim(), room: String(r.room || '').trim(), unit: String(r.unit || '').trim(), address: String(r.address || '').trim(),
+      moo: String(r.moo || '').trim(), aid: String(r.aid || '').trim(), tambon: String(r.tambon || '').trim(), province: String(r.province || '').trim(),
+      position: String(r.position || '').trim(), remarks: String(r.remarks || '').trim(),
+      hx_glasses: r.hx_glasses == 1 ? 'ใช่' : 'ไม่ใช่', hx_injury: r.hx_injury == 1 ? 'ใช่' : 'ไม่ใช่', hx_red_eye: r.hx_red_eye == 1 ? 'ใช่' : 'ไม่ใช่',
+      hx_headache: r.hx_headache == 1 ? 'ใช่' : 'ไม่ใช่', hx_amblyopia: r.hx_amblyopia == 1 ? 'ใช่' : 'ไม่ใช่', hx_family: r.hx_family == 1 ? 'ใช่' : 'ไม่ใช่',
+      cover_test: String(r.cover_test || '').trim(), hirschberg: String(r.hirschberg || '').trim(), color_vision: String(r.color_vision || '').trim(), stereopsis: String(r.stereopsis || '').trim()
+    });
+  });
+ 
+  var t = kpi.total || 1;
+  var kpiOut = {
+    total: kpi.total, normal: kpi.normal, normalPct: Math.round(kpi.normal / t * 100),
+    abnormal: kpi.abnormal, abnormalTotal: kpi.total - kpi.normal, abnormalPct: Math.round((kpi.total - kpi.normal) / t * 100),
+    referred: kpi.referred + kpi.glasses, referredPct: Math.round((kpi.referred + kpi.glasses) / t * 100),
+    referredRaw: kpi.referred,
+    glasses: kpi.glasses, glassesPct: Math.round(kpi.glasses / t * 100),
+    preAvg: testCount > 0 ? Math.round(preSumTotal / testCount * 10) / 10 : null,
+    postAvg: testCount > 0 ? Math.round(postSumTotal / testCount * 10) / 10 : null,
+    gainAvg: testCount > 0 ? Math.round(gainSumTotal / testCount) : null, preTestCount: globalPreCount
+  };
+  var satTotal = 0, satCount = 0;
+  Object.keys(satMap).forEach(function (hc) { if (satMap[hc] && satMap[hc].count > 0) { satTotal += satMap[hc].sum / satMap[hc].count; satCount++; } });
+  kpiOut.satAvg = satCount > 0 ? Math.round(satTotal / satCount * 100) / 100 : null;
+ 
+  var barChartAmphoe = Object.keys(amphoeTally).sort().map(function (amp) { var d = amphoeTally[amp]; return { label: amp, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, normalPct: Math.round(d.normal / (d.total || 1) * 100) }; });
+  var barChartHosp = Object.keys(hospTally).sort().map(function (hc) { var d = hospTally[hc]; return { label: d.name, hospcode: hc, amphoe: d.amphoe, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, normalPct: Math.round(d.normal / (d.total || 1) * 100) }; });
+  var barChartSchool = Object.keys(schoolTally).sort().map(function (s) { var d = schoolTally[s]; return { label: s, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, normalPct: Math.round(d.normal / (d.total || 1) * 100) }; });
+  function formatSatTally(tObj) { return Object.keys(tObj).sort().map(function (k) { var o = tObj[k]; o.avg = o.count > 0 ? (Math.round((o.sum / o.count) * 100) / 100) : 0; return o; }); }
+  var satCharts = { amphoe: formatSatTally(satAmphoeTally), hosp: formatSatTally(satHospTally), school: formatSatTally(satSchoolTally), type: formatSatTally(satTypeTally) };
+ 
+  var hospSummary = Object.keys(hospTally).map(function (hc) {
+    var ht = hospTally[hc]; var satAvgRow = satMap[hc] ? Math.round(satMap[hc].sum / satMap[hc].count * 100) / 100 : null;
+    var pics = hospMap[hc] ? hospMap[hc].pics : '';
+    return { hospcode: hc, name: ht.name, amphoe: ht.amphoe, pics: pics, normal: ht.normal, abnormal: (ht.total - ht.normal), referred: ht.referred, glasses: ht.glasses, total: ht.total, satAvg: satAvgRow, preAvg: ht.preCount > 0 ? Math.round(ht.preSum / ht.preCount * 10) / 10 : null, postAvg: ht.postCount > 0 ? Math.round(ht.postSum / ht.postCount * 10) / 10 : null, gainAvg: ht.gainCount > 0 ? Math.round(ht.gainSum / ht.gainCount) : null };
+  }).filter(function (h) { return fAmphoe ? h.amphoe === fAmphoe : true; }).sort(function (a, b) { return a.hospcode.localeCompare(b.hospcode); });
+ 
+  return { chartData: { amphoe: barChartAmphoe, hosp: barChartHosp, school: barChartSchool }, kpi: kpiOut, hospSummaryData: hospSummary, satCharts: satCharts, allRows: tableRows };
+}
+ 
+// ---- นำผลลัพธ์ที่คำนวณแล้ว (ไม่ว่าจะมาจาก direct fetch หรือ GAS fallback) ไปแสดงผล ----
+// เหมือนโค้ดในบล็อก withSuccessHandler เดิมของ loadDashboard() ทุกประการ ไม่มีการเปลี่ยนแปลง UI
+function applyDashboardResult_(result) {
+  G.chartData = result.chartData; G.kpi = result.kpi; G.hospSummaryData = result.hospSummaryData; G.satCharts = result.satCharts;
+  G.allRows = result.allRows; G.dispRows = result.allRows;
+ 
+  (function () {
+    var sc = 0, pc = 0, poc = 0, glC = 0;
+    for (var i = 0; i < G.allRows.length; i++) {
+      var rr = G.allRows[i];
+      if (rr.sat !== null) sc++;
+      if (rr.pre !== null) pc++;
+      if (rr.post !== null) poc++;
+      if (rr.status === 'glasses') glC++;
+    }
+    var tt = G.kpi.total || 1;
+    G.kpi.satCount = sc; G.kpi.satPct = Math.round(sc / tt * 100);
+    G.kpi.preCount = pc; G.kpi.prePct = Math.round(pc / tt * 100);
+    G.kpi.postCount = poc; G.kpi.postPct = Math.round(poc / tt * 100);
+    G.kpi.preTestCount = pc;
+    G.kpi.traineePct = Math.round(pc / tt * 100);
+    G.kpi.traineePctGlasses = glC > 0 ? Math.round(pc / glC * 100) : null;
+  })();
+ 
+  updateKPIs(G.kpi);
+  renderPieChart(G.kpi);
+  renderSatTestChart(G.kpi);
+  try { renderSummaryTable(G.hospSummaryData); } catch (err) { console.error('Summary Error:', err); }
+  renderBarChart();
+  renderSatBreakdownChart();
+  renderSatTypePieChart();
+  renderHeatmap();
+ 
+  if (myMap) setTimeout(function () { myMap.invalidateSize(); }, 300);
 }
 
 // ฟังก์ชันสำหรับเปิดภาพ (เรียกใช้จาก renderSummaryTable)
@@ -5586,7 +5853,7 @@ function hardReload() {
     }
 
         // โหลด Dashboard ใหม่ทั้งหมด
-        loadDashboard({});
+        loadDashboard({}, true);
 
         // รีเฟรชแผนที่
         if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 400);
@@ -6417,40 +6684,124 @@ function debounceSearch() {
     }, 500);
 }
 
-function loadTablePage(page) {
+async function loadTablePage(page) {
     let tBody = document.getElementById('tBody');
     if(!tBody) return;
+    tBody.innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--accent);font-weight:bold;">⚡ กำลังโหลดข้อมูลพริบตาเดียวจาก Supabase...</td></tr>';
     
-    // 1. กำหนดหน้าปัจจุบันและจำนวนต่อหน้า
     currentPage = page || 1;
     let limit = 50;
-    
-    // 2. ดึงข้อมูลที่ผ่านการกรองมาแล้วจาก applyFilters()
-    let dataToRender = G.dispRows || [];
-    let totalCount = dataToRender.length;
-    totalPages = Math.ceil(totalCount / limit) || 1;
-
-    // 3. ป้องกันการกดเกินหน้า
-    if (currentPage > totalPages) currentPage = totalPages;
-    if (currentPage < 1) currentPage = 1;
-
-    // 4. ตัดแบ่งข้อมูลเฉพาะหน้าปัจจุบัน
     let from = (currentPage - 1) * limit;
-    let to = from + limit;
-    let pageData = dataToRender.slice(from, to);
+    let to = from + limit - 1;
 
-    // 5. อัปเดตปุ่มและตัวเลขหน้า
-    let pageInfo = document.getElementById('pageInfo');
-    if(pageInfo) pageInfo.textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
-    
-    let btnPrev = document.getElementById('btnPrevPage');
-    if(btnPrev) btnPrev.disabled = (currentPage <= 1);
-    
-    let btnNext = document.getElementById('btnNextPage');
-    if(btnNext) btnNext.disabled = (currentPage >= totalPages);
+    let hospcode = document.getElementById('fHosp') ? document.getElementById('fHosp').value : '';
+    let amphoe = document.getElementById('fAmp') ? document.getElementById('fAmp').value : '';
+    let school = document.getElementById('fSch') ? document.getElementById('fSch').value : '';
+    let tambon = document.getElementById('fTambon') ? document.getElementById('fTambon').value : '';
+    let search = document.getElementById('srchBox') ? document.getElementById('srchBox').value.trim() : '';
 
-    // 6. ส่งข้อมูลที่ตัดแล้วไปวาดตาราง
-    renderTable(pageData);
+    let ep = 'screening_data?select=*&order=cid.asc';
+    let sessionRole = (typeof G !== 'undefined' && G.session && G.session.role) ? G.session.role : 'guest';
+    let sessionHosp = (typeof G !== 'undefined' && G.session && G.session.hospcode) ? G.session.hospcode : 'all';
+
+    if (sessionRole !== 'admin' && sessionHosp !== 'all' && sessionHosp !== '') {
+        ep += '&hospcode=eq.' + sessionHosp;
+    } else if (hospcode) {
+        ep += '&hospcode=eq.' + hospcode;
+    }
+    
+    if (amphoe) ep += '&amphoe=eq.' + amphoe;
+    if (tambon) ep += '&tambon=eq.' + tambon;
+    if (school) ep += '&school_name=eq.' + school;
+    if (search) ep += '&or=(cid.ilike.*' + search + '*,student_name.ilike.*' + search + '*)';
+
+    try {
+        const res = await fetch(`${SUPABASE_URL}/${ep}`, {
+            method: 'GET',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Range-Unit': 'items', 'Range': from + '-' + to, 'Prefer': 'count=exact' }
+        });
+
+        if (!res.ok) throw new Error('Supabase Error: ' + res.status);
+        const rows = await res.json();
+        const contentRange = res.headers.get('Content-Range') || '0-0/0';
+        const totalCount = parseInt(contentRange.split('/')[1]) || 0;
+        totalPages = Math.ceil(totalCount / limit) || 1;
+
+        let cids = rows.map(r => String(r.cid).replace(/\D/g, '')).filter(Boolean);
+        let cidQuery = cids.length > 0 ? 'cid=in.(' + cids.join(',') + ')' : 'cid=is.null';
+
+        const [preRes, postRes, satRes, fupRes, hospRes] = await Promise.all([
+            fetch(`${SUPABASE_URL}/pre_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+            fetch(`${SUPABASE_URL}/post_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+            fetch(`${SUPABASE_URL}/satisfaction_data?select=cid,q1,q2,q3,q4,q5,q6,q7,q8,q9,q10&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+            fetch(`${SUPABASE_URL}/followup_data?select=cid,f_days&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+            fetch(`${SUPABASE_URL}/hosp_data?select=hospcode,name,amphoe`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json())
+        ]);
+
+        let preMap = {}, postMap = {}, satMap = {}, fupMap = {}, hospMap = {};
+        preRes.forEach(r => preMap[r.cid] = r.total);
+        postRes.forEach(r => postMap[r.cid] = r.total);
+        fupRes.forEach(r => fupMap[r.cid] = r.f_days || 'มีข้อมูล');
+        hospRes.forEach(r => hospMap[r.hospcode] = { name: r.name, amphoe: r.amphoe });
+        satRes.forEach(r => {
+            let sum = 0, count = 0;
+            for(let i=1; i<=10; i++) { if(r['q'+i] >= 1) { sum += r['q'+i]; count++; } }
+            satMap[r.cid] = count > 0 ? Math.round((sum/count)*100)/100 : null;
+        });
+
+        function calcStatusClient_(obj, hasFup) {
+            var diag = String(obj.diagnosis || '').trim();
+            if (diag === 'สายตาปกต') diag = 'สายตาปกติ';
+            var ref = String(obj.referral || '').trim();
+            var noRefer = ['', 'ไม่จำเป็นต้องส่งต่อ', 'ไม่ส่ง'].indexOf(ref) >= 0;
+            if (!noRefer && hasFup) return 'glasses';
+            if (!noRefer) return 'referred';
+            if (diag && diag !== 'สายตาปกติ') return 'abnormal';
+            return 'normal';
+        }
+
+        let formattedRows = rows.map(obj => {
+            let cid = String(obj.cid).replace(/\D/g, '');
+            let hc = String(obj.hospcode || '').trim();
+            let hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ' };
+            let pre = preMap[cid] || null, post = postMap[cid] || null;
+            let gain = (pre !== null && post !== null) ? (pre >= 10 ? 100 : Math.round((post-pre)/(10-pre)*100)) : null;
+            return {
+                cid: cid,
+                student_name: String(obj.student_name || '').trim(),
+                school_class: String(obj.school_class || '').trim(),
+                school_name: String(obj.school_name || '').trim(),
+                hospcode: hc, hosp_name: hInfo.name, amphoe: hInfo.amphoe,
+                sex: String(obj.sex || '').trim(),
+                treatment: String(obj.treatment || '').trim(),
+                nationality: String(obj.nationality || 'ไทย').trim(),
+                va_r_naked: String(obj.va_r_naked || '').trim(),
+                va_l_naked: String(obj.va_l_naked || '').trim(),
+                va_naked_OU: String(obj.va_naked_ou || '').trim(),
+                va_r_glasses: String(obj.va_r_glasses || '').trim(),
+                va_l_glasses: String(obj.va_l_glasses || '').trim(),
+                va_glasses_OU: String(obj.va_glasses_ou || '').trim(),
+                ph_r: String(obj.ph_r || '').trim(),
+                ph_l: String(obj.ph_l || '').trim(),
+                diagnosis: String(obj.diagnosis || '').trim(),
+                referral: String(obj.referral || '').trim(),
+                examiner: String(obj.examiner || '').trim(),
+                status: calcStatusClient_(obj, !!fupMap[cid]),
+                pre: pre, post: post, gain: gain,
+                sat: satMap[cid] || null,
+                fup_status: fupMap[cid] || null,
+                screen_date: String(obj.screen_date || '')
+            };
+        });
+
+        document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
+        document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
+        document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
+        renderTable(formattedRows);
+    } catch (e) {
+        console.error(e);
+        if(typeof toast === 'function') toast('โหลดตารางล้มเหลว: ' + e.message, 'err');
+    }
 }
 
 function changePage(direction) {
