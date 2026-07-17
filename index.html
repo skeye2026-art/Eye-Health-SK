@@ -3472,7 +3472,6 @@ function loadDashboard(params, forceFresh) {
   params = params || {};
   var paramsKey = JSON.stringify(params) + '|' + (G.session.loggedIn ? G.session.hospcode : 'guest');
  
-  // ใช้ cache ถ้ายังไม่หมดอายุและ params เดิม (ยกเว้นบังคับ forceFresh เช่นตอนกดปุ่ม "โหลดใหม่")
   if (!forceFresh && DASH_CACHE.data && DASH_CACHE.paramsKey === paramsKey &&
       (Date.now() - DASH_CACHE.ts) < DASH_CACHE.ttl) {
     applyDashboardResult_(DASH_CACHE.data);
@@ -3484,15 +3483,48 @@ function loadDashboard(params, forceFresh) {
   document.getElementById('hospSumBody').innerHTML =
     '<tr><td colspan="12" style="text-align:center;padding:12px;">⏳ กำลังโหลด...</td></tr>';
  
+  // 🚀 Phase 1: RPC เร็ว — คำนวณ KPI/กราฟ/ตารางสรุปในฐานข้อมูลแล้วส่งกลับมาแค่ไม่กี่ KB
+  //    แสดงผลได้ภายใน ~1-2 วิ โดยยังไม่ต้องรอข้อมูลรายคนเต็ม
+  var userHosp = (G.session.loggedIn && G.session.hospcode !== 'all') ? G.session.hospcode : '';
+  fetchDashboardRPC_(userHosp)
+    .then(function (partial) { applyPartialDashboardResult_(partial); })
+    .catch(function (e) { console.warn('Phase1 RPC ไม่สำเร็จ (ไม่ร้ายแรง รอ Phase2 แทน):', e); });
+ 
+  // 🐢 Phase 2: ของเดิม — โหลดข้อมูลรายคนเต็มมาเก็บ G.allRows (จำเป็นสำหรับค้นหา/แก้ไข/export)
+  //    ทำงานคู่ขนานกับ Phase 1 ไม่ต้องรอ Phase 1 เสร็จก่อน
   loadDashboardDirect_(params)
-    .then(function (result) {
-      DASH_CACHE = { data: result, ts: Date.now(), ttl: 45000, paramsKey: paramsKey };
-      applyDashboardResult_(result);
-    })
-    .catch(function (e) {
-      console.error('loadDashboardDirect_ failed, fallback to GAS:', e);
-      loadDashboardViaGAS_(params); // สำรอง กันระบบล่มถ้า Supabase ตรงมีปัญหา (เช่น RLS policy)
-    });
+    .then(function (result) { applyRowDataOnly_(result, paramsKey); })
+ 
+// ---- ยิง RPC ตัวเดียว ได้ผลสรุปกลับมาเร็วมาก (ไม่มีข้อมูลรายคน) ----
+async function fetchDashboardRPC_(userHosp) {
+  var res = await fetch(SUPABASE_URL + '/rpc/get_dashboard_summary', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ p_user_hosp: userHosp || '' })
+  });
+  if (!res.ok) throw new Error('RPC get_dashboard_summary error (' + res.status + ')');
+  return await res.json();
+}
+ 
+// ---- แสดงผล KPI/กราฟ/ตารางสรุปจาก Phase 1 ทันที (ยังไม่แตะ G.allRows/ตารางรายคน) ----
+function applyPartialDashboardResult_(partial) {
+  if (!partial || !partial.kpi) return;
+  G.chartData = partial.chartData; G.kpi = partial.kpi;
+  G.hospSummaryData = partial.hospSummaryData; G.satCharts = partial.satCharts;
+ 
+  updateKPIs(G.kpi);
+  renderPieChart(G.kpi);
+  renderSatTestChart(G.kpi);
+  try { renderSummaryTable(G.hospSummaryData); } catch (err) { console.error('Summary Error:', err); }
+  renderBarChart();
+  renderSatBreakdownChart();
+  renderSatTypePieChart();
+  renderHeatmap();
+ 
+  if (myMap) setTimeout(function () { myMap.invalidateSize(); }, 300);
 }
  
 // ---- สำรอง: เส้นทางเดิมผ่าน GAS (ใช้เฉพาะตอน direct fetch ล้มเหลว) ----
@@ -3515,18 +3547,28 @@ function loadDashboardViaGAS_(params) {
  
 // ---- ดึง 6 ตารางตรงจาก Supabase พร้อมกัน แล้วคำนวณผลเหมือน getDashboardData() ฝั่ง GAS ----
 async function loadDashboardDirect_(params) {
-  var userHosp = (G.session.loggedIn && G.session.hospcode !== 'all') ? G.session.hospcode : '';
- 
+  var userHosp = (G.session.loggedIn && G.session.role !== 'admin' && G.session.hospcode && G.session.hospcode !== 'all')
+    ? G.session.hospcode : '';
+
+  var scrSelect = userHosp ? ('*&hospcode=eq.' + encodeURIComponent(userHosp)) : '*';
+  var scrRows = await fetchSupaAll('screening_data', scrSelect);
+
+  var joinSuffix = '';
+  if (userHosp) {
+    var cids = scrRows.map(function (r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
+    joinSuffix = cids.length > 0 ? ('&cid=in.(' + cids.join(',') + ')') : '&cid=is.null';
+  }
+
   var results = await Promise.all([
-    fetchSupaAll('screening_data'),
+    Promise.resolve(scrRows),
     fetchSupaAll('hosp_data'),
-    fetchSupaAll('satisfaction_data'),
-    fetchSupaAll('pre_test'),
-    fetchSupaAll('post_test'),
-    fetchSupaAll('behavior_data'),
-    fetchSupaAll('followup_data')
+    fetchSupaAll('satisfaction_data', '*' + joinSuffix),
+    fetchSupaAll('pre_test', '*' + joinSuffix),
+    fetchSupaAll('post_test', '*' + joinSuffix),
+    fetchSupaAll('behavior_data', '*' + joinSuffix),
+    fetchSupaAll('followup_data', '*' + joinSuffix)
   ]);
- 
+
   return computeDashboardStats_(
     results[0], results[1], results[2], results[3], results[4], results[5], results[6],
     params, userHosp
@@ -6808,7 +6850,12 @@ function changePage(direction) {
     let newPage = currentPage + direction;
     if(newPage >= 1 && newPage <= totalPages) loadTablePage(newPage);
 }
-
+function applyRowDataOnly_(result, paramsKey) {
+  DASH_CACHE = { data: result, ts: Date.now(), ttl: 45000, paramsKey: paramsKey };
+  G.allRows = result.allRows; G.dispRows = result.allRows;
+  try { if (G.dispRows.length && typeof renderTable === 'function') renderTable(G.dispRows); } catch (e) { console.error('renderTable error:', e); }
+  if (myMap) setTimeout(function () { myMap.invalidateSize(); }, 300);
+}
 </script>
 </body>
 </html>
