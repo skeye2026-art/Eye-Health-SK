@@ -6464,19 +6464,20 @@ async function loadTablePage(page) {
         let cids = rows.map(r => String(r.cid).replace(/\D/g, '')).filter(Boolean);
         let cidQuery = cids.length > 0 ? 'cid=in.(' + cids.join(',') + ')' : 'cid=is.null';
 
-        const [preRes, postRes, satRes, fupRes, hospRes] = await Promise.all([
-            fetch(`${SUPABASE_URL}/pre_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-            fetch(`${SUPABASE_URL}/post_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-            fetch(`${SUPABASE_URL}/satisfaction_data?select=cid,q1,q2,q3,q4,q5,q6,q7,q8,q9,q10&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-            fetch(`${SUPABASE_URL}/followup_data?select=cid,f_days&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-            fetch(`${SUPABASE_URL}/hosp_data?select=hospcode,name,amphoe`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json())
-        ]);
+        const [preRes, postRes, satRes, fupRes] = await Promise.all([
+    fetch(`${SUPABASE_URL}/pre_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+    fetch(`${SUPABASE_URL}/post_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+    fetch(`${SUPABASE_URL}/satisfaction_data?select=cid,q1,q2,q3,q4,q5,q6,q7,q8,q9,q10&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+    fetch(`${SUPABASE_URL}/followup_data?select=cid,f_days&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json())
+]);
 
         let preMap = {}, postMap = {}, satMap = {}, fupMap = {}, hospMap = {};
         preRes.forEach(r => preMap[r.cid] = r.total);
         postRes.forEach(r => postMap[r.cid] = r.total);
         fupRes.forEach(r => fupMap[r.cid] = r.f_days || 'มีข้อมูล');
-        hospRes.forEach(r => hospMap[r.hospcode] = { name: r.name, amphoe: r.amphoe });
+        (G.hospList || []).forEach(function(r) {
+  hospMap[r.hospcode] = { name: r.name, amphoe: r.amphoe };
+});
         satRes.forEach(r => {
             let sum = 0, count = 0;
             for(let i=1; i<=10; i++) { if(r['q'+i] >= 1) { sum += r['q'+i]; count++; } }
