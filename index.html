@@ -160,7 +160,6 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
   display: none; /* เริ่มต้นต้องซ่อนไว้ */
   align-items: center; justify-content: center;
 }
-#imgModal.open { display: flex; } /* เมื่อกดแล้วให้แสดงผล */
 #imgModal.open { display: flex; }
 #imgModal img {
   max-width: 80vw; max-height: 80vh;
@@ -6418,125 +6417,40 @@ function debounceSearch() {
     }, 500);
 }
 
-async function loadTablePage(page) {
+function loadTablePage(page) {
     let tBody = document.getElementById('tBody');
     if(!tBody) return;
-    tBody.innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--accent);font-weight:bold;">⚡ กำลังโหลดข้อมูลพริบตาเดียวจาก Supabase...</td></tr>';
     
+    // 1. กำหนดหน้าปัจจุบันและจำนวนต่อหน้า
     currentPage = page || 1;
     let limit = 50;
-    let from = (currentPage - 1) * limit;
-    let to = from + limit - 1;
-
-    let hospcode = document.getElementById('fHosp') ? document.getElementById('fHosp').value : '';
-    let amphoe = document.getElementById('fAmp') ? document.getElementById('fAmp').value : '';
-    let school = document.getElementById('fSch') ? document.getElementById('fSch').value : '';
-    let tambon = document.getElementById('fTambon') ? document.getElementById('fTambon').value : '';
-    let search = document.getElementById('srchBox') ? document.getElementById('srchBox').value.trim() : '';
-
-    let ep = 'screening_data?select=*&order=cid.asc';
-    let sessionRole = (typeof G !== 'undefined' && G.session && G.session.role) ? G.session.role : 'guest';
-    let sessionHosp = (typeof G !== 'undefined' && G.session && G.session.hospcode) ? G.session.hospcode : 'all';
-
-    if (sessionRole !== 'admin' && sessionHosp !== 'all' && sessionHosp !== '') {
-        ep += '&hospcode=eq.' + sessionHosp;
-    } else if (hospcode) {
-        ep += '&hospcode=eq.' + hospcode;
-    }
     
-    if (amphoe) ep += '&amphoe=eq.' + amphoe;
-    if (tambon) ep += '&tambon=eq.' + tambon;
-    if (school) ep += '&school_name=eq.' + school;
-    if (search) ep += '&or=(cid.ilike.*' + search + '*,student_name.ilike.*' + search + '*)';
+    // 2. ดึงข้อมูลที่ผ่านการกรองมาแล้วจาก applyFilters()
+    let dataToRender = G.dispRows || [];
+    let totalCount = dataToRender.length;
+    totalPages = Math.ceil(totalCount / limit) || 1;
 
-    try {
-        const res = await fetch(`${SUPABASE_URL}/${ep}`, {
-            method: 'GET',
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Range-Unit': 'items', 'Range': from + '-' + to, 'Prefer': 'count=exact' }
-        });
+    // 3. ป้องกันการกดเกินหน้า
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
 
-        if (!res.ok) throw new Error('Supabase Error: ' + res.status);
-        const rows = await res.json();
-        const contentRange = res.headers.get('Content-Range') || '0-0/0';
-        const totalCount = parseInt(contentRange.split('/')[1]) || 0;
-        totalPages = Math.ceil(totalCount / limit) || 1;
+    // 4. ตัดแบ่งข้อมูลเฉพาะหน้าปัจจุบัน
+    let from = (currentPage - 1) * limit;
+    let to = from + limit;
+    let pageData = dataToRender.slice(from, to);
 
-        let cids = rows.map(r => String(r.cid).replace(/\D/g, '')).filter(Boolean);
-        let cidQuery = cids.length > 0 ? 'cid=in.(' + cids.join(',') + ')' : 'cid=is.null';
+    // 5. อัปเดตปุ่มและตัวเลขหน้า
+    let pageInfo = document.getElementById('pageInfo');
+    if(pageInfo) pageInfo.textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
+    
+    let btnPrev = document.getElementById('btnPrevPage');
+    if(btnPrev) btnPrev.disabled = (currentPage <= 1);
+    
+    let btnNext = document.getElementById('btnNextPage');
+    if(btnNext) btnNext.disabled = (currentPage >= totalPages);
 
-        const [preRes, postRes, satRes, fupRes] = await Promise.all([
-    fetch(`${SUPABASE_URL}/pre_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-    fetch(`${SUPABASE_URL}/post_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-    fetch(`${SUPABASE_URL}/satisfaction_data?select=cid,q1,q2,q3,q4,q5,q6,q7,q8,q9,q10&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-    fetch(`${SUPABASE_URL}/followup_data?select=cid,f_days&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json())
-]);
-
-        let preMap = {}, postMap = {}, satMap = {}, fupMap = {}, hospMap = {};
-        preRes.forEach(r => preMap[r.cid] = r.total);
-        postRes.forEach(r => postMap[r.cid] = r.total);
-        fupRes.forEach(r => fupMap[r.cid] = r.f_days || 'มีข้อมูล');
-        (G.hospList || []).forEach(function(r) {
-  hospMap[r.hospcode] = { name: r.name, amphoe: r.amphoe };
-});
-        satRes.forEach(r => {
-            let sum = 0, count = 0;
-            for(let i=1; i<=10; i++) { if(r['q'+i] >= 1) { sum += r['q'+i]; count++; } }
-            satMap[r.cid] = count > 0 ? Math.round((sum/count)*100)/100 : null;
-        });
-
-        function calcStatusClient_(obj, hasFup) {
-            var diag = String(obj.diagnosis || '').trim();
-            if (diag === 'สายตาปกต') diag = 'สายตาปกติ';
-            var ref = String(obj.referral || '').trim();
-            var noRefer = ['', 'ไม่จำเป็นต้องส่งต่อ', 'ไม่ส่ง'].indexOf(ref) >= 0;
-            if (!noRefer && hasFup) return 'glasses';
-            if (!noRefer) return 'referred';
-            if (diag && diag !== 'สายตาปกติ') return 'abnormal';
-            return 'normal';
-        }
-
-        let formattedRows = rows.map(obj => {
-            let cid = String(obj.cid).replace(/\D/g, '');
-            let hc = String(obj.hospcode || '').trim();
-            let hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ' };
-            let pre = preMap[cid] || null, post = postMap[cid] || null;
-            let gain = (pre !== null && post !== null) ? (pre >= 10 ? 100 : Math.round((post-pre)/(10-pre)*100)) : null;
-            return {
-                cid: cid,
-                student_name: String(obj.student_name || '').trim(),
-                school_class: String(obj.school_class || '').trim(),
-                school_name: String(obj.school_name || '').trim(),
-                hospcode: hc, hosp_name: hInfo.name, amphoe: hInfo.amphoe,
-                sex: String(obj.sex || '').trim(),
-                treatment: String(obj.treatment || '').trim(),
-                nationality: String(obj.nationality || 'ไทย').trim(),
-                va_r_naked: String(obj.va_r_naked || '').trim(),
-                va_l_naked: String(obj.va_l_naked || '').trim(),
-                va_naked_OU: String(obj.va_naked_ou || '').trim(),
-                va_r_glasses: String(obj.va_r_glasses || '').trim(),
-                va_l_glasses: String(obj.va_l_glasses || '').trim(),
-                va_glasses_OU: String(obj.va_glasses_ou || '').trim(),
-                ph_r: String(obj.ph_r || '').trim(),
-                ph_l: String(obj.ph_l || '').trim(),
-                diagnosis: String(obj.diagnosis || '').trim(),
-                referral: String(obj.referral || '').trim(),
-                examiner: String(obj.examiner || '').trim(),
-                status: calcStatusClient_(obj, !!fupMap[cid]),
-                pre: pre, post: post, gain: gain,
-                sat: satMap[cid] || null,
-                fup_status: fupMap[cid] || null,
-                screen_date: String(obj.screen_date || '')
-            };
-        });
-
-        document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
-        document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
-        document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
-        renderTable(formattedRows);
-    } catch (e) {
-        console.error(e);
-        if(typeof toast === 'function') toast('โหลดตารางล้มเหลว: ' + e.message, 'err');
-    }
+    // 6. ส่งข้อมูลที่ตัดแล้วไปวาดตาราง
+    renderTable(pageData);
 }
 
 function changePage(direction) {
