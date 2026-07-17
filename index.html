@@ -3515,6 +3515,32 @@ async function fetchDashboardRPC_(userHosp) {
   if (!res.ok) throw new Error('RPC get_dashboard_summary error (' + res.status + ')');
   return await res.json();
 }
+async function fetchScreeningTablePage_(page) {
+  var userHosp = (G.session.loggedIn && G.session.role !== 'admin' && G.session.hospcode && G.session.hospcode !== 'all')
+    ? G.session.hospcode : '';
+  var srchEl = document.getElementById('srchBox');
+
+  var payload = {
+    p_user_hosp: userHosp,
+    p_hospcode: document.getElementById('fHosp').value || '',
+    p_amphoe: document.getElementById('fAmp').value || '',
+    p_tambon: document.getElementById('fTambon').value || '',
+    p_school: document.getElementById('fSch').value || '',
+    p_status: document.getElementById('fStat').value || '',
+    p_sex: document.getElementById('fSex').value || '',
+    p_search: srchEl ? srchEl.value.trim() : '',
+    p_page: page || 1,
+    p_page_size: 50
+  };
+
+  var res = await fetch(SUPABASE_URL + '/rpc/get_screening_table_page', {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('RPC get_screening_table_page error (' + res.status + ')');
+  return await res.json();
+}
  
 // ---- แสดงผล KPI/กราฟ/ตารางสรุปจาก Phase 1 ทันที (ยังไม่แตะ G.allRows/ตารางรายคน) ----
 function applyPartialDashboardResult_(partial) {
@@ -6975,25 +7001,30 @@ function debounceSearch() {
 }
 
 async function loadTablePage(page) {
-    let tBody = document.getElementById('tBody');
-    if (!tBody) return;
-
-    // 🚀 ใช้ข้อมูลที่กรองไว้แล้วใน G.dispRows (คำนวณจาก applyFilters() ในเครื่อง)
-    //    ไม่ยิง Supabase ซ้ำ แค่ "ตัดหน้า" ข้อมูลที่มีอยู่แล้ว
+  let tBody = document.getElementById('tBody');
+  if (!tBody) return;
+  try {
+    var res = await fetchScreeningTablePage_(page);
+    totalPages = res.totalPages || 1;
+    currentPage = res.page || 1;
+    document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
+    document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
+    document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
+    renderTable(res.rows || []);
+    document.getElementById('tInfo').textContent = 'พบทั้งหมด ' + res.total + ' รายการ';
+  } catch (e) {
+    console.warn('RPC table page ล้มเหลว ใช้ข้อมูลในเครื่องแทน:', e);
+    // fallback เดิม: หั่นจาก G.dispRows ที่โหลดไว้แล้ว
     var rows = G.dispRows || [];
     var limit = 50;
     totalPages = Math.max(1, Math.ceil(rows.length / limit));
     currentPage = Math.min(Math.max(page || 1, 1), totalPages);
-
     var from = (currentPage - 1) * limit;
-    var pageRows = rows.slice(from, from + limit);
-
-    var pageInfoEl = document.getElementById('pageInfo');
-    if (pageInfoEl) pageInfoEl.textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
-    var prevBtn = document.getElementById('btnPrevPage'); if (prevBtn) prevBtn.disabled = (currentPage <= 1);
-    var nextBtn = document.getElementById('btnNextPage'); if (nextBtn) nextBtn.disabled = (currentPage >= totalPages);
-
-    renderTable(pageRows);
+    document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
+    document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
+    document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
+    renderTable(rows.slice(from, from + limit));
+  }
 }
 
 function changePage(direction) {
