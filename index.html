@@ -3565,19 +3565,23 @@ async function loadDashboardDirect_(params) {
   }
 
   var results = await Promise.all([
-    Promise.resolve(scrRows),
-    fetchSupaAll('hosp_data'),
-    fetchSupaAll('satisfaction_data', '*' + joinSuffix),
-    fetchSupaAll('pre_test', '*' + joinSuffix),
-    fetchSupaAll('post_test', '*' + joinSuffix),
-    fetchSupaAll('behavior_data', '*' + joinSuffix),
-    fetchSupaAll('followup_data', '*' + joinSuffix)
-  ]);
-
-  return computeDashboardStats_(
-    results[0], results[1], results[2], results[3], results[4], results[5], results[6],
-    params, userHosp
-  );
+//     Promise.resolve(scrRows),
+//     fetchSupaAll('hosp_data'),
+//     fetchSupaAll('satisfaction_data', '*' + joinSuffix),
+//     fetchSupaAll('pre_test', '*' + joinSuffix),
+//     fetchSupaAll('post_test', '*' + joinSuffix),
+//     fetchSupaAll('behavior_data', '*' + joinSuffix),
+//     fetchSupaAll('followup_data', '*' + joinSuffix)
+//   ]);
+//
+//   // 🆕 เก็บข้อมูลดิบไว้ใช้กับ Dashboard พฤติกรรม/ติดตามผลแว่นตา โดยไม่ต้องยิง GAS ซ้ำ
+//   G.behRows = results[5];
+//   G.fupRows = results[6];
+//
+//   return computeDashboardStats_(
+//     results[0], results[1], results[2], results[3], results[4], results[5], results[6],
+//     params, userHosp
+//   );
 }
  
 // ---- ดึงข้อมูลทั้งตาราง แบ่งหน้าอัตโนมัติ (เกิน 1000 แถว) เหมือน supaFetch ฝั่ง GAS ----
@@ -5187,22 +5191,112 @@ function toggleBehRisk(level) {
 
 function loadBehDashboard() {
   var params = {
-  amphoe: document.getElementById('bf-amphoe').value,
-  tambon: document.getElementById('bf-tambon').value,
-  hospcode: document.getElementById('bf-hosp').value,
-  school: document.getElementById('bf-school').value,
-  sex: document.getElementById('bf-sex').value,
-  school_class: document.getElementById('bf-class').value,
-  status: document.getElementById('bf-status').value,
-  risk: GB.riskFilter
-};
-  toast('กำลังโหลดข้อมูลพฤกติกรรม...', 'inf');
-  google.script.run.withSuccessHandler(function(r){
-    var res = JSON.parse(r);
-    if (!res.ok) { toast(res.msg, 'err'); return; }
-    GB.data = res.data;
-    renderBehDashboard();
-  }).getBehaviorDashboard(params);
+    amphoe: document.getElementById('bf-amphoe').value,
+    tambon: document.getElementById('bf-tambon').value,
+    hospcode: document.getElementById('bf-hosp').value,
+    school: document.getElementById('bf-school').value,
+    sex: document.getElementById('bf-sex').value,
+    school_class: document.getElementById('bf-class').value,
+    status: document.getElementById('bf-status').value,
+    risk: GB.riskFilter
+  };
+ 
+  // ข้อมูลยังโหลดไม่เสร็จ (เพิ่งเข้าเว็บใหม่ๆ) → ใช้ทาง GAS สำรองไปก่อน
+  if (!G.behRows || !G.allRows || !G.allRows.length) {
+    loadBehDashboardViaGAS_(params);
+    return;
+  }
+ 
+  var scrMap = {};
+  G.allRows.forEach(function (r) { if (r.cid) scrMap[r.cid] = r; });
+ 
+  var fHosp = params.hospcode, fAmphoe = params.amphoe, fTambon = params.tambon, fSchool = params.school,
+      fSex = params.sex, fClass = params.school_class, fRisk = params.risk, fStatus = params.status;
+ 
+  var timeMap = {'ไม่ใช้':0,'ไม่ถึง 1 ชม.':0.5,'1-2 ชม.':1.5,'2-3 ชม.':2.5,'3-4 ชม.':3.5,'มากกว่า 4 ชม.':5};
+  var devices = {}, purposes = {}, symptoms = {},
+      distance = {'ใกล้กว่า 1 ฟุต':0,'ประมาณ 1 ฟุต':0,'มากกว่า 1 ฟุต':0},
+      rest = {'พักทุก 20 นาที':0,'พักบ้างบางครั้ง':0,'ไม่ค่อยพัก':0},
+      blue = {'มีการใช้':0,'ไม่มีการใช้':0};
+  var timeSlots = { wk_morn:{total:0,count:0,dist:{}}, wk_noon:{total:0,count:0,dist:{}}, wk_eve:{total:0,count:0,dist:{}},
+                     we_morn:{total:0,count:0,dist:{}}, we_noon:{total:0,count:0,dist:{}}, we_eve:{total:0,count:0,dist:{}} };
+  var riskBuckets = {low:0,medium:0,high:0}, hospRisk = {}, rows = [], totalCount = 0, riskSumGlobal = 0;
+ 
+  G.behRows.forEach(function (r) {
+    var cid = String(r.cid || '').trim(); if (!cid) return;
+    var demo = scrMap[cid] || {};
+ 
+    if (fHosp && demo.hospcode !== fHosp) return;
+    if (fAmphoe && demo.amphoe !== fAmphoe) return;
+    if (fTambon && demo.tambon !== fTambon) return;
+    if (fSchool && demo.school_name !== fSchool) return;
+    if (fSex && demo.sex !== fSex) return;
+    if (fClass && demo.school_class !== fClass) return;
+    if (fStatus && demo.status !== fStatus) return;
+ 
+    var devArr = String(r.q_device || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var purArr = String(r.q_purpose || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var symArr = String(r.q_symptom || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var distVal = String(r.q_dist || '').trim(), restVal = String(r.q_rest || '').trim(), blueVal = String(r.q_blue || '').trim();
+    var hWk = 0, hWe = 0;
+    var slots = [
+      { k: 'wk_morn', v: r.q_time_wk_morn }, { k: 'wk_noon', v: r.q_time_wk_noon }, { k: 'wk_eve', v: r.q_time_wk_eve },
+      { k: 'we_morn', v: r.q_time_we_morn }, { k: 'we_noon', v: r.q_time_we_noon }, { k: 'we_eve', v: r.q_time_we_eve }
+    ];
+    slots.forEach(function (s) {
+      var val = String(s.v || '').trim();
+      if (timeMap[val] !== undefined) {
+        timeSlots[s.k].total += timeMap[val]; timeSlots[s.k].count++;
+        timeSlots[s.k].dist[val] = (timeSlots[s.k].dist[val] || 0) + 1;
+        if (s.k.indexOf('wk_') === 0) hWk += timeMap[val]; else hWe += timeMap[val];
+      }
+    });
+ 
+    var risk = 0;
+    if (hWk > 8) risk += 3; else if (hWk > 4) risk += 2; else if (hWk > 2) risk += 1;
+    if (hWe > 8) risk += 3; else if (hWe > 4) risk += 2; else if (hWe > 2) risk += 1;
+    if (distVal === 'ใกล้กว่า 1 ฟุต') risk += 2; else if (distVal === 'ประมาณ 1 ฟุต') risk += 1;
+    if (restVal === 'ไม่ค่อยพัก') risk += 2; else if (restVal === 'พักบ้างบางครั้ง') risk += 1;
+    risk += symArr.filter(function (s) { return s !== 'ไม่มีอาการ'; }).length;
+ 
+    var riskLevel = (risk >= 8) ? 'high' : (risk >= 4) ? 'medium' : 'low';
+    if (fRisk && riskLevel !== fRisk) return;
+ 
+    totalCount++; riskSumGlobal += risk; riskBuckets[riskLevel]++;
+    devArr.forEach(function (d) { devices[d] = (devices[d] || 0) + 1; });
+    purArr.forEach(function (p) { purposes[p] = (purposes[p] || 0) + 1; });
+    symArr.forEach(function (s) { symptoms[s] = (symptoms[s] || 0) + 1; });
+    if (distance[distVal] !== undefined) distance[distVal]++;
+    if (rest[restVal] !== undefined) rest[restVal]++;
+    if (blueVal.indexOf('มี') === 0) blue['มีการใช้']++; else if (blueVal.indexOf('ไม่') === 0) blue['ไม่มีการใช้']++;
+ 
+    if (demo.hospcode) {
+      if (!hospRisk[demo.hospcode]) hospRisk[demo.hospcode] = { name: demo.hosp_name || demo.hospcode, low: 0, medium: 0, high: 0, total: 0 };
+      hospRisk[demo.hospcode][riskLevel]++; hospRisk[demo.hospcode].total++;
+    }
+ 
+    rows.push({
+      cid: cid, name: demo.student_name || '', hospcode: demo.hospcode || '', hosp_name: demo.hosp_name || '',
+      school: demo.school_name || '', school_class: demo.school_class || '', sex: demo.sex || '', age: demo.age_years || '',
+      devices: devArr.join(', '), purposes: purArr.join(', '), symptoms: symArr.join(', '),
+      distance: distVal, rest: restVal, blue: blueVal, hours_wk: hWk, hours_we: hWe, risk_score: risk, risk_level: riskLevel
+    });
+  });
+ 
+  var kpi = { total: totalCount, symptomPct: 0, heavyUsePct: 0, properDistPct: 0, properRestPct: 0, blueLightPct: 0, avgHoursWk: 0, avgHoursWe: 0, avgRisk: 0 };
+  if (totalCount > 0) {
+    var withSymptom = totalCount - (symptoms['ไม่มีอาการ'] || 0); kpi.symptomPct = Math.round(withSymptom / totalCount * 100);
+    var heavy = rows.filter(function (r) { return r.hours_wk > 4 || r.hours_we > 4; }).length; kpi.heavyUsePct = Math.round(heavy / totalCount * 100);
+    kpi.properDistPct = Math.round((distance['มากกว่า 1 ฟุต'] || 0) / totalCount * 100);
+    kpi.properRestPct = Math.round((rest['พักทุก 20 นาที'] || 0) / totalCount * 100);
+    kpi.blueLightPct = Math.round((blue['มีการใช้'] || 0) / totalCount * 100);
+    var sWk = 0, sWe = 0; rows.forEach(function (r) { sWk += r.hours_wk; sWe += r.hours_we; });
+    kpi.avgHoursWk = Math.round(sWk / totalCount * 10) / 10; kpi.avgHoursWe = Math.round(sWe / totalCount * 10) / 10;
+    kpi.avgRisk = Math.round(riskSumGlobal / totalCount * 10) / 10;
+  }
+ 
+  GB.data = { kpi: kpi, devices: devices, purposes: purposes, symptoms: symptoms, distance: distance, rest: rest, blue: blue, timeSlots: timeSlots, riskBuckets: riskBuckets, hospRisk: hospRisk, rows: rows };
+  renderBehDashboard();
 }
 
 function renderBehDashboard() {
@@ -5447,20 +5541,89 @@ function clearFupFilters() {
 
 function loadFupDashboard() {
   var params = {
-  amphoe: document.getElementById('fdf-amphoe').value,
-  tambon: document.getElementById('fdf-tambon').value,
-  hospcode: document.getElementById('fdf-hosp').value,
-  school: document.getElementById('fdf-school').value,
-  sex: document.getElementById('fdf-sex').value,
-  school_class: document.getElementById('fdf-class').value
-};
-  toast('กำลังโหลดข้อมูลติดตามผล...', 'inf');
-  google.script.run.withSuccessHandler(function(r){
-    var res = JSON.parse(r);
-    if (!res.ok) { toast(res.msg, 'err'); return; }
-    GF.data = res.data;
-    renderFupDashboard();
-  }).getFollowupDashboard(params);
+    amphoe: document.getElementById('fdf-amphoe').value,
+    tambon: document.getElementById('fdf-tambon').value,
+    hospcode: document.getElementById('fdf-hosp').value,
+    school: document.getElementById('fdf-school').value,
+    sex: document.getElementById('fdf-sex').value,
+    school_class: document.getElementById('fdf-class').value
+  };
+ 
+  if (!G.fupRows || !G.allRows || !G.allRows.length) {
+    loadFupDashboardViaGAS_(params);
+    return;
+  }
+ 
+  var scrMap = {};
+  G.allRows.forEach(function (r) { if (r.cid) scrMap[r.cid] = r; });
+ 
+  var fHosp = params.hospcode, fAmphoe = params.amphoe, fTambon = params.tambon, fSchool = params.school,
+      fSex = params.sex, fClass = params.school_class;
+ 
+  var satScoreMap = { 'มากที่สุด': 5, 'มาก': 4, 'ปานกลาง': 3, 'น้อย': 2, 'น้อยที่สุด': 1 };
+  var rows = [], hospTally = {},
+      freqUsage = { board: {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0}, book: {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0}, screen: {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0}, sport: {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0} },
+      qol = { board: {'ดีขึ้นมาก':0,'ดีขึ้น':0,'เหมือนเดิม':0,'แย่ลง':0}, focus: {'ดีขึ้นมาก':0,'ดีขึ้น':0,'เหมือนเดิม':0,'แย่ลง':0}, confidence: {'ดีขึ้นมาก':0,'ดีขึ้น':0,'เหมือนเดิม':0,'แย่ลง':0}, headache: {'ลดลงมาก':0,'ลดลง':0,'เท่าเดิม':0,'เพิ่มขึ้น':0} };
+  var fDaysTally = {'6-7 วัน':0,'3-5 วัน':0,'1-2 วัน':0,'ไม่ได้ใส่เลย':0}, conditionTally = {}, reasonsCount = {},
+      satSum = 0, satCnt = 0, goodCondCnt = 0, dailyWearCnt = 0, totalCnt = 0;
+ 
+  G.fupRows.forEach(function (r) {
+    var cid = String(r.cid || '').trim(); if (!cid) return;
+    var demo = scrMap[cid] || {}; var hc = demo.hospcode || '';
+ 
+    if (fHosp && hc !== fHosp) return;
+    if (fAmphoe && demo.amphoe !== fAmphoe) return;
+    if (fTambon && demo.tambon !== fTambon) return;
+    if (fSchool && demo.school_name !== fSchool) return;
+    if (fSex && demo.sex !== fSex) return;
+    if (fClass && demo.school_class !== fClass) return;
+ 
+    totalCnt++;
+    var fBoard = r.f_board || '', fBook = r.f_book || '', fScreen = r.f_screen || '', fSport = r.f_sport || '',
+        fDays = r.f_days || '', cStatus = r.c_status || '', cClarity = r.c_clarity || '',
+        qBoard = r.q_board || '', qFocus = r.q_focus || '', qConfidence = r.q_confidence || '', qHeadache = r.q_headache || '';
+    var reasons = String(r.reasons || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var overallSat = r.overall_sat || '';
+ 
+    function tally(obj, val) { if (val && obj[val] !== undefined) obj[val]++; }
+    tally(freqUsage.board, fBoard); tally(freqUsage.book, fBook); tally(freqUsage.screen, fScreen); tally(freqUsage.sport, fSport);
+    tally(qol.board, qBoard); tally(qol.focus, qFocus); tally(qol.confidence, qConfidence); tally(qol.headache, qHeadache);
+    tally(fDaysTally, fDays); conditionTally[cStatus] = (conditionTally[cStatus] || 0) + 1;
+    reasons.forEach(function (rs) { reasonsCount[rs] = (reasonsCount[rs] || 0) + 1; });
+ 
+    if (satScoreMap[overallSat]) { satSum += satScoreMap[overallSat]; satCnt++; }
+    var isGoodCond = cStatus.indexOf('ดีมาก') > -1 || cStatus.indexOf('ดี แต่') > -1;
+    if (isGoodCond) goodCondCnt++;
+    if (fDays === '6-7 วัน') dailyWearCnt++;
+ 
+    if (!hospTally[hc]) hospTally[hc] = { hospcode: hc, name: demo.hosp_name || hc, amphoe: demo.amphoe || '', total: 0, dailyWear: 0, goodCond: 0, visionImp: 0, focusImp: 0, headacheImp: 0, satSum: 0, satCnt: 0 };
+    var ht = hospTally[hc]; ht.total++;
+    if (fDays === '6-7 วัน') ht.dailyWear++;
+    if (isGoodCond) ht.goodCond++;
+    if (qBoard.indexOf('ดีขึ้น') > -1) ht.visionImp++;
+    if (qFocus.indexOf('ดีขึ้น') > -1) ht.focusImp++;
+    if (qHeadache === 'ลดลงมาก' || qHeadache === 'ลดลง') ht.headacheImp++;
+    if (satScoreMap[overallSat]) { ht.satSum += satScoreMap[overallSat]; ht.satCnt++; }
+ 
+    rows.push({
+      cid: cid, name: demo.student_name || '', hospcode: hc, hosp_name: demo.hosp_name || '', school: demo.school_name || '',
+      school_class: demo.school_class || '', tel: r.tel || '', duration: r.duration || '', f_days: fDays, c_status: cStatus,
+      c_clarity: cClarity, q_board: qBoard, q_focus: qFocus, q_confidence: qConfidence, q_headache: qHeadache,
+      overall_sat: overallSat, reasons: reasons.join(', '), sat_score: satScoreMap[overallSat] || 0
+    });
+  });
+ 
+  var kpi = { total: totalCnt, dailyWearPct: totalCnt > 0 ? Math.round(dailyWearCnt / totalCnt * 100) : 0, goodCondPct: totalCnt > 0 ? Math.round(goodCondCnt / totalCnt * 100) : 0, satAvg: satCnt > 0 ? Math.round(satSum / satCnt * 100) / 100 : null };
+  function pctImp(o) { var t = o['ดีขึ้นมาก'] + o['ดีขึ้น'] + o['เหมือนเดิม'] + o['แย่ลง']; return t > 0 ? Math.round((o['ดีขึ้นมาก'] + o['ดีขึ้น']) / t * 100) : 0; }
+  var qolImpPct = { board: pctImp(qol.board), focus: pctImp(qol.focus), confidence: pctImp(qol.confidence), headache: (function (o) { var t = o['ลดลงมาก'] + o['ลดลง'] + o['เท่าเดิม'] + o['เพิ่มขึ้น']; return t > 0 ? Math.round((o['ลดลงมาก'] + o['ลดลง']) / t * 100) : 0; })(qol.headache) };
+  var topReasons = Object.keys(reasonsCount).sort(function (a, b) { return reasonsCount[b] - reasonsCount[a]; }).slice(0, 5).map(function (k) { return { label: k, count: reasonsCount[k] }; });
+  var hospHeatmap = Object.keys(hospTally).sort().map(function (hc) {
+    var h = hospTally[hc]; var t = h.total || 1;
+    return { hospcode: hc, name: h.name, amphoe: h.amphoe, total: h.total, dailyWearPct: Math.round(h.dailyWear / t * 100), goodCondPct: Math.round(h.goodCond / t * 100), visionImpPct: Math.round(h.visionImp / t * 100), focusImpPct: Math.round(h.focusImp / t * 100), headacheImpPct: Math.round(h.headacheImp / t * 100), satAvg: h.satCnt > 0 ? Math.round(h.satSum / h.satCnt * 100) / 100 : null };
+  });
+ 
+  GF.data = { kpi: kpi, freqUsage: freqUsage, qol: qol, qolImpPct: qolImpPct, fDays: fDaysTally, conditions: conditionTally, reasons: reasonsCount, topReasons: topReasons, hospHeatmap: hospHeatmap, rows: rows };
+  renderFupDashboard();
 }
 
 function renderFupDashboard() {
@@ -6889,6 +7052,25 @@ function applyRowDataOnly_(result, paramsKey) {
   G.allRows = result.allRows; G.dispRows = result.allRows;
   try { if (G.dispRows.length && typeof renderTable === 'function') renderTable(G.dispRows); } catch (e) { console.error('renderTable error:', e); }
   if (myMap) setTimeout(function () { myMap.invalidateSize(); }, 300);
+}
+function loadBehDashboardViaGAS_(params) {
+  toast('กำลังโหลดข้อมูลพฤติกรรม...', 'inf');
+  google.script.run.withSuccessHandler(function (r) {
+    var res = JSON.parse(r);
+    if (!res.ok) { toast(res.msg, 'err'); return; }
+    GB.data = res.data;
+    renderBehDashboard();
+  }).getBehaviorDashboard(params);
+}
+ 
+function loadFupDashboardViaGAS_(params) {
+  toast('กำลังโหลดข้อมูลติดตามผล...', 'inf');
+  google.script.run.withSuccessHandler(function (r) {
+    var res = JSON.parse(r);
+    if (!res.ok) { toast(res.msg, 'err'); return; }
+    GF.data = res.data;
+    renderFupDashboard();
+  }).getFollowupDashboard(params);
 }
 </script>
 </body>
