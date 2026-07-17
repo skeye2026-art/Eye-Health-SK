@@ -3570,24 +3570,36 @@ async function loadDashboardDirect_(params, forceFresh) {
     behRows = RAW_DATA_CACHE.behRows; fupRows = RAW_DATA_CACHE.fupRows;
   } else {
     var scrSelect = userHosp ? ('*&hospcode=eq.' + encodeURIComponent(userHosp)) : '*';
-    scrRows = await fetchSupaAll('screening_data', scrSelect);
 
-    var joinSuffix = '';
     if (userHosp) {
+      // ผู้ใช้ถูกจำกัดสิทธิ์เฉพาะ รพ.สต. ตัวเอง — ต้องรู้ cid ก่อนถึงจะกรองตารางที่เหลือได้ จึงยังต้องรอ scrRows ก่อน
+      scrRows = await fetchSupaAll('screening_data', scrSelect);
       var cids = scrRows.map(function (r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
-      joinSuffix = cids.length > 0 ? ('&cid=in.(' + cids.join(',') + ')') : '&cid=is.null';
+      var joinSuffix = cids.length > 0 ? ('&cid=in.(' + cids.join(',') + ')') : '&cid=is.null';
+      var results = await Promise.all([
+        fetchSupaAll('hosp_data'),
+        fetchSupaAll('satisfaction_data', '*' + joinSuffix),
+        fetchSupaAll('pre_test', '*' + joinSuffix),
+        fetchSupaAll('post_test', '*' + joinSuffix),
+        fetchSupaAll('behavior_data', '*' + joinSuffix),
+        fetchSupaAll('followup_data', '*' + joinSuffix)
+      ]);
+      hospRows = results[0]; satRows = results[1]; preRows = results[2];
+      postRows = results[3]; behRows = results[4]; fupRows = results[5];
+    } else {
+      // 🚀 admin/guest ไม่ต้องกรองตาม cid — ยิงทั้ง 7 ตารางพร้อมกันทีเดียว ไม่ต้องรอ screening_data ก่อน
+      var results = await Promise.all([
+        fetchSupaAll('screening_data', scrSelect),
+        fetchSupaAll('hosp_data'),
+        fetchSupaAll('satisfaction_data'),
+        fetchSupaAll('pre_test'),
+        fetchSupaAll('post_test'),
+        fetchSupaAll('behavior_data'),
+        fetchSupaAll('followup_data')
+      ]);
+      scrRows = results[0]; hospRows = results[1]; satRows = results[2];
+      preRows = results[3]; postRows = results[4]; behRows = results[5]; fupRows = results[6];
     }
-
-    var results = await Promise.all([
-      fetchSupaAll('hosp_data'),
-      fetchSupaAll('satisfaction_data', '*' + joinSuffix),
-      fetchSupaAll('pre_test', '*' + joinSuffix),
-      fetchSupaAll('post_test', '*' + joinSuffix),
-      fetchSupaAll('behavior_data', '*' + joinSuffix),
-      fetchSupaAll('followup_data', '*' + joinSuffix)
-    ]);
-    hospRows = results[0]; satRows = results[1]; preRows = results[2];
-    postRows = results[3]; behRows = results[4]; fupRows = results[5];
 
     RAW_DATA_CACHE = {
       scrRows: scrRows, hospRows: hospRows, satRows: satRows, preRows: preRows,
@@ -3605,23 +3617,33 @@ async function loadDashboardDirect_(params, forceFresh) {
   );
 }
  
-// ---- ดึงข้อมูลทั้งตาราง แบ่งหน้าอัตโนมัติ (เกิน 1000 แถว) เหมือน supaFetch ฝั่ง GAS ----
+// ---- ดึงข้อมูลทั้งตาราง: ยิงหน้าแรกก่อนรู้จำนวนรวม แล้วยิงหน้าที่เหลือ "พร้อมกันทีเดียว" (ไม่ต้องรอทีละหน้า) ----
 async function fetchSupaAll(table, select) {
   select = select || '*';
-  var PAGE = 1000, all = [], from = 0;
-  while (true) {
-    var res = await fetch(SUPABASE_URL + '/' + table + '?select=' + select, {
-      headers: {
-        'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Range-Unit': 'items', 'Range': from + '-' + (from + PAGE - 1), 'Prefer': 'count=exact'
+  var PAGE = 1000;
+  var url = SUPABASE_URL + '/' + table + '?select=' + select;
+  var baseHeaders = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+
+  var firstRes = await fetch(url, {
+    headers: Object.assign({}, baseHeaders, { 'Range-Unit': 'items', 'Range': '0-' + (PAGE - 1), 'Prefer': 'count=exact' })
+  });
+  if (!firstRes.ok) throw new Error('Supabase fetch error: ' + table + ' (' + firstRes.status + ')');
+  var all = await firstRes.json();
+
+  if (all.length === PAGE) {
+    var rangeHeader = firstRes.headers.get('Content-Range') || '';
+    var total = parseInt(rangeHeader.split('/')[1], 10);
+    if (!isNaN(total) && total > PAGE) {
+      var reqs = [];
+      for (var from = PAGE; from < total && from <= 300000; from += PAGE) {
+        reqs.push(
+          fetch(url, { headers: Object.assign({}, baseHeaders, { 'Range-Unit': 'items', 'Range': from + '-' + (from + PAGE - 1) }) })
+            .then(function (r) { return r.ok ? r.json() : []; })
+        );
       }
-    });
-    if (!res.ok) throw new Error('Supabase fetch error: ' + table + ' (' + res.status + ')');
-    var chunk = await res.json();
-    all = all.concat(chunk);
-    if (chunk.length < PAGE) break;
-    from += PAGE;
-    if (from > 300000) break; // กันวนไม่รู้จบ
+      var restChunks = await Promise.all(reqs);
+      restChunks.forEach(function (chunk) { if (Array.isArray(chunk)) all = all.concat(chunk); });
+    }
   }
   return all;
 }
