@@ -1185,7 +1185,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <div class="beh-filter" style="background:#fdf2f8; border-color:#fbcfe8; grid-template-columns: repeat(5, 1fr);">
   <select id="fdf-amphoe" onchange="onFupAmpChange()" style="border-color:#f9a8d4;"><option value="">อำเภอ ทั้งหมด</option></select>
   <select id="fdf-tambon" onchange="onFupTambonChange()" style="border-color:#f9a8d4;"><option value="">ตำบล ทั้งหมด</option></select>
-  <select id="fdf-hosp" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
+  <select id="fdf-hosp" onchange="onFupDashboard()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
   <select id="fdf-school" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">โรงเรียนทั้งหมด</option></select>
   <select id="fdf-sex" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
 </div>
@@ -5087,27 +5087,20 @@ function saveBeh() {
 
 var GB = { data: null, riskFilter: '', chartInsts: {} };
 
-// ==================== คำสั่งควบคุม BEHAVIOR DASHBOARD ====================
 function openBehDashboard() {
-  // สร้างและโหลดรายชื่ออำเภอ
   var amps = []; G.hospList.forEach(function(h){ if(h.amphoe && amps.indexOf(h.amphoe)===-1) amps.push(h.amphoe); }); amps.sort();
   var ampHtml = '<option value="">อำเภอ ทั้งหมด</option>'; amps.forEach(function(a){ ampHtml += '<option>'+a+'</option>'; });
   document.getElementById('bf-amphoe').innerHTML = ampHtml;
-
+ 
   var hcHtml = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.forEach(function(h){ hcHtml += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
   document.getElementById('bf-hosp').innerHTML = hcHtml;
-  
-  var schHtml = '<option value="">โรงเรียนทั้งหมด</option>';
-  G.schoolList.forEach(function(s){ schHtml += '<option value="'+e_(s.name)+'">'+e_(s.name)+'</option>'; });
-  document.getElementById('bf-school').innerHTML = schHtml;
-  
+ 
   var classes = ['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'];
   var clsHtml = '<option value="">ชั้นทั้งหมด</option>';
   classes.forEach(function(c){ clsHtml += '<option value="' + c + '">' + c + '</option>'; });
   document.getElementById('bf-class').innerHTML = clsHtml;
-
-  // 🔓 ปลดล็อกเงื่อนไข: บังคับล็อกเฉพาะระดับ User ทั่วไป (รพ.สต.) เท่านั้น / ส่วนแอดมิน และ แขกภายนอก (Guest) จะเลือกดูสถิติได้ทุกพื้นที่แบบอิสระ
+ 
   if (G.session.loggedIn && G.session.role === 'user' && G.session.hospcode !== 'all') {
     document.getElementById('bf-hosp').value = G.session.hospcode;
     document.getElementById('bf-hosp').disabled = true;
@@ -5117,17 +5110,22 @@ function openBehDashboard() {
     document.getElementById('bf-hosp').disabled = false;
     document.getElementById('bf-amphoe').disabled = false;
   }
-  rebuildTambonSel_('bf-tambon', document.getElementById('bf-amphoe').value);   // ⬅️ เพิ่มบรรทัดนี้
+  rebuildTambonSel_('bf-tambon', document.getElementById('bf-amphoe').value);
+  // 🆕 เติมโรงเรียนให้ตรงตามขอบเขตอำเภอ/รพ.สต. ที่ล็อกไว้ตั้งแต่เปิดแผง (แทนการโชว์ทุกโรงเรียน)
+  rebuildSchoolSel_('bf-school', document.getElementById('bf-amphoe').value, document.getElementById('bf-tambon').value, document.getElementById('bf-hosp').value);
   openPanel('behdash');
   loadBehDashboard();
 }
-
+ 
 function onBehAmpChange() {
   var amp = document.getElementById('bf-amphoe').value;
   rebuildTambonSel_('bf-tambon', amp);
   document.getElementById('bf-tambon').value = '';
   rebuildHospSel_('bf-hosp', amp, '');
   document.getElementById('bf-hosp').value = '';
+  // 🆕 อำเภอเปลี่ยน → โรงเรียนต้องกรองใหม่ด้วย
+  rebuildSchoolSel_('bf-school', amp, '', '');
+  document.getElementById('bf-school').value = '';
   loadBehDashboard();
 }
 function onBehTambonChange() {
@@ -5135,20 +5133,39 @@ function onBehTambonChange() {
   var tam = document.getElementById('bf-tambon').value;
   rebuildHospSel_('bf-hosp', amp, tam);
   document.getElementById('bf-hosp').value = '';
+  // 🆕 ตำบลเปลี่ยน → โรงเรียนต้องกรองใหม่ด้วย
+  rebuildSchoolSel_('bf-school', amp, tam, '');
+  document.getElementById('bf-school').value = '';
   loadBehDashboard();
 }
-function onBehHospChange() { loadBehDashboard(); }
-// helper ใช้ร่วมกับข้อ 4 ด้วย
-function rebuildTambonSel_(id, amp) {
-  var tambons = []; G.hospList.forEach(function(h){ if((!amp||h.amphoe===amp)&&h.tambon&&tambons.indexOf(h.tambon)===-1) tambons.push(h.tambon); });
-  tambons.sort();
-  var html = '<option value="">ตำบล ทั้งหมด</option>'; tambons.forEach(function(t){ html += '<option>'+t+'</option>'; });
-  document.getElementById(id).innerHTML = html;
+function onBehHospChange() {
+  var amp = document.getElementById('bf-amphoe').value;
+  var tam = document.getElementById('bf-tambon').value;
+  var hc = document.getElementById('bf-hosp').value;
+  // 🆕 รพ.สต.เปลี่ยน → โรงเรียนต้องกรองใหม่ด้วย (ของเดิมไม่มีบรรทัดนี้เลย)
+  rebuildSchoolSel_('bf-school', amp, tam, hc);
+  document.getElementById('bf-school').value = '';
+  loadBehDashboard();
 }
 function rebuildHospSel_(id, amp, tam) {
   var html = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.filter(function(h){ return (!amp||h.amphoe===amp)&&(!tam||h.tambon===tam); })
     .forEach(function(h){ html += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
+  document.getElementById(id).innerHTML = html;
+}
+function rebuildSchoolSel_(id, amp, tam, hc) {
+  var validHcs = {};
+  G.hospList.forEach(function (h) {
+    if (amp && h.amphoe !== amp) return;
+    if (tam && h.tambon !== tam) return;
+    if (hc && h.hospcode !== hc) return;
+    validHcs[h.hospcode] = true;
+  });
+  var schoolSet = {};
+  (G.allRows || []).forEach(function (r) { if (validHcs[r.hospcode] && r.school_name) schoolSet[r.school_name] = true; });
+  var schools = Object.keys(schoolSet).sort();
+  var html = '<option value="">โรงเรียนทั้งหมด</option>';
+  schools.forEach(function (s) { html += '<option value="' + e_(s) + '">' + e_(s) + '</option>'; });
   document.getElementById(id).innerHTML = html;
 }
 
@@ -5362,21 +5379,16 @@ function openFupDashboard() {
   var amps = []; G.hospList.forEach(function(h){ if(h.amphoe && amps.indexOf(h.amphoe)===-1) amps.push(h.amphoe); }); amps.sort();
   var ampHtml = '<option value="">อำเภอ ทั้งหมด</option>'; amps.forEach(function(a){ ampHtml += '<option>'+a+'</option>'; });
   document.getElementById('fdf-amphoe').innerHTML = ampHtml;
-
+ 
   var hcHtml = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.forEach(function(h){ hcHtml += '<option value="' + h.hospcode + '">' + h.hospcode + ' ' + h.name + '</option>'; });
   document.getElementById('fdf-hosp').innerHTML = hcHtml;
-  
-  var schHtml = '<option value="">โรงเรียนทั้งหมด</option>';
-  G.schoolList.forEach(function(s){ schHtml += '<option value="' + e_(s.name) + '">' + e_(s.name) + '</option>'; });
-  document.getElementById('fdf-school').innerHTML = schHtml;
-  
+ 
   var classes = ['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'];
   var clsHtml = '<option value="">ชั้นทั้งหมด</option>';
   classes.forEach(function(c){ clsHtml += '<option value="' + c + '">' + c + '</option>'; });
   document.getElementById('fdf-class').innerHTML = clsHtml;
-  
-  // 🔓 ปลดล็อกเงื่อนไขสำหรับผู้เข้าชมทั่วไป (Guest) ในแถบติดตามผลแว่นตา
+ 
   if (G.session.loggedIn && G.session.role === 'user' && G.session.hospcode !== 'all') {
     document.getElementById('fdf-hosp').value = G.session.hospcode;
     document.getElementById('fdf-hosp').disabled = true;
@@ -5386,17 +5398,22 @@ function openFupDashboard() {
     document.getElementById('fdf-hosp').disabled = false;
     document.getElementById('fdf-amphoe').disabled = false;
   }
-  rebuildTambonSel_('fdf-tambon', document.getElementById('fdf-amphoe').value);   // ⬅️ เพิ่มบรรทัดนี้
+  rebuildTambonSel_('fdf-tambon', document.getElementById('fdf-amphoe').value);
+  // 🆕 เติมโรงเรียนให้ตรงตามขอบเขตที่ล็อกไว้ตั้งแต่เปิดแผง
+  rebuildSchoolSel_('fdf-school', document.getElementById('fdf-amphoe').value, document.getElementById('fdf-tambon').value, document.getElementById('fdf-hosp').value);
   openPanel('fupdash');
   loadFupDashboard();
 }
-
+ 
 function onFupAmpChange() {
   var amp = document.getElementById('fdf-amphoe').value;
   rebuildTambonSel_('fdf-tambon', amp);
   document.getElementById('fdf-tambon').value = '';
   rebuildHospSel_('fdf-hosp', amp, '');
   document.getElementById('fdf-hosp').value = '';
+  // 🆕 อำเภอเปลี่ยน → โรงเรียนต้องกรองใหม่ด้วย
+  rebuildSchoolSel_('fdf-school', amp, '', '');
+  document.getElementById('fdf-school').value = '';
   loadFupDashboard();
 }
 function onFupTambonChange() {
@@ -5404,6 +5421,18 @@ function onFupTambonChange() {
   var tam = document.getElementById('fdf-tambon').value;
   rebuildHospSel_('fdf-hosp', amp, tam);
   document.getElementById('fdf-hosp').value = '';
+  // 🆕 ตำบลเปลี่ยน → โรงเรียนต้องกรองใหม่ด้วย
+  rebuildSchoolSel_('fdf-school', amp, tam, '');
+  document.getElementById('fdf-school').value = '';
+  loadFupDashboard();
+}
+// 🆕 ฟังก์ชันใหม่ทั้งหมด (ของเดิมไม่มี handler เฉพาะตอนเปลี่ยนรพ.สต. เลย ใช้ loadFupDashboard() ตรงๆ)
+function onFupHospChange() {
+  var amp = document.getElementById('fdf-amphoe').value;
+  var tam = document.getElementById('fdf-tambon').value;
+  var hc = document.getElementById('fdf-hosp').value;
+  rebuildSchoolSel_('fdf-school', amp, tam, hc);
+  document.getElementById('fdf-school').value = '';
   loadFupDashboard();
 }
 
