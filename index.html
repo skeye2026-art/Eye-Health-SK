@@ -3466,6 +3466,8 @@ function renderHeatmap() {
 
 // ---- cache เก็บผลลัพธ์ dashboard ไว้ชั่วคราว ป้องกันการยิง Supabase ถี่เกินไป ----
 var DASH_CACHE = { data: null, ts: 0, ttl: 45000, paramsKey: '' };
+// ---- cache ข้อมูลดิบ 7 ตาราง แยกจากผลลัพธ์ที่คำนวณแล้ว ไม่ผูกกับ filter ----
+var RAW_DATA_CACHE = { scrRows:null, hospRows:null, satRows:null, preRows:null, postRows:null, behRows:null, fupRows:null, ts:0, ttl:180000, userHosp:null };
  
 // ---- แทนที่ฟังก์ชัน loadDashboard(params) เดิมทั้งหมดด้วยอันนี้ ----
 function loadDashboard(params, forceFresh) {
@@ -3492,7 +3494,7 @@ function loadDashboard(params, forceFresh) {
  
   // 🐢 Phase 2: ของเดิม — โหลดข้อมูลรายคนเต็มมาเก็บ G.allRows (จำเป็นสำหรับค้นหา/แก้ไข/export)
   //    ทำงานคู่ขนานกับ Phase 1 ไม่ต้องรอ Phase 1 เสร็จก่อน
-  loadDashboardDirect_(params)
+  loadDashboardDirect_(params, forceFresh)
     .then(function (result) { applyRowDataOnly_(result, paramsKey); })
     .catch(function (e) {
       console.error('loadDashboardDirect_ failed, fallback to GAS:', e);
@@ -3551,34 +3553,54 @@ function loadDashboardViaGAS_(params) {
 }
  
 // ---- ดึง 6 ตารางตรงจาก Supabase พร้อมกัน แล้วคำนวณผลเหมือน getDashboardData() ฝั่ง GAS ----
-async function loadDashboardDirect_(params) {
+async function loadDashboardDirect_(params, forceFresh) {
   var userHosp = (G.session.loggedIn && G.session.role !== 'admin' && G.session.hospcode && G.session.hospcode !== 'all')
     ? G.session.hospcode : '';
 
-  var scrSelect = userHosp ? ('*&hospcode=eq.' + encodeURIComponent(userHosp)) : '*';
-  var scrRows = await fetchSupaAll('screening_data', scrSelect);
+  // 🚀 ถ้ามี raw data cache ที่ยังไม่หมดอายุ และ scope ผู้ใช้ตรงกัน ให้ใช้ของเดิมเลย ไม่ต้องยิง Supabase ซ้ำ
+  var cacheFresh = !forceFresh && RAW_DATA_CACHE.scrRows &&
+    RAW_DATA_CACHE.userHosp === userHosp &&
+    (Date.now() - RAW_DATA_CACHE.ts) < RAW_DATA_CACHE.ttl;
 
-  var joinSuffix = '';
-  if (userHosp) {
-    var cids = scrRows.map(function (r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
-    joinSuffix = cids.length > 0 ? ('&cid=in.(' + cids.join(',') + ')') : '&cid=is.null';
+  var scrRows, hospRows, satRows, preRows, postRows, behRows, fupRows;
+
+  if (cacheFresh) {
+    scrRows = RAW_DATA_CACHE.scrRows; hospRows = RAW_DATA_CACHE.hospRows; satRows = RAW_DATA_CACHE.satRows;
+    preRows = RAW_DATA_CACHE.preRows; postRows = RAW_DATA_CACHE.postRows;
+    behRows = RAW_DATA_CACHE.behRows; fupRows = RAW_DATA_CACHE.fupRows;
+  } else {
+    var scrSelect = userHosp ? ('*&hospcode=eq.' + encodeURIComponent(userHosp)) : '*';
+    scrRows = await fetchSupaAll('screening_data', scrSelect);
+
+    var joinSuffix = '';
+    if (userHosp) {
+      var cids = scrRows.map(function (r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
+      joinSuffix = cids.length > 0 ? ('&cid=in.(' + cids.join(',') + ')') : '&cid=is.null';
+    }
+
+    var results = await Promise.all([
+      fetchSupaAll('hosp_data'),
+      fetchSupaAll('satisfaction_data', '*' + joinSuffix),
+      fetchSupaAll('pre_test', '*' + joinSuffix),
+      fetchSupaAll('post_test', '*' + joinSuffix),
+      fetchSupaAll('behavior_data', '*' + joinSuffix),
+      fetchSupaAll('followup_data', '*' + joinSuffix)
+    ]);
+    hospRows = results[0]; satRows = results[1]; preRows = results[2];
+    postRows = results[3]; behRows = results[4]; fupRows = results[5];
+
+    RAW_DATA_CACHE = {
+      scrRows: scrRows, hospRows: hospRows, satRows: satRows, preRows: preRows,
+      postRows: postRows, behRows: behRows, fupRows: fupRows,
+      ts: Date.now(), ttl: RAW_DATA_CACHE.ttl, userHosp: userHosp
+    };
   }
 
-  var results = await Promise.all([
-    Promise.resolve(scrRows),
-    fetchSupaAll('hosp_data'),
-    fetchSupaAll('satisfaction_data', '*' + joinSuffix),
-    fetchSupaAll('pre_test', '*' + joinSuffix),
-    fetchSupaAll('post_test', '*' + joinSuffix),
-    fetchSupaAll('behavior_data', '*' + joinSuffix),
-    fetchSupaAll('followup_data', '*' + joinSuffix)
-  ]);
-
-  G.behRows = results[5];
-  G.fupRows = results[6];
+  G.behRows = behRows;
+  G.fupRows = fupRows;
 
   return computeDashboardStats_(
-    results[0], results[1], results[2], results[3], results[4], results[5], results[6],
+    scrRows, hospRows, satRows, preRows, postRows, behRows, fupRows,
     params, userHosp
   );
 }
