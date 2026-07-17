@@ -3494,6 +3494,11 @@ function loadDashboard(params, forceFresh) {
   //    ทำงานคู่ขนานกับ Phase 1 ไม่ต้องรอ Phase 1 เสร็จก่อน
   loadDashboardDirect_(params)
     .then(function (result) { applyRowDataOnly_(result, paramsKey); })
+    .catch(function (e) {
+      console.error('loadDashboardDirect_ failed, fallback to GAS:', e);
+      loadDashboardViaGAS_(params);
+    });
+}
  
 // ---- ยิง RPC ตัวเดียว ได้ผลสรุปกลับมาเร็วมาก (ไม่มีข้อมูลรายคน) ----
 async function fetchDashboardRPC_(userHosp) {
