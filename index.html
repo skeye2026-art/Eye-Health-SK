@@ -1185,7 +1185,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <div class="beh-filter" style="background:#fdf2f8; border-color:#fbcfe8; grid-template-columns: repeat(5, 1fr);">
   <select id="fdf-amphoe" onchange="onFupAmpChange()" style="border-color:#f9a8d4;"><option value="">อำเภอ ทั้งหมด</option></select>
   <select id="fdf-tambon" onchange="onFupTambonChange()" style="border-color:#f9a8d4;"><option value="">ตำบล ทั้งหมด</option></select>
-  <select id="fdf-hosp" onchange="onFupDashboard()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
+  <select id="fdf-hosp" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
   <select id="fdf-school" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">โรงเรียนทั้งหมด</option></select>
   <select id="fdf-sex" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
 </div>
@@ -3379,7 +3379,7 @@ function updateAuthUI() {
     document.getElementById('sat-hc').disabled = false;
     document.getElementById('s-hc').disabled = false;
   }
-  if (G.dispRows.length > 0) loadTablePage(currentPage || 1); if (G.hospSummaryData.length > 0) renderSummaryTable(G.hospSummaryData);
+  if (G.dispRows.length > 0) renderTable(G.dispRows); if (G.hospSummaryData.length > 0) renderSummaryTable(G.hospSummaryData);
 }
 
 function renderHeatmap() {
@@ -3466,8 +3466,6 @@ function renderHeatmap() {
 
 // ---- cache เก็บผลลัพธ์ dashboard ไว้ชั่วคราว ป้องกันการยิง Supabase ถี่เกินไป ----
 var DASH_CACHE = { data: null, ts: 0, ttl: 45000, paramsKey: '' };
-// ---- cache ข้อมูลดิบ 7 ตาราง แยกจากผลลัพธ์ที่คำนวณแล้ว ไม่ผูกกับ filter ----
-var RAW_DATA_CACHE = { scrRows:null, hospRows:null, satRows:null, preRows:null, postRows:null, behRows:null, fupRows:null, ts:0, ttl:180000, userHosp:null };
  
 // ---- แทนที่ฟังก์ชัน loadDashboard(params) เดิมทั้งหมดด้วยอันนี้ ----
 function loadDashboard(params, forceFresh) {
@@ -3494,7 +3492,7 @@ function loadDashboard(params, forceFresh) {
  
   // 🐢 Phase 2: ของเดิม — โหลดข้อมูลรายคนเต็มมาเก็บ G.allRows (จำเป็นสำหรับค้นหา/แก้ไข/export)
   //    ทำงานคู่ขนานกับ Phase 1 ไม่ต้องรอ Phase 1 เสร็จก่อน
-  loadDashboardDirect_(params, forceFresh)
+  loadDashboardDirect_(params)
     .then(function (result) { applyRowDataOnly_(result, paramsKey); })
     .catch(function (e) {
       console.error('loadDashboardDirect_ failed, fallback to GAS:', e);
@@ -3513,32 +3511,6 @@ async function fetchDashboardRPC_(userHosp) {
     body: JSON.stringify({ p_user_hosp: userHosp || '' })
   });
   if (!res.ok) throw new Error('RPC get_dashboard_summary error (' + res.status + ')');
-  return await res.json();
-}
-async function fetchScreeningTablePage_(page) {
-  var userHosp = (G.session.loggedIn && G.session.role !== 'admin' && G.session.hospcode && G.session.hospcode !== 'all')
-    ? G.session.hospcode : '';
-  var srchEl = document.getElementById('srchBox');
-
-  var payload = {
-    p_user_hosp: userHosp,
-    p_hospcode: document.getElementById('fHosp').value || '',
-    p_amphoe: document.getElementById('fAmp').value || '',
-    p_tambon: document.getElementById('fTambon').value || '',
-    p_school: document.getElementById('fSch').value || '',
-    p_status: document.getElementById('fStat').value || '',
-    p_sex: document.getElementById('fSex').value || '',
-    p_search: srchEl ? srchEl.value.trim() : '',
-    p_page: page || 1,
-    p_page_size: 50
-  };
-
-  var res = await fetch(SUPABASE_URL + '/rpc/get_screening_table_page', {
-    method: 'POST',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  if (!res.ok) throw new Error('RPC get_screening_table_page error (' + res.status + ')');
   return await res.json();
 }
  
@@ -3579,97 +3551,52 @@ function loadDashboardViaGAS_(params) {
 }
  
 // ---- ดึง 6 ตารางตรงจาก Supabase พร้อมกัน แล้วคำนวณผลเหมือน getDashboardData() ฝั่ง GAS ----
-async function loadDashboardDirect_(params, forceFresh) {
+async function loadDashboardDirect_(params) {
   var userHosp = (G.session.loggedIn && G.session.role !== 'admin' && G.session.hospcode && G.session.hospcode !== 'all')
     ? G.session.hospcode : '';
 
-  // 🚀 ถ้ามี raw data cache ที่ยังไม่หมดอายุ และ scope ผู้ใช้ตรงกัน ให้ใช้ของเดิมเลย ไม่ต้องยิง Supabase ซ้ำ
-  var cacheFresh = !forceFresh && RAW_DATA_CACHE.scrRows &&
-    RAW_DATA_CACHE.userHosp === userHosp &&
-    (Date.now() - RAW_DATA_CACHE.ts) < RAW_DATA_CACHE.ttl;
+  var scrSelect = userHosp ? ('*&hospcode=eq.' + encodeURIComponent(userHosp)) : '*';
+  var scrRows = await fetchSupaAll('screening_data', scrSelect);
 
-  var scrRows, hospRows, satRows, preRows, postRows, behRows, fupRows;
-
-  if (cacheFresh) {
-    scrRows = RAW_DATA_CACHE.scrRows; hospRows = RAW_DATA_CACHE.hospRows; satRows = RAW_DATA_CACHE.satRows;
-    preRows = RAW_DATA_CACHE.preRows; postRows = RAW_DATA_CACHE.postRows;
-    behRows = RAW_DATA_CACHE.behRows; fupRows = RAW_DATA_CACHE.fupRows;
-  } else {
-    var scrSelect = userHosp ? ('*&hospcode=eq.' + encodeURIComponent(userHosp)) : '*';
-
-    if (userHosp) {
-      // ผู้ใช้ถูกจำกัดสิทธิ์เฉพาะ รพ.สต. ตัวเอง — ต้องรู้ cid ก่อนถึงจะกรองตารางที่เหลือได้ จึงยังต้องรอ scrRows ก่อน
-      scrRows = await fetchSupaAll('screening_data', scrSelect);
-      var cids = scrRows.map(function (r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
-      var joinSuffix = cids.length > 0 ? ('&cid=in.(' + cids.join(',') + ')') : '&cid=is.null';
-      var results = await Promise.all([
-        fetchSupaAll('hosp_data'),
-        fetchSupaAll('satisfaction_data', '*' + joinSuffix),
-        fetchSupaAll('pre_test', '*' + joinSuffix),
-        fetchSupaAll('post_test', '*' + joinSuffix),
-        fetchSupaAll('behavior_data', '*' + joinSuffix),
-        fetchSupaAll('followup_data', '*' + joinSuffix)
-      ]);
-      hospRows = results[0]; satRows = results[1]; preRows = results[2];
-      postRows = results[3]; behRows = results[4]; fupRows = results[5];
-    } else {
-      // 🚀 admin/guest ไม่ต้องกรองตาม cid — ยิงทั้ง 7 ตารางพร้อมกันทีเดียว ไม่ต้องรอ screening_data ก่อน
-      var results = await Promise.all([
-        fetchSupaAll('screening_data', scrSelect),
-        fetchSupaAll('hosp_data'),
-        fetchSupaAll('satisfaction_data'),
-        fetchSupaAll('pre_test'),
-        fetchSupaAll('post_test'),
-        fetchSupaAll('behavior_data'),
-        fetchSupaAll('followup_data')
-      ]);
-      scrRows = results[0]; hospRows = results[1]; satRows = results[2];
-      preRows = results[3]; postRows = results[4]; behRows = results[5]; fupRows = results[6];
-    }
-
-    RAW_DATA_CACHE = {
-      scrRows: scrRows, hospRows: hospRows, satRows: satRows, preRows: preRows,
-      postRows: postRows, behRows: behRows, fupRows: fupRows,
-      ts: Date.now(), ttl: RAW_DATA_CACHE.ttl, userHosp: userHosp
-    };
+  var joinSuffix = '';
+  if (userHosp) {
+    var cids = scrRows.map(function (r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
+    joinSuffix = cids.length > 0 ? ('&cid=in.(' + cids.join(',') + ')') : '&cid=is.null';
   }
 
-  G.behRows = behRows;
-  G.fupRows = fupRows;
+  var results = await Promise.all([
+    Promise.resolve(scrRows),
+    fetchSupaAll('hosp_data'),
+    fetchSupaAll('satisfaction_data', '*' + joinSuffix),
+    fetchSupaAll('pre_test', '*' + joinSuffix),
+    fetchSupaAll('post_test', '*' + joinSuffix),
+    fetchSupaAll('behavior_data', '*' + joinSuffix),
+    fetchSupaAll('followup_data', '*' + joinSuffix)
+  ]);
 
   return computeDashboardStats_(
-    scrRows, hospRows, satRows, preRows, postRows, behRows, fupRows,
+    results[0], results[1], results[2], results[3], results[4], results[5], results[6],
     params, userHosp
   );
 }
  
-// ---- ดึงข้อมูลทั้งตาราง: ยิงหน้าแรกก่อนรู้จำนวนรวม แล้วยิงหน้าที่เหลือ "พร้อมกันทีเดียว" (ไม่ต้องรอทีละหน้า) ----
+// ---- ดึงข้อมูลทั้งตาราง แบ่งหน้าอัตโนมัติ (เกิน 1000 แถว) เหมือน supaFetch ฝั่ง GAS ----
 async function fetchSupaAll(table, select) {
   select = select || '*';
-  var PAGE = 1000;
-  var url = SUPABASE_URL + '/' + table + '?select=' + select;
-  var baseHeaders = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
-
-  var firstRes = await fetch(url, {
-    headers: Object.assign({}, baseHeaders, { 'Range-Unit': 'items', 'Range': '0-' + (PAGE - 1), 'Prefer': 'count=exact' })
-  });
-  if (!firstRes.ok) throw new Error('Supabase fetch error: ' + table + ' (' + firstRes.status + ')');
-  var all = await firstRes.json();
-
-  if (all.length === PAGE) {
-    var rangeHeader = firstRes.headers.get('Content-Range') || '';
-    var total = parseInt(rangeHeader.split('/')[1], 10);
-    if (!isNaN(total) && total > PAGE) {
-      var reqs = [];
-      for (var from = PAGE; from < total && from <= 300000; from += PAGE) {
-        reqs.push(
-          fetch(url, { headers: Object.assign({}, baseHeaders, { 'Range-Unit': 'items', 'Range': from + '-' + (from + PAGE - 1) }) })
-            .then(function (r) { return r.ok ? r.json() : []; })
-        );
+  var PAGE = 1000, all = [], from = 0;
+  while (true) {
+    var res = await fetch(SUPABASE_URL + '/' + table + '?select=' + select, {
+      headers: {
+        'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Range-Unit': 'items', 'Range': from + '-' + (from + PAGE - 1), 'Prefer': 'count=exact'
       }
-      var restChunks = await Promise.all(reqs);
-      restChunks.forEach(function (chunk) { if (Array.isArray(chunk)) all = all.concat(chunk); });
-    }
+    });
+    if (!res.ok) throw new Error('Supabase fetch error: ' + table + ' (' + res.status + ')');
+    var chunk = await res.json();
+    all = all.concat(chunk);
+    if (chunk.length < PAGE) break;
+    from += PAGE;
+    if (from > 300000) break; // กันวนไม่รู้จบ
   }
   return all;
 }
@@ -5160,20 +5087,27 @@ function saveBeh() {
 
 var GB = { data: null, riskFilter: '', chartInsts: {} };
 
+// ==================== คำสั่งควบคุม BEHAVIOR DASHBOARD ====================
 function openBehDashboard() {
+  // สร้างและโหลดรายชื่ออำเภอ
   var amps = []; G.hospList.forEach(function(h){ if(h.amphoe && amps.indexOf(h.amphoe)===-1) amps.push(h.amphoe); }); amps.sort();
   var ampHtml = '<option value="">อำเภอ ทั้งหมด</option>'; amps.forEach(function(a){ ampHtml += '<option>'+a+'</option>'; });
   document.getElementById('bf-amphoe').innerHTML = ampHtml;
- 
+
   var hcHtml = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.forEach(function(h){ hcHtml += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
   document.getElementById('bf-hosp').innerHTML = hcHtml;
- 
+  
+  var schHtml = '<option value="">โรงเรียนทั้งหมด</option>';
+  G.schoolList.forEach(function(s){ schHtml += '<option value="'+e_(s.name)+'">'+e_(s.name)+'</option>'; });
+  document.getElementById('bf-school').innerHTML = schHtml;
+  
   var classes = ['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'];
   var clsHtml = '<option value="">ชั้นทั้งหมด</option>';
   classes.forEach(function(c){ clsHtml += '<option value="' + c + '">' + c + '</option>'; });
   document.getElementById('bf-class').innerHTML = clsHtml;
- 
+
+  // 🔓 ปลดล็อกเงื่อนไข: บังคับล็อกเฉพาะระดับ User ทั่วไป (รพ.สต.) เท่านั้น / ส่วนแอดมิน และ แขกภายนอก (Guest) จะเลือกดูสถิติได้ทุกพื้นที่แบบอิสระ
   if (G.session.loggedIn && G.session.role === 'user' && G.session.hospcode !== 'all') {
     document.getElementById('bf-hosp').value = G.session.hospcode;
     document.getElementById('bf-hosp').disabled = true;
@@ -5183,22 +5117,17 @@ function openBehDashboard() {
     document.getElementById('bf-hosp').disabled = false;
     document.getElementById('bf-amphoe').disabled = false;
   }
-  rebuildTambonSel_('bf-tambon', document.getElementById('bf-amphoe').value);
-  // 🆕 เติมโรงเรียนให้ตรงตามขอบเขตอำเภอ/รพ.สต. ที่ล็อกไว้ตั้งแต่เปิดแผง (แทนการโชว์ทุกโรงเรียน)
-  rebuildSchoolSel_('bf-school', document.getElementById('bf-amphoe').value, document.getElementById('bf-tambon').value, document.getElementById('bf-hosp').value);
+  rebuildTambonSel_('bf-tambon', document.getElementById('bf-amphoe').value);   // ⬅️ เพิ่มบรรทัดนี้
   openPanel('behdash');
   loadBehDashboard();
 }
- 
+
 function onBehAmpChange() {
   var amp = document.getElementById('bf-amphoe').value;
   rebuildTambonSel_('bf-tambon', amp);
   document.getElementById('bf-tambon').value = '';
   rebuildHospSel_('bf-hosp', amp, '');
   document.getElementById('bf-hosp').value = '';
-  // 🆕 อำเภอเปลี่ยน → โรงเรียนต้องกรองใหม่ด้วย
-  rebuildSchoolSel_('bf-school', amp, '', '');
-  document.getElementById('bf-school').value = '';
   loadBehDashboard();
 }
 function onBehTambonChange() {
@@ -5206,47 +5135,20 @@ function onBehTambonChange() {
   var tam = document.getElementById('bf-tambon').value;
   rebuildHospSel_('bf-hosp', amp, tam);
   document.getElementById('bf-hosp').value = '';
-  // 🆕 ตำบลเปลี่ยน → โรงเรียนต้องกรองใหม่ด้วย
-  rebuildSchoolSel_('bf-school', amp, tam, '');
-  document.getElementById('bf-school').value = '';
   loadBehDashboard();
 }
-function onBehHospChange() {
-  var amp = document.getElementById('bf-amphoe').value;
-  var tam = document.getElementById('bf-tambon').value;
-  var hc = document.getElementById('bf-hosp').value;
-  // 🆕 รพ.สต.เปลี่ยน → โรงเรียนต้องกรองใหม่ด้วย (ของเดิมไม่มีบรรทัดนี้เลย)
-  rebuildSchoolSel_('bf-school', amp, tam, hc);
-  document.getElementById('bf-school').value = '';
-  loadBehDashboard();
-}
+function onBehHospChange() { loadBehDashboard(); }
+// helper ใช้ร่วมกับข้อ 4 ด้วย
 function rebuildTambonSel_(id, amp) {
-  var tambons = [];
-  G.hospList.forEach(function (h) { if ((!amp || h.amphoe === amp) && h.tambon && tambons.indexOf(h.tambon) === -1) tambons.push(h.tambon); });
+  var tambons = []; G.hospList.forEach(function(h){ if((!amp||h.amphoe===amp)&&h.tambon&&tambons.indexOf(h.tambon)===-1) tambons.push(h.tambon); });
   tambons.sort();
-  var html = '<option value="">ตำบล ทั้งหมด</option>';
-  tambons.forEach(function (t) { html += '<option>' + t + '</option>'; });
+  var html = '<option value="">ตำบล ทั้งหมด</option>'; tambons.forEach(function(t){ html += '<option>'+t+'</option>'; });
   document.getElementById(id).innerHTML = html;
 }
 function rebuildHospSel_(id, amp, tam) {
   var html = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.filter(function(h){ return (!amp||h.amphoe===amp)&&(!tam||h.tambon===tam); })
     .forEach(function(h){ html += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
-  document.getElementById(id).innerHTML = html;
-}
-function rebuildSchoolSel_(id, amp, tam, hc) {
-  var validHcs = {};
-  G.hospList.forEach(function (h) {
-    if (amp && h.amphoe !== amp) return;
-    if (tam && h.tambon !== tam) return;
-    if (hc && h.hospcode !== hc) return;
-    validHcs[h.hospcode] = true;
-  });
-  var schoolSet = {};
-  (G.allRows || []).forEach(function (r) { if (validHcs[r.hospcode] && r.school_name) schoolSet[r.school_name] = true; });
-  var schools = Object.keys(schoolSet).sort();
-  var html = '<option value="">โรงเรียนทั้งหมด</option>';
-  schools.forEach(function (s) { html += '<option value="' + e_(s) + '">' + e_(s) + '</option>'; });
   document.getElementById(id).innerHTML = html;
 }
 
@@ -5268,112 +5170,22 @@ function toggleBehRisk(level) {
 
 function loadBehDashboard() {
   var params = {
-    amphoe: document.getElementById('bf-amphoe').value,
-    tambon: document.getElementById('bf-tambon').value,
-    hospcode: document.getElementById('bf-hosp').value,
-    school: document.getElementById('bf-school').value,
-    sex: document.getElementById('bf-sex').value,
-    school_class: document.getElementById('bf-class').value,
-    status: document.getElementById('bf-status').value,
-    risk: GB.riskFilter
-  };
- 
-  // ข้อมูลยังโหลดไม่เสร็จ (เพิ่งเข้าเว็บใหม่ๆ) → ใช้ทาง GAS สำรองไปก่อน
-  if (!G.behRows || !G.allRows || !G.allRows.length) {
-    loadBehDashboardViaGAS_(params);
-    return;
-  }
- 
-  var scrMap = {};
-  G.allRows.forEach(function (r) { if (r.cid) scrMap[r.cid] = r; });
- 
-  var fHosp = params.hospcode, fAmphoe = params.amphoe, fTambon = params.tambon, fSchool = params.school,
-      fSex = params.sex, fClass = params.school_class, fRisk = params.risk, fStatus = params.status;
- 
-  var timeMap = {'ไม่ใช้':0,'ไม่ถึง 1 ชม.':0.5,'1-2 ชม.':1.5,'2-3 ชม.':2.5,'3-4 ชม.':3.5,'มากกว่า 4 ชม.':5};
-  var devices = {}, purposes = {}, symptoms = {},
-      distance = {'ใกล้กว่า 1 ฟุต':0,'ประมาณ 1 ฟุต':0,'มากกว่า 1 ฟุต':0},
-      rest = {'พักทุก 20 นาที':0,'พักบ้างบางครั้ง':0,'ไม่ค่อยพัก':0},
-      blue = {'มีการใช้':0,'ไม่มีการใช้':0};
-  var timeSlots = { wk_morn:{total:0,count:0,dist:{}}, wk_noon:{total:0,count:0,dist:{}}, wk_eve:{total:0,count:0,dist:{}},
-                     we_morn:{total:0,count:0,dist:{}}, we_noon:{total:0,count:0,dist:{}}, we_eve:{total:0,count:0,dist:{}} };
-  var riskBuckets = {low:0,medium:0,high:0}, hospRisk = {}, rows = [], totalCount = 0, riskSumGlobal = 0;
- 
-  G.behRows.forEach(function (r) {
-    var cid = String(r.cid || '').trim(); if (!cid) return;
-    var demo = scrMap[cid] || {};
- 
-    if (fHosp && demo.hospcode !== fHosp) return;
-    if (fAmphoe && demo.amphoe !== fAmphoe) return;
-    if (fTambon && demo.tambon !== fTambon) return;
-    if (fSchool && demo.school_name !== fSchool) return;
-    if (fSex && demo.sex !== fSex) return;
-    if (fClass && demo.school_class !== fClass) return;
-    if (fStatus && demo.status !== fStatus) return;
- 
-    var devArr = String(r.q_device || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-    var purArr = String(r.q_purpose || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-    var symArr = String(r.q_symptom || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-    var distVal = String(r.q_dist || '').trim(), restVal = String(r.q_rest || '').trim(), blueVal = String(r.q_blue || '').trim();
-    var hWk = 0, hWe = 0;
-    var slots = [
-      { k: 'wk_morn', v: r.q_time_wk_morn }, { k: 'wk_noon', v: r.q_time_wk_noon }, { k: 'wk_eve', v: r.q_time_wk_eve },
-      { k: 'we_morn', v: r.q_time_we_morn }, { k: 'we_noon', v: r.q_time_we_noon }, { k: 'we_eve', v: r.q_time_we_eve }
-    ];
-    slots.forEach(function (s) {
-      var val = String(s.v || '').trim();
-      if (timeMap[val] !== undefined) {
-        timeSlots[s.k].total += timeMap[val]; timeSlots[s.k].count++;
-        timeSlots[s.k].dist[val] = (timeSlots[s.k].dist[val] || 0) + 1;
-        if (s.k.indexOf('wk_') === 0) hWk += timeMap[val]; else hWe += timeMap[val];
-      }
-    });
- 
-    var risk = 0;
-    if (hWk > 8) risk += 3; else if (hWk > 4) risk += 2; else if (hWk > 2) risk += 1;
-    if (hWe > 8) risk += 3; else if (hWe > 4) risk += 2; else if (hWe > 2) risk += 1;
-    if (distVal === 'ใกล้กว่า 1 ฟุต') risk += 2; else if (distVal === 'ประมาณ 1 ฟุต') risk += 1;
-    if (restVal === 'ไม่ค่อยพัก') risk += 2; else if (restVal === 'พักบ้างบางครั้ง') risk += 1;
-    risk += symArr.filter(function (s) { return s !== 'ไม่มีอาการ'; }).length;
- 
-    var riskLevel = (risk >= 8) ? 'high' : (risk >= 4) ? 'medium' : 'low';
-    if (fRisk && riskLevel !== fRisk) return;
- 
-    totalCount++; riskSumGlobal += risk; riskBuckets[riskLevel]++;
-    devArr.forEach(function (d) { devices[d] = (devices[d] || 0) + 1; });
-    purArr.forEach(function (p) { purposes[p] = (purposes[p] || 0) + 1; });
-    symArr.forEach(function (s) { symptoms[s] = (symptoms[s] || 0) + 1; });
-    if (distance[distVal] !== undefined) distance[distVal]++;
-    if (rest[restVal] !== undefined) rest[restVal]++;
-    if (blueVal.indexOf('มี') === 0) blue['มีการใช้']++; else if (blueVal.indexOf('ไม่') === 0) blue['ไม่มีการใช้']++;
- 
-    if (demo.hospcode) {
-      if (!hospRisk[demo.hospcode]) hospRisk[demo.hospcode] = { name: demo.hosp_name || demo.hospcode, low: 0, medium: 0, high: 0, total: 0 };
-      hospRisk[demo.hospcode][riskLevel]++; hospRisk[demo.hospcode].total++;
-    }
- 
-    rows.push({
-      cid: cid, name: demo.student_name || '', hospcode: demo.hospcode || '', hosp_name: demo.hosp_name || '',
-      school: demo.school_name || '', school_class: demo.school_class || '', sex: demo.sex || '', age: demo.age_years || '',
-      devices: devArr.join(', '), purposes: purArr.join(', '), symptoms: symArr.join(', '),
-      distance: distVal, rest: restVal, blue: blueVal, hours_wk: hWk, hours_we: hWe, risk_score: risk, risk_level: riskLevel
-    });
-  });
- 
-  var kpi = { total: totalCount, symptomPct: 0, heavyUsePct: 0, properDistPct: 0, properRestPct: 0, blueLightPct: 0, avgHoursWk: 0, avgHoursWe: 0, avgRisk: 0 };
-  if (totalCount > 0) {
-    var withSymptom = totalCount - (symptoms['ไม่มีอาการ'] || 0); kpi.symptomPct = Math.round(withSymptom / totalCount * 100);
-    var heavy = rows.filter(function (r) { return r.hours_wk > 4 || r.hours_we > 4; }).length; kpi.heavyUsePct = Math.round(heavy / totalCount * 100);
-    kpi.properDistPct = Math.round((distance['มากกว่า 1 ฟุต'] || 0) / totalCount * 100);
-    kpi.properRestPct = Math.round((rest['พักทุก 20 นาที'] || 0) / totalCount * 100);
-    kpi.blueLightPct = Math.round((blue['มีการใช้'] || 0) / totalCount * 100);
-    var sWk = 0, sWe = 0; rows.forEach(function (r) { sWk += r.hours_wk; sWe += r.hours_we; });
-    kpi.avgHoursWk = Math.round(sWk / totalCount * 10) / 10; kpi.avgHoursWe = Math.round(sWe / totalCount * 10) / 10;
-    kpi.avgRisk = Math.round(riskSumGlobal / totalCount * 10) / 10;
-  }
- 
-  GB.data = { kpi: kpi, devices: devices, purposes: purposes, symptoms: symptoms, distance: distance, rest: rest, blue: blue, timeSlots: timeSlots, riskBuckets: riskBuckets, hospRisk: hospRisk, rows: rows };
-  renderBehDashboard();
+  amphoe: document.getElementById('bf-amphoe').value,
+  tambon: document.getElementById('bf-tambon').value,
+  hospcode: document.getElementById('bf-hosp').value,
+  school: document.getElementById('bf-school').value,
+  sex: document.getElementById('bf-sex').value,
+  school_class: document.getElementById('bf-class').value,
+  status: document.getElementById('bf-status').value,
+  risk: GB.riskFilter
+};
+  toast('กำลังโหลดข้อมูลพฤกติกรรม...', 'inf');
+  google.script.run.withSuccessHandler(function(r){
+    var res = JSON.parse(r);
+    if (!res.ok) { toast(res.msg, 'err'); return; }
+    GB.data = res.data;
+    renderBehDashboard();
+  }).getBehaviorDashboard(params);
 }
 
 function renderBehDashboard() {
@@ -5550,16 +5362,21 @@ function openFupDashboard() {
   var amps = []; G.hospList.forEach(function(h){ if(h.amphoe && amps.indexOf(h.amphoe)===-1) amps.push(h.amphoe); }); amps.sort();
   var ampHtml = '<option value="">อำเภอ ทั้งหมด</option>'; amps.forEach(function(a){ ampHtml += '<option>'+a+'</option>'; });
   document.getElementById('fdf-amphoe').innerHTML = ampHtml;
- 
+
   var hcHtml = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.forEach(function(h){ hcHtml += '<option value="' + h.hospcode + '">' + h.hospcode + ' ' + h.name + '</option>'; });
   document.getElementById('fdf-hosp').innerHTML = hcHtml;
- 
+  
+  var schHtml = '<option value="">โรงเรียนทั้งหมด</option>';
+  G.schoolList.forEach(function(s){ schHtml += '<option value="' + e_(s.name) + '">' + e_(s.name) + '</option>'; });
+  document.getElementById('fdf-school').innerHTML = schHtml;
+  
   var classes = ['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'];
   var clsHtml = '<option value="">ชั้นทั้งหมด</option>';
   classes.forEach(function(c){ clsHtml += '<option value="' + c + '">' + c + '</option>'; });
   document.getElementById('fdf-class').innerHTML = clsHtml;
- 
+  
+  // 🔓 ปลดล็อกเงื่อนไขสำหรับผู้เข้าชมทั่วไป (Guest) ในแถบติดตามผลแว่นตา
   if (G.session.loggedIn && G.session.role === 'user' && G.session.hospcode !== 'all') {
     document.getElementById('fdf-hosp').value = G.session.hospcode;
     document.getElementById('fdf-hosp').disabled = true;
@@ -5569,22 +5386,17 @@ function openFupDashboard() {
     document.getElementById('fdf-hosp').disabled = false;
     document.getElementById('fdf-amphoe').disabled = false;
   }
-  rebuildTambonSel_('fdf-tambon', document.getElementById('fdf-amphoe').value);
-  // 🆕 เติมโรงเรียนให้ตรงตามขอบเขตที่ล็อกไว้ตั้งแต่เปิดแผง
-  rebuildSchoolSel_('fdf-school', document.getElementById('fdf-amphoe').value, document.getElementById('fdf-tambon').value, document.getElementById('fdf-hosp').value);
+  rebuildTambonSel_('fdf-tambon', document.getElementById('fdf-amphoe').value);   // ⬅️ เพิ่มบรรทัดนี้
   openPanel('fupdash');
   loadFupDashboard();
 }
- 
+
 function onFupAmpChange() {
   var amp = document.getElementById('fdf-amphoe').value;
   rebuildTambonSel_('fdf-tambon', amp);
   document.getElementById('fdf-tambon').value = '';
   rebuildHospSel_('fdf-hosp', amp, '');
   document.getElementById('fdf-hosp').value = '';
-  // 🆕 อำเภอเปลี่ยน → โรงเรียนต้องกรองใหม่ด้วย
-  rebuildSchoolSel_('fdf-school', amp, '', '');
-  document.getElementById('fdf-school').value = '';
   loadFupDashboard();
 }
 function onFupTambonChange() {
@@ -5592,18 +5404,6 @@ function onFupTambonChange() {
   var tam = document.getElementById('fdf-tambon').value;
   rebuildHospSel_('fdf-hosp', amp, tam);
   document.getElementById('fdf-hosp').value = '';
-  // 🆕 ตำบลเปลี่ยน → โรงเรียนต้องกรองใหม่ด้วย
-  rebuildSchoolSel_('fdf-school', amp, tam, '');
-  document.getElementById('fdf-school').value = '';
-  loadFupDashboard();
-}
-// 🆕 ฟังก์ชันใหม่ทั้งหมด (ของเดิมไม่มี handler เฉพาะตอนเปลี่ยนรพ.สต. เลย ใช้ loadFupDashboard() ตรงๆ)
-function onFupHospChange() {
-  var amp = document.getElementById('fdf-amphoe').value;
-  var tam = document.getElementById('fdf-tambon').value;
-  var hc = document.getElementById('fdf-hosp').value;
-  rebuildSchoolSel_('fdf-school', amp, tam, hc);
-  document.getElementById('fdf-school').value = '';
   loadFupDashboard();
 }
 
@@ -5618,89 +5418,20 @@ function clearFupFilters() {
 
 function loadFupDashboard() {
   var params = {
-    amphoe: document.getElementById('fdf-amphoe').value,
-    tambon: document.getElementById('fdf-tambon').value,
-    hospcode: document.getElementById('fdf-hosp').value,
-    school: document.getElementById('fdf-school').value,
-    sex: document.getElementById('fdf-sex').value,
-    school_class: document.getElementById('fdf-class').value
-  };
- 
-  if (!G.fupRows || !G.allRows || !G.allRows.length) {
-    loadFupDashboardViaGAS_(params);
-    return;
-  }
- 
-  var scrMap = {};
-  G.allRows.forEach(function (r) { if (r.cid) scrMap[r.cid] = r; });
- 
-  var fHosp = params.hospcode, fAmphoe = params.amphoe, fTambon = params.tambon, fSchool = params.school,
-      fSex = params.sex, fClass = params.school_class;
- 
-  var satScoreMap = { 'มากที่สุด': 5, 'มาก': 4, 'ปานกลาง': 3, 'น้อย': 2, 'น้อยที่สุด': 1 };
-  var rows = [], hospTally = {},
-      freqUsage = { board: {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0}, book: {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0}, screen: {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0}, sport: {'ทุกครั้ง':0,'บ่อยครั้ง':0,'บางครั้ง':0,'ไม่เคยเลย':0} },
-      qol = { board: {'ดีขึ้นมาก':0,'ดีขึ้น':0,'เหมือนเดิม':0,'แย่ลง':0}, focus: {'ดีขึ้นมาก':0,'ดีขึ้น':0,'เหมือนเดิม':0,'แย่ลง':0}, confidence: {'ดีขึ้นมาก':0,'ดีขึ้น':0,'เหมือนเดิม':0,'แย่ลง':0}, headache: {'ลดลงมาก':0,'ลดลง':0,'เท่าเดิม':0,'เพิ่มขึ้น':0} };
-  var fDaysTally = {'6-7 วัน':0,'3-5 วัน':0,'1-2 วัน':0,'ไม่ได้ใส่เลย':0}, conditionTally = {}, reasonsCount = {},
-      satSum = 0, satCnt = 0, goodCondCnt = 0, dailyWearCnt = 0, totalCnt = 0;
- 
-  G.fupRows.forEach(function (r) {
-    var cid = String(r.cid || '').trim(); if (!cid) return;
-    var demo = scrMap[cid] || {}; var hc = demo.hospcode || '';
- 
-    if (fHosp && hc !== fHosp) return;
-    if (fAmphoe && demo.amphoe !== fAmphoe) return;
-    if (fTambon && demo.tambon !== fTambon) return;
-    if (fSchool && demo.school_name !== fSchool) return;
-    if (fSex && demo.sex !== fSex) return;
-    if (fClass && demo.school_class !== fClass) return;
- 
-    totalCnt++;
-    var fBoard = r.f_board || '', fBook = r.f_book || '', fScreen = r.f_screen || '', fSport = r.f_sport || '',
-        fDays = r.f_days || '', cStatus = r.c_status || '', cClarity = r.c_clarity || '',
-        qBoard = r.q_board || '', qFocus = r.q_focus || '', qConfidence = r.q_confidence || '', qHeadache = r.q_headache || '';
-    var reasons = String(r.reasons || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-    var overallSat = r.overall_sat || '';
- 
-    function tally(obj, val) { if (val && obj[val] !== undefined) obj[val]++; }
-    tally(freqUsage.board, fBoard); tally(freqUsage.book, fBook); tally(freqUsage.screen, fScreen); tally(freqUsage.sport, fSport);
-    tally(qol.board, qBoard); tally(qol.focus, qFocus); tally(qol.confidence, qConfidence); tally(qol.headache, qHeadache);
-    tally(fDaysTally, fDays); conditionTally[cStatus] = (conditionTally[cStatus] || 0) + 1;
-    reasons.forEach(function (rs) { reasonsCount[rs] = (reasonsCount[rs] || 0) + 1; });
- 
-    if (satScoreMap[overallSat]) { satSum += satScoreMap[overallSat]; satCnt++; }
-    var isGoodCond = cStatus.indexOf('ดีมาก') > -1 || cStatus.indexOf('ดี แต่') > -1;
-    if (isGoodCond) goodCondCnt++;
-    if (fDays === '6-7 วัน') dailyWearCnt++;
- 
-    if (!hospTally[hc]) hospTally[hc] = { hospcode: hc, name: demo.hosp_name || hc, amphoe: demo.amphoe || '', total: 0, dailyWear: 0, goodCond: 0, visionImp: 0, focusImp: 0, headacheImp: 0, satSum: 0, satCnt: 0 };
-    var ht = hospTally[hc]; ht.total++;
-    if (fDays === '6-7 วัน') ht.dailyWear++;
-    if (isGoodCond) ht.goodCond++;
-    if (qBoard.indexOf('ดีขึ้น') > -1) ht.visionImp++;
-    if (qFocus.indexOf('ดีขึ้น') > -1) ht.focusImp++;
-    if (qHeadache === 'ลดลงมาก' || qHeadache === 'ลดลง') ht.headacheImp++;
-    if (satScoreMap[overallSat]) { ht.satSum += satScoreMap[overallSat]; ht.satCnt++; }
- 
-    rows.push({
-      cid: cid, name: demo.student_name || '', hospcode: hc, hosp_name: demo.hosp_name || '', school: demo.school_name || '',
-      school_class: demo.school_class || '', tel: r.tel || '', duration: r.duration || '', f_days: fDays, c_status: cStatus,
-      c_clarity: cClarity, q_board: qBoard, q_focus: qFocus, q_confidence: qConfidence, q_headache: qHeadache,
-      overall_sat: overallSat, reasons: reasons.join(', '), sat_score: satScoreMap[overallSat] || 0
-    });
-  });
- 
-  var kpi = { total: totalCnt, dailyWearPct: totalCnt > 0 ? Math.round(dailyWearCnt / totalCnt * 100) : 0, goodCondPct: totalCnt > 0 ? Math.round(goodCondCnt / totalCnt * 100) : 0, satAvg: satCnt > 0 ? Math.round(satSum / satCnt * 100) / 100 : null };
-  function pctImp(o) { var t = o['ดีขึ้นมาก'] + o['ดีขึ้น'] + o['เหมือนเดิม'] + o['แย่ลง']; return t > 0 ? Math.round((o['ดีขึ้นมาก'] + o['ดีขึ้น']) / t * 100) : 0; }
-  var qolImpPct = { board: pctImp(qol.board), focus: pctImp(qol.focus), confidence: pctImp(qol.confidence), headache: (function (o) { var t = o['ลดลงมาก'] + o['ลดลง'] + o['เท่าเดิม'] + o['เพิ่มขึ้น']; return t > 0 ? Math.round((o['ลดลงมาก'] + o['ลดลง']) / t * 100) : 0; })(qol.headache) };
-  var topReasons = Object.keys(reasonsCount).sort(function (a, b) { return reasonsCount[b] - reasonsCount[a]; }).slice(0, 5).map(function (k) { return { label: k, count: reasonsCount[k] }; });
-  var hospHeatmap = Object.keys(hospTally).sort().map(function (hc) {
-    var h = hospTally[hc]; var t = h.total || 1;
-    return { hospcode: hc, name: h.name, amphoe: h.amphoe, total: h.total, dailyWearPct: Math.round(h.dailyWear / t * 100), goodCondPct: Math.round(h.goodCond / t * 100), visionImpPct: Math.round(h.visionImp / t * 100), focusImpPct: Math.round(h.focusImp / t * 100), headacheImpPct: Math.round(h.headacheImp / t * 100), satAvg: h.satCnt > 0 ? Math.round(h.satSum / h.satCnt * 100) / 100 : null };
-  });
- 
-  GF.data = { kpi: kpi, freqUsage: freqUsage, qol: qol, qolImpPct: qolImpPct, fDays: fDaysTally, conditions: conditionTally, reasons: reasonsCount, topReasons: topReasons, hospHeatmap: hospHeatmap, rows: rows };
-  renderFupDashboard();
+  amphoe: document.getElementById('fdf-amphoe').value,
+  tambon: document.getElementById('fdf-tambon').value,
+  hospcode: document.getElementById('fdf-hosp').value,
+  school: document.getElementById('fdf-school').value,
+  sex: document.getElementById('fdf-sex').value,
+  school_class: document.getElementById('fdf-class').value
+};
+  toast('กำลังโหลดข้อมูลติดตามผล...', 'inf');
+  google.script.run.withSuccessHandler(function(r){
+    var res = JSON.parse(r);
+    if (!res.ok) { toast(res.msg, 'err'); return; }
+    GF.data = res.data;
+    renderFupDashboard();
+  }).getFollowupDashboard(params);
 }
 
 function renderFupDashboard() {
@@ -7001,30 +6732,123 @@ function debounceSearch() {
 }
 
 async function loadTablePage(page) {
-  let tBody = document.getElementById('tBody');
-  if (!tBody) return;
-  try {
-    var res = await fetchScreeningTablePage_(page);
-    totalPages = res.totalPages || 1;
-    currentPage = res.page || 1;
-    document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
-    document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
-    document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
-    renderTable(res.rows || []);
-    document.getElementById('tInfo').textContent = 'พบทั้งหมด ' + res.total + ' รายการ';
-  } catch (e) {
-    console.warn('RPC table page ล้มเหลว ใช้ข้อมูลในเครื่องแทน:', e);
-    // fallback เดิม: หั่นจาก G.dispRows ที่โหลดไว้แล้ว
-    var rows = G.dispRows || [];
-    var limit = 50;
-    totalPages = Math.max(1, Math.ceil(rows.length / limit));
-    currentPage = Math.min(Math.max(page || 1, 1), totalPages);
-    var from = (currentPage - 1) * limit;
-    document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
-    document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
-    document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
-    renderTable(rows.slice(from, from + limit));
-  }
+    let tBody = document.getElementById('tBody');
+    if(!tBody) return;
+    tBody.innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--accent);font-weight:bold;">⚡ กำลังโหลดข้อมูลพริบตาเดียวจาก Supabase...</td></tr>';
+    
+    currentPage = page || 1;
+    let limit = 50;
+    let from = (currentPage - 1) * limit;
+    let to = from + limit - 1;
+
+    let hospcode = document.getElementById('fHosp') ? document.getElementById('fHosp').value : '';
+    let amphoe = document.getElementById('fAmp') ? document.getElementById('fAmp').value : '';
+    let school = document.getElementById('fSch') ? document.getElementById('fSch').value : '';
+    let tambon = document.getElementById('fTambon') ? document.getElementById('fTambon').value : '';
+    let search = document.getElementById('srchBox') ? document.getElementById('srchBox').value.trim() : '';
+
+    let ep = 'screening_data?select=*&order=cid.asc';
+    let sessionRole = (typeof G !== 'undefined' && G.session && G.session.role) ? G.session.role : 'guest';
+    let sessionHosp = (typeof G !== 'undefined' && G.session && G.session.hospcode) ? G.session.hospcode : 'all';
+
+    if (sessionRole !== 'admin' && sessionHosp !== 'all' && sessionHosp !== '') {
+        ep += '&hospcode=eq.' + sessionHosp;
+    } else if (hospcode) {
+        ep += '&hospcode=eq.' + hospcode;
+    }
+    
+    if (amphoe) ep += '&amphoe=eq.' + amphoe;
+    if (tambon) ep += '&tambon=eq.' + tambon;
+    if (school) ep += '&school_name=eq.' + school;
+    if (search) ep += '&or=(cid.ilike.*' + search + '*,student_name.ilike.*' + search + '*)';
+
+    try {
+        const res = await fetch(`${SUPABASE_URL}/${ep}`, {
+            method: 'GET',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Range-Unit': 'items', 'Range': from + '-' + to, 'Prefer': 'count=exact' }
+        });
+
+        if (!res.ok) throw new Error('Supabase Error: ' + res.status);
+        const rows = await res.json();
+        const contentRange = res.headers.get('Content-Range') || '0-0/0';
+        const totalCount = parseInt(contentRange.split('/')[1]) || 0;
+        totalPages = Math.ceil(totalCount / limit) || 1;
+
+        let cids = rows.map(r => String(r.cid).replace(/\D/g, '')).filter(Boolean);
+        let cidQuery = cids.length > 0 ? 'cid=in.(' + cids.join(',') + ')' : 'cid=is.null';
+
+        const [preRes, postRes, satRes, fupRes, hospRes] = await Promise.all([
+            fetch(`${SUPABASE_URL}/pre_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+            fetch(`${SUPABASE_URL}/post_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+            fetch(`${SUPABASE_URL}/satisfaction_data?select=cid,q1,q2,q3,q4,q5,q6,q7,q8,q9,q10&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+            fetch(`${SUPABASE_URL}/followup_data?select=cid,f_days&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
+            fetch(`${SUPABASE_URL}/hosp_data?select=hospcode,name,amphoe`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json())
+        ]);
+
+        let preMap = {}, postMap = {}, satMap = {}, fupMap = {}, hospMap = {};
+        preRes.forEach(r => preMap[r.cid] = r.total);
+        postRes.forEach(r => postMap[r.cid] = r.total);
+        fupRes.forEach(r => fupMap[r.cid] = r.f_days || 'มีข้อมูล');
+        hospRes.forEach(r => hospMap[r.hospcode] = { name: r.name, amphoe: r.amphoe });
+        satRes.forEach(r => {
+            let sum = 0, count = 0;
+            for(let i=1; i<=10; i++) { if(r['q'+i] >= 1) { sum += r['q'+i]; count++; } }
+            satMap[r.cid] = count > 0 ? Math.round((sum/count)*100)/100 : null;
+        });
+
+        function calcStatusClient_(obj, hasFup) {
+            var diag = String(obj.diagnosis || '').trim();
+            if (diag === 'สายตาปกต') diag = 'สายตาปกติ';
+            var ref = String(obj.referral || '').trim();
+            var noRefer = ['', 'ไม่จำเป็นต้องส่งต่อ', 'ไม่ส่ง'].indexOf(ref) >= 0;
+            if (!noRefer && hasFup) return 'glasses';
+            if (!noRefer) return 'referred';
+            if (diag && diag !== 'สายตาปกติ') return 'abnormal';
+            return 'normal';
+        }
+
+        let formattedRows = rows.map(obj => {
+            let cid = String(obj.cid).replace(/\D/g, '');
+            let hc = String(obj.hospcode || '').trim();
+            let hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ' };
+            let pre = preMap[cid] || null, post = postMap[cid] || null;
+            let gain = (pre !== null && post !== null) ? (pre >= 10 ? 100 : Math.round((post-pre)/(10-pre)*100)) : null;
+            return {
+                cid: cid,
+                student_name: String(obj.student_name || '').trim(),
+                school_class: String(obj.school_class || '').trim(),
+                school_name: String(obj.school_name || '').trim(),
+                hospcode: hc, hosp_name: hInfo.name, amphoe: hInfo.amphoe,
+                sex: String(obj.sex || '').trim(),
+                treatment: String(obj.treatment || '').trim(),
+                nationality: String(obj.nationality || 'ไทย').trim(),
+                va_r_naked: String(obj.va_r_naked || '').trim(),
+                va_l_naked: String(obj.va_l_naked || '').trim(),
+                va_naked_OU: String(obj.va_naked_ou || '').trim(),
+                va_r_glasses: String(obj.va_r_glasses || '').trim(),
+                va_l_glasses: String(obj.va_l_glasses || '').trim(),
+                va_glasses_OU: String(obj.va_glasses_ou || '').trim(),
+                ph_r: String(obj.ph_r || '').trim(),
+                ph_l: String(obj.ph_l || '').trim(),
+                diagnosis: String(obj.diagnosis || '').trim(),
+                referral: String(obj.referral || '').trim(),
+                examiner: String(obj.examiner || '').trim(),
+                status: calcStatusClient_(obj, !!fupMap[cid]),
+                pre: pre, post: post, gain: gain,
+                sat: satMap[cid] || null,
+                fup_status: fupMap[cid] || null,
+                screen_date: String(obj.screen_date || '')
+            };
+        });
+
+        document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
+        document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
+        document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
+        renderTable(formattedRows);
+    } catch (e) {
+        console.error(e);
+        if(typeof toast === 'function') toast('โหลดตารางล้มเหลว: ' + e.message, 'err');
+    }
 }
 
 function changePage(direction) {
@@ -7034,27 +6858,8 @@ function changePage(direction) {
 function applyRowDataOnly_(result, paramsKey) {
   DASH_CACHE = { data: result, ts: Date.now(), ttl: 45000, paramsKey: paramsKey };
   G.allRows = result.allRows; G.dispRows = result.allRows;
-  try { if (G.dispRows.length && typeof loadTablePage === 'function') loadTablePage(1); } catch (e) { console.error('renderTable error:', e); }
+  try { if (G.dispRows.length && typeof renderTable === 'function') renderTable(G.dispRows); } catch (e) { console.error('renderTable error:', e); }
   if (myMap) setTimeout(function () { myMap.invalidateSize(); }, 300);
-}
-function loadBehDashboardViaGAS_(params) {
-  toast('กำลังโหลดข้อมูลพฤติกรรม...', 'inf');
-  google.script.run.withSuccessHandler(function (r) {
-    var res = JSON.parse(r);
-    if (!res.ok) { toast(res.msg, 'err'); return; }
-    GB.data = res.data;
-    renderBehDashboard();
-  }).getBehaviorDashboard(params);
-}
- 
-function loadFupDashboardViaGAS_(params) {
-  toast('กำลังโหลดข้อมูลติดตามผล...', 'inf');
-  google.script.run.withSuccessHandler(function (r) {
-    var res = JSON.parse(r);
-    if (!res.ok) { toast(res.msg, 'err'); return; }
-    GF.data = res.data;
-    renderFupDashboard();
-  }).getFollowupDashboard(params);
 }
 </script>
 </body>
