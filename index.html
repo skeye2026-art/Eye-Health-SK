@@ -2092,7 +2092,7 @@ function renderExtraDashCharts(extraStats) {
 } // <- ปิดฟังก์ชัน renderExtraDashCharts ตรงนี้ที่เดียวครับ
 
 var G = {
-  session:{loggedIn:false,user:'',role:'',hospcode:''}, settings:{}, hospList:[], schoolList:[], vaList:[], vaMap: {}, natList:[], links:[], videos: [], allRows:[], dispRows:[], chartData: { amphoe: [], hosp: [], school: [] }, satCharts: {}, kpi: {}, hospSummaryData: [],
+  session:{loggedIn:false,user:'',role:'',hospcode:''}, settings:{}, hospList:[], schoolList:[], vaList:[], vaMap: {}, natList:[], links:[], videos: [], allRows:[], dispRows:[], fullRowsReady:false, chartData: { amphoe: [], hosp: [], school: [] }, satCharts: {}, kpi: {}, hospSummaryData: [],
   barInst:null, pieInst:null, lineInst:null, hospInst:null, schoolInst:null, satBreakdownInst:null, satTypePieInst:null, delTarget:{cid:'',sheet:''}
 };
 var INIT_DATA_CACHE = { data:null, ts:0, ttl:600000 };
@@ -2191,6 +2191,7 @@ function clearDashboardClientCache_(clearInit) {
   if (typeof G !== 'undefined') {
     G.allRows = [];
     G.dispRows = [];
+    G.fullRowsReady = false;
     G.chartData = { amphoe: [], hosp: [], school: [] };
     G.satCharts = {};
     G.kpi = {};
@@ -2336,6 +2337,121 @@ function convertFile() {
 }
 
 function toast(msg, type) { var wrap = document.getElementById('toastWrap'); if (!wrap) return; var t = document.createElement('div'); var icon = type === 'ok' ? '✅ ' : type === 'err' ? '❌ ' : 'ℹ️ '; t.className = 'toast t-' + (type || 'inf'); t.innerHTML = icon + msg; wrap.appendChild(t); setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(100%)'; t.style.transition = 'all 0.3s ease'; setTimeout(function() { t.remove(); }, 300); }, 3000); }
+
+function hasActiveDashboardFilter_() {
+  var ids = ['fAmp', 'fTambon', 'fHosp', 'fSch', 'fStat', 'fSex', 'srchBox'];
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i]);
+    if (el && String(el.value || '').trim()) return true;
+  }
+  var cf = G_chartFilter || {};
+  return !!(cf.metric || cf.diag || cf.treat || cf.behRisk || cf.fupWear || cf.nat || cf.satBreakdown || cf.satType);
+}
+
+function canUseSummaryFastFilter_(cf, sch, sex, q) {
+  if (sch || sex || q) return false;
+  cf = cf || {};
+  return !(cf.metric || cf.diag || cf.treat || cf.behRisk || cf.fupWear || cf.nat || cf.satBreakdown || cf.satType);
+}
+
+function getSummaryRowsForFilters_(amp, tam, hc) {
+  var rows = G.hospSummaryData || [];
+  if (!rows.length) return [];
+  var hospMeta = {};
+  (G.hospList || []).forEach(function(h) { if (h.hospcode) hospMeta[h.hospcode] = h; });
+  return rows.filter(function(r) {
+    if (hc && r.hospcode !== hc) return false;
+    if (amp && r.amphoe !== amp) return false;
+    if (tam) {
+      var h = hospMeta[r.hospcode] || {};
+      if (h.tambon !== tam) return false;
+    }
+    return true;
+  });
+}
+
+function avgFromSummary_(rows, key) {
+  var sum = 0, count = 0;
+  rows.forEach(function(r) {
+    var v = Number(r[key]);
+    if (!isNaN(v)) { sum += v; count++; }
+  });
+  return count > 0 ? Math.round(sum / count * 100) / 100 : null;
+}
+
+function buildSummaryKpi_(rows, stat) {
+  var agg = { total:0, normal:0, abnormalTotal:0, referredRaw:0, glasses:0 };
+  rows.forEach(function(r) {
+    var total = Number(r.total) || 0;
+    var normal = Number(r.normal) || 0;
+    var abnormal = Number(r.abnormal);
+    if (isNaN(abnormal)) abnormal = Math.max(0, total - normal);
+    agg.total += total;
+    agg.normal += normal;
+    agg.abnormalTotal += abnormal;
+    agg.referredRaw += Number(r.referred) || 0;
+    agg.glasses += Number(r.glasses) || 0;
+  });
+
+  var outTotal = agg.total, outNormal = agg.normal, outAbnormal = agg.abnormalTotal;
+  var outReferredRaw = agg.referredRaw, outGlasses = agg.glasses;
+  if (stat === 'normal') {
+    outTotal = agg.normal; outAbnormal = 0; outReferredRaw = 0; outGlasses = 0;
+  } else if (stat === 'abnormal') {
+    outTotal = agg.abnormalTotal; outNormal = 0;
+  } else if (stat === 'referred') {
+    outTotal = agg.referredRaw + agg.glasses; outNormal = 0; outAbnormal = outTotal;
+  } else if (stat === 'glasses') {
+    outTotal = agg.glasses; outNormal = 0; outAbnormal = agg.glasses; outReferredRaw = 0;
+  }
+
+  var t = outTotal || 1;
+  var referredCombined = outReferredRaw + outGlasses;
+  return {
+    total: outTotal,
+    normal: outNormal,
+    normalPct: Math.round(outNormal / t * 100),
+    abnormal: outAbnormal,
+    abnormalTotal: outAbnormal,
+    abnormalPct: Math.round(outAbnormal / t * 100),
+    referred: referredCombined,
+    referredPct: Math.round(referredCombined / t * 100),
+    referredRaw: outReferredRaw,
+    glasses: outGlasses,
+    glassesPct: Math.round(outGlasses / t * 100),
+    satAvg: avgFromSummary_(rows, 'satAvg'),
+    preAvg: avgFromSummary_(rows, 'preAvg'),
+    postAvg: avgFromSummary_(rows, 'postAvg'),
+    gainAvg: avgFromSummary_(rows, 'gainAvg'),
+    preTestCount: 0,
+    satCount: 0, satPct: 0,
+    preCount: 0, prePct: 0,
+    postCount: 0, postPct: 0,
+    traineePct: 0,
+    traineePctGlasses: null
+  };
+}
+
+function applySummaryFastFilter_(amp, tam, hc, stat) {
+  var rows = getSummaryRowsForFilters_(amp, tam, hc);
+  if (!rows.length && !hc && !amp && !tam) rows = G.hospSummaryData || [];
+  if (!rows.length) return false;
+
+  var kpiOut = buildSummaryKpi_(rows, stat);
+  G.kpi = kpiOut;
+  G.dispRows = [];
+
+  updateKPIs(kpiOut);
+  renderPieChart(kpiOut);
+  renderSatTestChart(kpiOut);
+  try { renderSummaryTable(G.hospSummaryData); } catch (err) { console.error('Summary Error:', err); }
+  try { renderBarChart(); } catch (err) { console.error('Chart Error:', err); }
+  try { renderHeatmap(); } catch (err) { console.error('Heatmap Error:', err); }
+  try { if (typeof updateMapMarkers === 'function') updateMapMarkers(); } catch (err) {}
+  try { if (typeof loadTablePage === 'function') loadTablePage(1); } catch (err) { console.error('table page error:', err); }
+  return true;
+}
+
 function applyFilters() {
   var cf = G_chartFilter || {};
   var amp = document.getElementById('fAmp').value;
@@ -2346,6 +2462,10 @@ function applyFilters() {
   var sex = document.getElementById('fSex').value;
   var srchEl = document.getElementById('srchBox');
   var q = srchEl ? srchEl.value.toLowerCase().trim() : '';
+
+  if (!G.fullRowsReady && canUseSummaryFastFilter_(cf, sch, sex, q) && applySummaryFastFilter_(amp, tam, hc, stat)) {
+    return;
+  }
 
   G.dispRows = G.allRows.filter(function(r) {
     if (cf.metric === 'sat' && r.sat === null) return false;
@@ -3408,7 +3528,12 @@ function rebuildSchoolOptions_() {
   var amp = document.getElementById('fAmp').value;
   var tam = document.getElementById('fTambon').value;
   var validHc = {}; G.hospList.forEach(function(h){ if((!amp||h.amphoe===amp)&&(!tam||h.tambon===tam)&&(!hc||h.hospcode===hc)) validHc[h.hospcode]=true; });
-  var schools = {}; G.allRows.forEach(function(r){ if(validHc[r.hospcode] && r.school_name) schools[r.school_name]=true; });
+  var schools = {};
+  if (G.fullRowsReady && G.allRows && G.allRows.length) {
+    G.allRows.forEach(function(r){ if(validHc[r.hospcode] && r.school_name) schools[r.school_name]=true; });
+  } else {
+    (G.schoolList || []).forEach(function(s){ if (s.name) schools[s.name] = true; });
+  }
   var html = '<option value="">ทั้งหมด</option>';
   Object.keys(schools).sort().forEach(function(s){ html += '<option>'+s+'</option>'; });
   document.getElementById('fSch').innerHTML = html;
@@ -3999,6 +4124,7 @@ function computeDashboardStats_(scrRows, hospRows, satRows, preRows, postRows, b
 function applyDashboardResult_(result) {
   G.chartData = result.chartData; G.kpi = result.kpi; G.hospSummaryData = result.hospSummaryData; G.satCharts = result.satCharts;
   G.allRows = result.allRows; G.dispRows = result.allRows;
+  G.fullRowsReady = true;
  
   (function () {
     var sc = 0, pc = 0, poc = 0, glC = 0;
@@ -7153,6 +7279,11 @@ function applyRowDataOnly_(result, paramsKey, forceFresh) {
   DASH_CACHE = { data: result, ts: Date.now(), ttl: DASH_CACHE.ttl || 45000, paramsKey: paramsKey };
   var needsFullRender = !G.kpi || !G.kpi.total || !G.hospSummaryData || !G.hospSummaryData.length;
   G.allRows = result.allRows || []; G.dispRows = result.allRows || [];
+  G.fullRowsReady = true;
+  if (hasActiveDashboardFilter_()) {
+    try { applyFilters(); } catch(e) { console.error('applyFilters after full load error:', e); }
+    return;
+  }
   if (needsFullRender) {
     try { applyDashboardResult_(result); } catch(e) { console.error('applyDashboardResult error:', e); }
   }
