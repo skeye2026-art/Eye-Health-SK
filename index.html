@@ -124,13 +124,13 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .marquee-wrapper { width: 100%; overflow: hidden; white-space: nowrap; }
 .marquee-content { 
     display: inline-block; 
-    animation: text-marquee-ltr 30s linear infinite; 
+    animation: text-marquee-rtl 30s linear infinite; 
     padding-left: 0; /* เปลี่ยนจาก 100% เป็น 0 เพื่อให้เริ่มที่ขอบซ้าย */
 }
 
-@keyframes text-marquee-ltr {
-    0% { transform: translateX(-100%); } /* เริ่มจากนอกจอฝั่งซ้าย */
-    100% { transform: translateX(100vw); } /* วิ่งไปจนสุดจอฝั่งขวา */
+@keyframes text-marquee-rtl {
+    0% { transform: translateX(100vw); } /* เริ่มจากนอกจอฝั่งขวา */
+    100% { transform: translateX(-100%); } /* วิ่งไปจนสุดจอฝั่งซ้าย */
 }
 
 /* 2. ภาพวิ่ง */
