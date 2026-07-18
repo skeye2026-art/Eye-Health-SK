@@ -4354,6 +4354,30 @@ function showImg(url) {
     const img = document.getElementById('modal-img');
     
     if (modal && img) {
+        img.onerror = function() {
+            img.onerror = null;
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(r) {
+                        try {
+                            var res = (typeof r === 'string') ? JSON.parse(r) : r;
+                            if (res && res.ok && res.data && res.data.base64) {
+                                img.src = res.data.base64;
+                            } else {
+                                toast((res && res.msg) ? res.msg : 'ไม่สามารถเปิดรูปได้', 'err');
+                            }
+                        } catch(e) {
+                            toast('ไม่สามารถเปิดรูปได้', 'err');
+                        }
+                    })
+                    .withFailureHandler(function(e) {
+                        toast((e && e.message) ? e.message : 'ไม่สามารถเปิดรูปได้', 'err');
+                    })
+                    .getProxyImage({ url: url });
+            } else {
+                toast('ไม่สามารถเปิดรูปได้', 'err');
+            }
+        };
         img.src = imgSrc;
         modal.classList.add('open');
     } else {
