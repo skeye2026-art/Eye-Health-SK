@@ -561,7 +561,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <div class="hdr-right">
         <div class="date-txt" id="dateTxt"></div>
         <button class="btn-hdr btn-hdr-manual" onclick="openPanel('manual')">📖 คู่มือ</button>
-        <button class="btn-hdr btn-hdr-refresh" onclick="hardReload()">🔄 โหลดใหม่</button>
+        <button class="btn-hdr btn-hdr-refresh" id="btnHardReload" onclick="hardReload()">🔄 โหลดใหม่</button>
         <div id="authArea"><button class="btn-hdr btn-hdr-login" onclick="openLogin()">🔐 เข้าสู่ระบบ</button></div>
     </div>
 </header>
@@ -811,9 +811,10 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <select id="op-f-tambon" onchange="onOPTambonChange()"><option value="">ตำบล ทั้งหมด</option></select>
     <select id="op-f-hospcode" onchange="onOPHcChange()"><option value="">รพ.สต. ทั้งหมด</option></select>
     <select id="op-f-school" onchange="onOPSchoolChange()"><option value="">โรงเรียน ทั้งหมด</option></select>
+    <select id="op-f-status" onchange="onOPStatusChange()"><option value="">ผลคัดกรอง ทั้งหมด</option><option value="normal">ปกติ</option><option value="abnormal">ผิดปกติ</option><option value="referred">ส่งต่อ</option><option value="glasses">ตัดแว่น</option></select>
     <button class="op-clear-btn" onclick="clearOPFilters()">✕ ล้าง</button>
-    <button class="op-print-btn" onclick="printOnePage()">🖨 พิมพ์ PDF</button>
-    <button class="op-export-btn" onclick="exportOnePageAsImage()">📥 Export PNG</button>
+    <button class="op-print-btn" id="btnOPPrint" onclick="printOnePage()">🖨 พิมพ์ PDF</button>
+    <button class="op-export-btn" id="btnOPExport" onclick="exportOnePageAsImage()">📥 Export PNG</button>
   </div>
   
   <div class="op-page-wrap">
@@ -1508,7 +1509,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
 <div class="mov" id="pwdMov"><div class="mbox" style="width:360px; padding:25px;"><div class="m-ttl" style="color:var(--accent); margin-bottom:5px;">🔑 เปลี่ยนรหัสผ่าน</div><div class="m-sub">กรุณากรอกรหัสผ่านเดิมเพื่อยืนยันการเปลี่ยนแปลง</div><div class="lf"><label>รหัสผ่านเดิม</label><input type="password" id="pwdOld" placeholder="รหัสผ่านเดิม"></div><div class="lf"><label>รหัสผ่านใหม่</label><input type="password" id="pwdNew" placeholder="รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)"></div><div class="lf"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="pwdConfirm" placeholder="ยืนยันรหัสผ่านใหม่อีกครั้ง"></div><div class="lerr" id="pwdErr"></div><button class="btn-lgn" id="btnChangePwd" onclick="doChangePwd()">💾 เปลี่ยนรหัสผ่าน</button><button class="btn-guest" onclick="closePwdMgr()">ยกเลิก</button></div></div>
 
-<div class="mov" id="delMov"><div class="del-box"><div class="del-ttl">🗑 ยืนยันการลบข้อมูล</div><div class="del-sub">CID: <strong id="delCidShow"></strong></div><div class="del-warn">⚠ ข้อมูลที่ลบจะไม่สามารถกู้คืนได้</div><div style="display:flex;gap:8px;margin-top:4px"><button style="flex:1;padding:10px;background:var(--red);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px" onclick="confirmDel()">ยืนยันลบ</button><button style="flex:1;padding:10px;background:#f1f5f9;border:1px solid var(--border);border-radius:8px;font-size:12px" onclick="closeDel()">ยกเลิก</button></div><div class="lerr" id="delErr"></div></div></div>
+<div class="mov" id="delMov"><div class="del-box"><div class="del-ttl">🗑 ยืนยันการลบข้อมูล</div><div class="del-sub">CID: <strong id="delCidShow"></strong></div><div class="del-warn">⚠ ข้อมูลที่ลบจะไม่สามารถกู้คืนได้</div><div style="display:flex;gap:8px;margin-top:4px"><button id="btnConfirmDel" style="flex:1;padding:10px;background:var(--red);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px" onclick="confirmDel()">ยืนยันลบ</button><button style="flex:1;padding:10px;background:#f1f5f9;border:1px solid var(--border);border-radius:8px;font-size:12px" onclick="closeDel()">ยกเลิก</button></div><div class="lerr" id="delErr"></div></div></div>
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="ov" id="ov-error-report" onclick="closePanel('error-report')"></div>
 <div class="panel beh-panel" id="panel-error-report">
@@ -2093,7 +2094,8 @@ function renderExtraDashCharts(extraStats) {
 
 var G = {
   session:{loggedIn:false,user:'',role:'',hospcode:''}, settings:{}, hospList:[], schoolList:[], vaList:[], vaMap: {}, natList:[], links:[], videos: [], allRows:[], dispRows:[], fullRowsReady:false, chartData: { amphoe: [], hosp: [], school: [] }, satCharts: {}, kpi: {}, hospSummaryData: [],
-  barInst:null, pieInst:null, lineInst:null, hospInst:null, schoolInst:null, satBreakdownInst:null, satTypePieInst:null, delTarget:{cid:'',sheet:''}
+  barInst:null, pieInst:null, lineInst:null, hospInst:null, schoolInst:null, satBreakdownInst:null, satTypePieInst:null, delTarget:{cid:'',sheet:''},
+  isDeleting:false, isEditingRow:false, isDashboardReloading:false
 };
 var INIT_DATA_CACHE = { data:null, ts:0, ttl:600000 };
 var _initDataPromise = null;
@@ -2188,6 +2190,7 @@ function clearDashboardClientCache_(clearInit) {
   if (typeof DASH_RPC_CACHE !== 'undefined') DASH_RPC_CACHE = { data:null, ts:0, ttl:DASH_RPC_CACHE.ttl || 45000, key:'' };
   if (typeof DASH_INFLIGHT !== 'undefined') DASH_INFLIGHT = {};
   if (typeof DASH_RPC_INFLIGHT !== 'undefined') DASH_RPC_INFLIGHT = {};
+  if (typeof DASH_FULL_LOAD_TIMER !== 'undefined' && DASH_FULL_LOAD_TIMER) { clearTimeout(DASH_FULL_LOAD_TIMER); DASH_FULL_LOAD_TIMER = null; }
   if (typeof G !== 'undefined') {
     G.allRows = [];
     G.dispRows = [];
@@ -2467,6 +2470,15 @@ function applyFilters() {
     return;
   }
 
+  if (!G.fullRowsReady) {
+    try { loadTablePage(1); } catch(e) {}
+    var pendingParams = { amphoe: amp, tambon: tam, hospcode: hc, school: sch, status: stat, sex: sex };
+    var pendingKey = stableKey_(pendingParams) + '|' + (G.session.loggedIn ? G.session.hospcode : 'guest');
+    scheduleFullDashboardLoad_(pendingParams, false, pendingKey, 0);
+    toast('กำลังโหลดข้อมูลเต็มสำหรับตัวกรองนี้...', 'inf');
+    return;
+  }
+
   G.dispRows = G.allRows.filter(function(r) {
     if (cf.metric === 'sat' && r.sat === null) return false;
     if (cf.metric === 'pre' && r.pre === null) return false;
@@ -2578,6 +2590,7 @@ function applyFilters() {
   });
 
   updateKPIs(kpiOut);
+  try { renderSummaryTable(G.hospSummaryData); } catch (err) { console.error('Summary Error:', err); }
     // เรียกตารางแบบ Pagination แทนการเรนเดอร์ทั้งหมด
   loadTablePage(1); 
   renderPieChart(kpiOut);
@@ -2589,9 +2602,9 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  ['fAmp','fHosp','fSch','fStat','fSex'].forEach(function(id){
-    document.getElementById(id).value = '';
-    document.getElementById('fTambon').value = '';
+  ['fAmp','fTambon','fHosp','fSch','fStat','fSex'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.value = '';
   });
 
   document.getElementById('srchBox').value = '';
@@ -3595,9 +3608,14 @@ function renderHeatmap() {
   if (!wrap) return;
 
   var filterAmp = document.getElementById('fAmp').value;
+  var filterTam = document.getElementById('fTambon').value;
   var filterHc  = document.getElementById('fHosp').value;
+  var hospMeta = {}; (G.hospList || []).forEach(function(h){ if (h.hospcode) hospMeta[h.hospcode] = h; });
   var data = (G.hospSummaryData || []).filter(function(h) {
+    var meta = hospMeta[h.hospcode] || {};
+    var tambon = h.tambon || meta.tambon || '';
     if (filterAmp && h.amphoe !== filterAmp) return false;
+    if (filterTam && tambon !== filterTam) return false;
     if (filterHc  && h.hospcode !== filterHc)  return false;
     return h.total > 0;
   });
@@ -3677,6 +3695,7 @@ var DASH_CACHE = { data: null, ts: 0, ttl: 45000, paramsKey: '' };
 var DASH_RPC_CACHE = { data: null, ts: 0, ttl: 45000, key: '' };
 var DASH_INFLIGHT = {};
 var DASH_RPC_INFLIGHT = {};
+var DASH_FULL_LOAD_TIMER = null;
 // ---- cache ข้อมูลดิบ 7 ตาราง แยกจากผลลัพธ์ที่คำนวณแล้ว ไม่ผูกกับ filter ----
 var RAW_DATA_CACHE = { scrRows:null, hospRows:null, satRows:null, preRows:null, postRows:null, behRows:null, fupRows:null, ts:0, ttl:300000, userHosp:null };
  
@@ -3706,21 +3725,31 @@ function loadDashboard(params, forceFresh) {
     .then(function (partial) { applyPartialDashboardResult_(partial); })
     .catch(function (e) { console.warn('Phase1 RPC ไม่สำเร็จ (ไม่ร้ายแรง รอ Phase2 แทน):', e); });
  
-  // 🐢 Phase 2: ของเดิม — โหลดข้อมูลรายคนเต็มมาเก็บ G.allRows (จำเป็นสำหรับค้นหา/แก้ไข/export)
-  //    ทำงานคู่ขนานกับ Phase 1 ไม่ต้องรอ Phase 1 เสร็จก่อน
-  var directPromise = (!forceFresh && DASH_INFLIGHT[paramsKey])
-    ? DASH_INFLIGHT[paramsKey]
-    : loadDashboardDirect_(params, forceFresh);
-  DASH_INFLIGHT[paramsKey] = directPromise;
-  directPromise
-    .then(function (result) { applyRowDataOnly_(result, paramsKey, !!forceFresh); })
-    .catch(function (e) {
-      console.error('loadDashboardDirect_ failed, fallback to GAS:', e);
-      loadDashboardViaGAS_(params);
-    })
-    .finally(function() {
-      if (DASH_INFLIGHT[paramsKey] === directPromise) delete DASH_INFLIGHT[paramsKey];
-    });
+  // Phase 1.5: ตารางรายบุคคลหน้าแรกมาจาก RPC แยกต่างหากก่อน เพื่อให้เห็นรายการทันที
+  try { if (typeof loadTablePage === 'function') loadTablePage(1, !!forceFresh); } catch(e) { console.warn('loadTablePage initial failed:', e); }
+
+  // Phase 2: โหลดชุดเต็มแบบหน่วงเวลาเล็กน้อยหลังหน้าแรกแสดง ลดการแย่ง network/main thread ตอนเปิดระบบ
+  scheduleFullDashboardLoad_(params, forceFresh, paramsKey, hasActiveDashboardFilter_() ? 0 : 1800);
+}
+
+function scheduleFullDashboardLoad_(params, forceFresh, paramsKey, delayMs) {
+  if (DASH_FULL_LOAD_TIMER) clearTimeout(DASH_FULL_LOAD_TIMER);
+  DASH_FULL_LOAD_TIMER = setTimeout(function() {
+    DASH_FULL_LOAD_TIMER = null;
+    var directPromise = (!forceFresh && DASH_INFLIGHT[paramsKey])
+      ? DASH_INFLIGHT[paramsKey]
+      : loadDashboardDirect_(params, forceFresh);
+    DASH_INFLIGHT[paramsKey] = directPromise;
+    directPromise
+      .then(function (result) { applyRowDataOnly_(result, paramsKey, !!forceFresh); })
+      .catch(function (e) {
+        console.error('loadDashboardDirect_ failed, fallback to GAS:', e);
+        loadDashboardViaGAS_(params);
+      })
+      .finally(function() {
+        if (DASH_INFLIGHT[paramsKey] === directPromise) delete DASH_INFLIGHT[paramsKey];
+      });
+  }, Math.max(0, delayMs || 0));
 }
  
 // ---- ยิง RPC ตัวเดียว ได้ผลสรุปกลับมาเร็วมาก (ไม่มีข้อมูลรายคน) ----
@@ -3978,7 +4007,7 @@ function formatDateClient_(d) {
  
 // ---- คำนวณทั้งชุด (พอร์ตจาก getDashboardData() ฝั่ง Code.gs แบบ 1:1 ให้ผลลัพธ์หน้าตาเดียวกัน) ----
 function computeDashboardStats_(scrRows, hospRows, satRows, preRows, postRows, behRows, fupRows, params, userHosp) {
-  var fHosp = params.hospcode || '', fAmphoe = params.amphoe || '', fSchool = params.school || '',
+  var fHosp = params.hospcode || '', fAmphoe = params.amphoe || '', fTambon = params.tambon || '', fSchool = params.school || '',
       fStatus = params.status || '', fSex = params.sex || '';
  
   var hospMap = {};
@@ -3989,7 +4018,7 @@ function computeDashboardStats_(scrRows, hospRows, satRows, preRows, postRows, b
  
   var hospTally = {};
   Object.keys(hospMap).forEach(function (hc) {
-    hospTally[hc] = { name: hospMap[hc].name, amphoe: hospMap[hc].amphoe, normal: 0, abnormal: 0, referred: 0, glasses: 0, total: 0, preSum: 0, preCount: 0, postSum: 0, postCount: 0, gainSum: 0, gainCount: 0 };
+    hospTally[hc] = { name: hospMap[hc].name, tambon: hospMap[hc].tambon || '', amphoe: hospMap[hc].amphoe, normal: 0, abnormal: 0, referred: 0, glasses: 0, total: 0, preSum: 0, preCount: 0, postSum: 0, postCount: 0, gainSum: 0, gainCount: 0 };
   });
  
   var preMap = {}, postMap = {};
@@ -4049,10 +4078,14 @@ function computeDashboardStats_(scrRows, hospRows, satRows, preRows, postRows, b
     if (fHosp && hc !== fHosp) return;
     var hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ', tambon: '', pics: '' };
     if (fAmphoe && hInfo.amphoe !== fAmphoe) return;
+    if (fTambon && hInfo.tambon !== fTambon) return;
     var sName = String(r.school_name || '').trim(); if (fSchool && sName !== fSchool) return;
     var sex = String(r.sex || '').trim(); if (fSex && sex !== fSex) return;
-    var status = calcStatusClient_(r, !!fupMap[cid]); if (fStatus && status !== fStatus) return;
-    if (!hospTally[hc]) hospTally[hc] = { name: hInfo.name, amphoe: hInfo.amphoe, normal: 0, abnormal: 0, referred: 0, glasses: 0, total: 0, preSum: 0, preCount: 0, postSum: 0, postCount: 0, gainSum: 0, gainCount: 0 };
+    var status = calcStatusClient_(r, !!fupMap[cid]);
+    if (fStatus === 'abnormal') { if (status === 'normal') return; }
+    else if (fStatus === 'referred') { if (status !== 'referred' && status !== 'glasses') return; }
+    else if (fStatus && status !== fStatus) return;
+    if (!hospTally[hc]) hospTally[hc] = { name: hInfo.name, tambon: hInfo.tambon || '', amphoe: hInfo.amphoe, normal: 0, abnormal: 0, referred: 0, glasses: 0, total: 0, preSum: 0, preCount: 0, postSum: 0, postCount: 0, gainSum: 0, gainCount: 0 };
     hospTally[hc][status]++; hospTally[hc].total++;
     if (userHosp && userHosp !== 'all' && hc !== userHosp) return;
  
@@ -4105,7 +4138,7 @@ function computeDashboardStats_(scrRows, hospRows, satRows, preRows, postRows, b
   kpiOut.satAvg = satCount > 0 ? Math.round(satTotal / satCount * 100) / 100 : null;
  
   var barChartAmphoe = Object.keys(amphoeTally).sort().map(function (amp) { var d = amphoeTally[amp]; return { label: amp, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, normalPct: Math.round(d.normal / (d.total || 1) * 100) }; });
-  var barChartHosp = Object.keys(hospTally).sort().map(function (hc) { var d = hospTally[hc]; return { label: d.name, hospcode: hc, amphoe: d.amphoe, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, normalPct: Math.round(d.normal / (d.total || 1) * 100) }; });
+  var barChartHosp = Object.keys(hospTally).sort().map(function (hc) { var d = hospTally[hc]; return { label: d.name, hospcode: hc, tambon: d.tambon || '', amphoe: d.amphoe, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, total: d.total, abnormalPct: Math.round((d.total - d.normal) / (d.total || 1) * 100), normalPct: Math.round(d.normal / (d.total || 1) * 100) }; });
   var barChartSchool = Object.keys(schoolTally).sort().map(function (s) { var d = schoolTally[s]; return { label: s, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, normalPct: Math.round(d.normal / (d.total || 1) * 100) }; });
   function formatSatTally(tObj) { return Object.keys(tObj).sort().map(function (k) { var o = tObj[k]; o.avg = o.count > 0 ? (Math.round((o.sum / o.count) * 100) / 100) : 0; return o; }); }
   var satCharts = { amphoe: formatSatTally(satAmphoeTally), hosp: formatSatTally(satHospTally), school: formatSatTally(satSchoolTally), type: formatSatTally(satTypeTally) };
@@ -4113,8 +4146,8 @@ function computeDashboardStats_(scrRows, hospRows, satRows, preRows, postRows, b
   var hospSummary = Object.keys(hospTally).map(function (hc) {
     var ht = hospTally[hc]; var satAvgRow = satMap[hc] ? Math.round(satMap[hc].sum / satMap[hc].count * 100) / 100 : null;
     var pics = hospMap[hc] ? hospMap[hc].pics : '';
-    return { hospcode: hc, name: ht.name, amphoe: ht.amphoe, pics: pics, normal: ht.normal, abnormal: (ht.total - ht.normal), referred: ht.referred, glasses: ht.glasses, total: ht.total, satAvg: satAvgRow, preAvg: ht.preCount > 0 ? Math.round(ht.preSum / ht.preCount * 10) / 10 : null, postAvg: ht.postCount > 0 ? Math.round(ht.postSum / ht.postCount * 10) / 10 : null, gainAvg: ht.gainCount > 0 ? Math.round(ht.gainSum / ht.gainCount) : null };
-  }).filter(function (h) { return fAmphoe ? h.amphoe === fAmphoe : true; }).sort(function (a, b) { return a.hospcode.localeCompare(b.hospcode); });
+    return { hospcode: hc, name: ht.name, tambon: ht.tambon || ((hospMap[hc] || {}).tambon || ''), amphoe: ht.amphoe, pics: pics, normal: ht.normal, abnormal: (ht.total - ht.normal), referred: ht.referred, glasses: ht.glasses, total: ht.total, satAvg: satAvgRow, preAvg: ht.preCount > 0 ? Math.round(ht.preSum / ht.preCount * 10) / 10 : null, postAvg: ht.postCount > 0 ? Math.round(ht.postSum / ht.postCount * 10) / 10 : null, gainAvg: ht.gainCount > 0 ? Math.round(ht.gainSum / ht.gainCount) : null };
+  }).filter(function (h) { if (fAmphoe && h.amphoe !== fAmphoe) return false; if (fTambon && h.tambon !== fTambon) return false; return true; }).sort(function (a, b) { return a.hospcode.localeCompare(b.hospcode); });
  
   return { chartData: { amphoe: barChartAmphoe, hosp: barChartHosp, school: barChartSchool }, kpi: kpiOut, hospSummaryData: hospSummary, satCharts: satCharts, allRows: tableRows };
 }
@@ -4189,23 +4222,43 @@ function closeImg() {
 }
 
 function renderSummaryTable(data) {
-  var tb = document.getElementById('hospSumBody'); if (!data || data.length === 0) { tb.innerHTML = '<tr><td colspan="12" style="text-align:center;">ไม่มีข้อมูล</td></tr>'; return; }
-  var html = ''; var currentFilter = document.getElementById('fHosp').value;
-  data.forEach(function(r) {
+  var tb = document.getElementById('hospSumBody');
+  if (!tb) return;
+  var filterAmp = document.getElementById('fAmp').value;
+  var filterTam = document.getElementById('fTambon').value;
+  var currentFilter = document.getElementById('fHosp').value;
+  var hospMeta = {};
+  (G.hospList || []).forEach(function(h){ if (h.hospcode) hospMeta[h.hospcode] = h; });
+  var rows = (data || []).filter(function(r) {
+    var meta = hospMeta[r.hospcode] || {};
+    var tambon = r.tambon || meta.tambon || '';
+    if (filterAmp && r.amphoe !== filterAmp) return false;
+    if (filterTam && tambon !== filterTam) return false;
+    if (currentFilter && r.hospcode !== currentFilter) return false;
+    return true;
+  });
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="12" style="text-align:center;">ไม่มีข้อมูล</td></tr>'; return; }
+
+  var html = '';
+  rows.forEach(function(r) {
     try {
         var picHtml = '<span style="color:var(--muted2); font-size:10px;">—</span>';
-        if (r.pics) { var urls = String(r.pics).split('\n'); // ใน renderSummaryTable ของคุณ ต้องเป็นแบบนี้:
-var links = urls.map(function(url, idx) { 
-    url = url.trim(); 
-    if (!url) return ''; 
-    return '<a href="javascript:void(0)" onclick="event.stopPropagation(); showImg(\''+url+'\');" style="color:var(--blue);text-decoration:underline;font-weight:600;">[ดูภาพที่ '+(idx+1)+']</a>'; 
-}).filter(Boolean); if (links.length > 0) picHtml = links.join('<br>'); }
+        if (r.pics) {
+          var urls = String(r.pics).split('\n');
+          var links = urls.map(function(url, idx) {
+            url = url.trim();
+            if (!url) return '';
+            return '<a href="javascript:void(0)" onclick="event.stopPropagation(); showImg(\''+url+'\');" style="color:var(--blue);text-decoration:underline;font-weight:600;">[ดูภาพที่ '+(idx+1)+']</a>';
+          }).filter(Boolean);
+          if (links.length > 0) picHtml = links.join('<br>');
+        }
         var rowClass = (currentFilter === r.hospcode) ? 'tr-active' : ''; var sat = (r.satAvg != null && r.satAvg !== '') ? Number(r.satAvg).toFixed(2) : '—'; var pre = (r.preAvg != null && r.preAvg !== '') ? Number(r.preAvg).toFixed(1) : '—'; var post = (r.postAvg != null && r.postAvg !== '') ? Number(r.postAvg).toFixed(1) : '—'; var gain = (r.gainAvg != null && r.gainAvg !== '') ? (Number(r.gainAvg) > 0 ? '+'+r.gainAvg : r.gainAvg)+'%' : '—'; var gc = (r.gainAvg != null && r.gainAvg !== '') ? (Number(r.gainAvg) > 0 ? 'color:var(--green)' : (Number(r.gainAvg) < 0 ? 'color:var(--red)' : '')) : '';
         var actHtml = '—'; var tdAct = '';
         if (G.session.loggedIn) { if (G.session.role === 'admin' || G.session.hospcode === r.hospcode) { actHtml = '<button class="btn-act" style="color:#ea580c;border-color:#fed7aa;" onclick="openEditHosp(\''+r.hospcode+'\'); event.stopPropagation();" title="จัดการพิกัด/ภาพ">📍 จัดการพิกัด</button>'; } tdAct = '<td style="text-align:center;">'+actHtml+'</td>'; }
         html += '<tr class="'+rowClass+'" onclick="toggleHospFilter(\''+r.hospcode+'\')" style="cursor:pointer;" title="คลิกเพื่อกรองข้อมูล / คลิกซ้ำเพื่อยกเลิก">' + '<td style="text-align:left;">'+(r.hospcode||'')+' '+(r.name||'')+'</td><td>'+(r.normal||0)+'</td><td>'+(r.abnormal||0)+'</td><td>'+(r.referred||0)+'</td><td>'+(r.glasses||0)+'</td><td><b>'+(r.total||0)+'</b></td>' + '<td>'+sat+'</td><td>'+pre+'</td><td>'+post+'</td><td style="'+gc+'">'+gain+'</td><td style="text-align:center; font-size:10.5px;">'+picHtml+'</td>'+tdAct+'</tr>';
     } catch(err) { console.error('Error on row rendering:', err); }
-  }); tb.innerHTML = html;
+  });
+  tb.innerHTML = html;
 }
 
 function openEditHosp(hc) { var targetHc = hc; if (!targetHc && G.session.role === 'admin') targetHc = ''; if (!targetHc && G.session.role !== 'admin') targetHc = G.session.hospcode; var sel = document.getElementById('loc-hc'); sel.value = targetHc; if (G.session.role !== 'admin') sel.disabled = true; else sel.disabled = false; loadHospLocData(); openPanel('loc'); }
@@ -4220,13 +4273,14 @@ function loadHospLocData() {
 function delPic(hc, url) { if(!confirm('ยืนยันการลบภาพนี้? (การลบจะลบภาพออกจากระบบอย่างถาวร)')) return; toast('กำลังลบภาพ...', 'inf'); google.script.run.withSuccessHandler(function(r){ var res = JSON.parse(r); if(res.ok) { toast('ลบภาพสำเร็จ','ok'); closePanel('loc'); forceRefresh(); } else { toast(res.msg,'err'); } }).deleteHospFileLink(hc, url); }
 function saveLoc() {
   var btn = document.getElementById('btnSLoc'); var hc = document.getElementById('loc-hc').value; if(!hc) { toast('กรุณาเลือกรพ.สต. ที่ต้องการจัดการ', 'err'); return; }
+  if (btn.disabled) { toast('กำลังบันทึกข้อมูล รพ.สต. กรุณารอ...', 'inf'); return; }
   var fileInput = document.getElementById('loc-pics'); var files = fileInput.files; if (files.length > 2) { toast('แนบภาพได้สูงสุด 2 ภาพเท่านั้น', 'err'); return; } var valid = true; for (var i = 0; i < files.length; i++) { if (files[i].size > 2 * 1024 * 1024) { toast('ไฟล์ ' + files[i].name + ' มีขนาดเกิน 2MB', 'err'); valid = false; } } if (!valid) return;
   btn.disabled=true; btn.innerHTML='<span class="sp"></span> กำลังเตรียมข้อมูล...'; var promises = [];
   for (var i = 0; i < files.length; i++) { promises.push(new Promise(function(resolve, reject) { var f = files[i]; var reader = new FileReader(); reader.onload = function(e) { resolve({ name: f.name, mimeType: f.type, data: e.target.result.split(',')[1] }); }; reader.readAsDataURL(f); })); }
   Promise.all(promises).then(function(picData) { btn.innerHTML='<span class="sp"></span> กำลังอัปโหลด...'; var d = { hospcode: hc, lat_h: document.getElementById('loc-lat').value, lon_h: document.getElementById('loc-lon').value, pics: picData }; google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; var res=JSON.parse(r); if(res.ok){ toast(res.msg,'ok'); document.getElementById('loc-pics').value=''; closePanel('loc'); forceRefresh(); } else toast(res.msg,'err'); }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; toast(e.message,'err'); }).updateHospLocation(d); });
 }
 
-function toggleHospFilter(hospcode) { var el = document.getElementById('fHosp'); if (el.value === hospcode) { el.value = ''; } else { el.value = hospcode; } applyFilters(); }
+function toggleHospFilter(hospcode) { var el = document.getElementById('fHosp'); if (el.value === hospcode) { el.value = ''; } else { el.value = hospcode; } try { rebuildSchoolOptions_(); } catch(e) {} applyFilters(); }
 function toggleStatFilter(stat) { var el = document.getElementById('fStat'); if (el.value === stat) { el.value = ''; } else { el.value = stat; } applyFilters(); }
 function updateKPIs(k) { 
   function sv(id, v) { var e = document.getElementById(id); if (e) e.textContent = (v !== null && v !== undefined) ? v : '—'; } 
@@ -4308,164 +4362,228 @@ function updateKPIs(k) {
   if (typeof updateKpiActiveState === 'function') updateKpiActiveState(); 
 }
 
-function renderBarChart() {
-  var ctx = document.getElementById('barChart').getContext('2d'); 
-  var ctxHosp = document.getElementById('hospChart').getContext('2d'); 
-  var ctxSchool = document.getElementById('schoolChart').getContext('2d');
-  
-  if (G.barInst) G.barInst.destroy(); 
-  if (G.hospInst) G.hospInst.destroy(); 
-  if (G.schoolInst) G.schoolInst.destroy();
-  
-  var type = document.getElementById('chartType').value; 
-  var labels = [], datasets = [];
-  
-  if (type === 'amphoe') { 
-      var data = G.chartData.amphoe; labels = data.map(function(d){ return d.label; }); 
-      datasets = [ 
-        { label: 'ปกติ', data: data.map(function(d){ return d.normal; }), backgroundColor: '#16A34A' }, 
-        { label: 'ผิดปกติ(ทั้งหมด)', data: data.map(function(d){ return d.abnormal; }), backgroundColor: '#ca8a04' }, 
-        { label: 'ส่งต่อ', data: data.map(function(d){ return d.referred; }), backgroundColor: '#ea580c' }, 
-        { label: 'ตัดแว่น', data: data.map(function(d){ return d.glasses; }), backgroundColor: '#dc2626' } 
-      ]; 
-  } else { 
-      labels = ['ปกติ', 'ผิดปกติ(ทั้งหมด)', 'ส่งต่อ', 'ตัดแว่น']; 
-      datasets = [{ label: 'จำนวน (คน)', data: [G.kpi.normal, G.kpi.abnormalTotal !== undefined ? G.kpi.abnormalTotal : G.kpi.abnormal, (G.kpi.referredRaw!==undefined?G.kpi.referredRaw:G.kpi.referred), G.kpi.glasses], backgroundColor: ['#16A34A', '#ca8a04', '#ea580c', '#dc2626'] }]; 
+function chartStatusTally_() { return { normal:0, abnormal:0, referred:0, glasses:0, total:0 }; }
+function addChartStatus_(bucket, status) {
+  bucket.total++;
+  if (status === 'normal') bucket.normal++;
+  else if (status === 'referred') bucket.referred++;
+  else if (status === 'glasses') bucket.glasses++;
+  else bucket.abnormal++;
+}
+function finalizeChartRow_(row) {
+  row.abnormal = Math.max(0, row.total - row.normal);
+  row.abnormalPct = row.total > 0 ? Math.round(row.abnormal / row.total * 100) : 0;
+  row.normalPct = row.total > 0 ? Math.round(row.normal / row.total * 100) : 0;
+  return row;
+}
+function topChartRows_(rows) {
+  return (rows || []).filter(function(r){ return (Number(r.total) || 0) > 0; })
+    .sort(function(a,b){ return (b.total - a.total) || (b.abnormal - a.abnormal) || String(a.label || '').localeCompare(String(b.label || '')); })
+    .slice(0, 12);
+}
+function getHospMetaMap_() {
+  var map = {};
+  (G.hospList || []).forEach(function(h){ if (h.hospcode) map[h.hospcode] = h; });
+  return map;
+}
+function countsFromSummaryRow_(r, stat) {
+  var total = Number(r.total) || 0;
+  var normal = Number(r.normal) || 0;
+  var abnormal = Number(r.abnormal);
+  if (isNaN(abnormal)) abnormal = Math.max(0, total - normal);
+  var referred = Number(r.referred) || 0;
+  var glasses = Number(r.glasses) || 0;
+  if (stat === 'normal') return { normal:normal, abnormal:0, referred:0, glasses:0, total:normal };
+  if (stat === 'abnormal') return { normal:0, abnormal:abnormal, referred:referred, glasses:glasses, total:abnormal };
+  if (stat === 'referred') return { normal:0, abnormal:referred + glasses, referred:referred, glasses:glasses, total:referred + glasses };
+  if (stat === 'glasses') return { normal:0, abnormal:glasses, referred:0, glasses:glasses, total:glasses };
+  return { normal:normal, abnormal:abnormal, referred:referred, glasses:glasses, total:total };
+}
+function addSummaryCounts_(bucket, r, stat) {
+  var c = countsFromSummaryRow_(r, stat);
+  bucket.normal += c.normal;
+  bucket.abnormal += c.abnormal;
+  bucket.referred += c.referred;
+  bucket.glasses += c.glasses;
+  bucket.total += c.total;
+}
+function buildAmphoeChartRows_() {
+  if (G.fullRowsReady && Array.isArray(G.dispRows)) {
+    var grp = {};
+    G.dispRows.forEach(function(r){
+      var key = r.amphoe || 'ไม่ระบุ';
+      if (!grp[key]) grp[key] = Object.assign({ label:key }, chartStatusTally_());
+      addChartStatus_(grp[key], r.status);
+    });
+    return Object.keys(grp).sort().map(function(k){ return finalizeChartRow_(grp[k]); });
   }
-  
-  G.barInst = new Chart(ctx, { 
-    type: 'bar', data: { labels: labels, datasets: datasets }, 
-    options: { 
-      responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, 
-      onClick: function(evt, elements) { 
-    if (!elements.length) return; 
-    var idx = elements[0].index; 
-    
-    if (type === 'amphoe') { 
-        var amp = labels[idx]; 
-        var el = document.getElementById('fAmp'); 
-        el.value = (el.value === amp) ? '' : amp; 
-        onAmpChange(); // เพิ่ม: เพื่อให้ รพ.สต. ใน drop down เปลี่ยนตามอำเภอ
-        return;         // ⬅️ เพิ่มบรรทัดนี้ ป้องกันไหลไปเรียก applyFilters() ซ้ำด้านล่าง
-    } else { 
-        var stats = ['normal','abnormal','referred','glasses']; 
-        var stat = stats[idx]; 
-        var el = document.getElementById('fStat'); 
-        el.value = (el.value === stat) ? '' : stat; 
-    } 
-    // สำคัญ: ต้องเรียกตัวนี้เพื่อให้ตารางด้านล่างกรองข้อมูลทันที
-    applyFilters(); 
-}, 
-      plugins: { 
-        legend: { display: (type !== 'total'), position: 'bottom', labels: { font: { size: 11, family: 'Sarabun' } } }, 
-        datalabels: { display: function(ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; }, color: '#ffffff', font: { weight: 'bold', size: 14, family: 'Sarabun' }, textStrokeColor: 'rgba(0,0,0,0.6)', textStrokeWidth: 3 } 
-      }, 
-      scales: { x: { stacked: false, ticks: { font: { family: 'Sarabun', size: 12 } } }, y: { stacked: false, beginAtZero: true } } 
-    }, plugins: [ChartDataLabels] 
-});
-
-  // --- กราฟ รพ.สต. ---
-  var hData = G.chartData.hosp; var filterAmp = document.getElementById('fAmp').value; if (filterAmp) hData = hData.filter(function(d){ return d.amphoe === filterAmp; });
-  var hLabels = hData.map(function(d){ return d.label; }); 
-  var hDatasets = [ 
-    { label: 'ปกติ', data: hData.map(function(d){ return d.normal; }), backgroundColor: '#16A34A' }, 
-    { label: 'ผิดปกติ(ทั้งหมด)', data: hData.map(function(d){ return d.abnormal; }), backgroundColor: '#ca8a04' }, 
-    { label: 'ส่งต่อ', data: hData.map(function(d){ return d.referred; }), backgroundColor: '#ea580c' }, 
-    { label: 'ตัดแว่น', data: hData.map(function(d){ return d.glasses; }), backgroundColor: '#dc2626' } 
+  var amp = document.getElementById('fAmp').value;
+  var tam = document.getElementById('fTambon').value;
+  var hc = document.getElementById('fHosp').value;
+  var stat = document.getElementById('fStat').value;
+  var grp2 = {};
+  getSummaryRowsForFilters_(amp, tam, hc).forEach(function(r){
+    var key = r.amphoe || 'ไม่ระบุ';
+    if (!grp2[key]) grp2[key] = { label:key, normal:0, abnormal:0, referred:0, glasses:0, total:0 };
+    addSummaryCounts_(grp2[key], r, stat);
+  });
+  return Object.keys(grp2).sort().map(function(k){ return finalizeChartRow_(grp2[k]); });
+}
+function buildHospChartRows_() {
+  var amp = document.getElementById('fAmp').value;
+  var tam = document.getElementById('fTambon').value;
+  var hcFilter = document.getElementById('fHosp').value;
+  var stat = document.getElementById('fStat').value;
+  var meta = getHospMetaMap_();
+  if (G.fullRowsReady && Array.isArray(G.dispRows)) {
+    var grp = {};
+    G.dispRows.forEach(function(r){
+      var hc = r.hospcode || 'ไม่ระบุ';
+      var m = meta[hc] || {};
+      if (!grp[hc]) grp[hc] = Object.assign({ label:r.hosp_name || m.name || hc, hospcode:hc, tambon:r.tambon || m.tambon || '', amphoe:r.amphoe || m.amphoe || '' }, chartStatusTally_());
+      addChartStatus_(grp[hc], r.status);
+    });
+    return Object.keys(grp).map(function(k){ return finalizeChartRow_(grp[k]); });
+  }
+  return getSummaryRowsForFilters_(amp, tam, hcFilter).map(function(h){
+    var m = meta[h.hospcode] || {};
+    var out = { label:h.name || m.name || h.hospcode, hospcode:h.hospcode, tambon:h.tambon || m.tambon || '', amphoe:h.amphoe || m.amphoe || '', normal:0, abnormal:0, referred:0, glasses:0, total:0 };
+    addSummaryCounts_(out, h, stat);
+    return finalizeChartRow_(out);
+  });
+}
+function buildSchoolChartRows_() {
+  if (!G.fullRowsReady || !Array.isArray(G.dispRows)) return [];
+  var grp = {};
+  G.dispRows.forEach(function(r){
+    var key = r.school_name || 'ไม่ระบุโรงเรียน';
+    if (!grp[key]) grp[key] = Object.assign({ label:key }, chartStatusTally_());
+    addChartStatus_(grp[key], r.status);
+  });
+  return Object.keys(grp).map(function(k){ return finalizeChartRow_(grp[k]); });
+}
+function makeMixedStatusDatasets_(rows) {
+  return [
+    { type:'bar', label:'ปกติ', data:rows.map(function(d){ return d.normal; }), backgroundColor:'#16A34A', yAxisID:'y' },
+    { type:'bar', label:'ผิดปกติ(ทั้งหมด)', data:rows.map(function(d){ return d.abnormal; }), backgroundColor:'#ca8a04', yAxisID:'y' },
+    { type:'bar', label:'ส่งต่อ', data:rows.map(function(d){ return d.referred; }), backgroundColor:'#ea580c', yAxisID:'y' },
+    { type:'bar', label:'ตัดแว่น', data:rows.map(function(d){ return d.glasses; }), backgroundColor:'#dc2626', yAxisID:'y' },
+    { type:'line', label:'ผิดปกติ (%)', data:rows.map(function(d){ return d.abnormalPct; }), borderColor:'#1E3A5F', backgroundColor:'#1E3A5F', yAxisID:'yPct', tension:0.25, pointRadius:3, pointHoverRadius:5, borderWidth:2, fill:false }
   ];
+}
+function mixedChartOptions_(onClick, xFontSize) {
+  return {
+    responsive:true, maintainAspectRatio:false, interaction:{ mode:'index', intersect:false }, onClick:onClick,
+    plugins:{
+      legend:{ position:'bottom', labels:{ font:{ size:11, family:'Sarabun' } } },
+      tooltip:{ callbacks:{ label:function(ctx){ return ctx.dataset.yAxisID === 'yPct' ? ctx.dataset.label + ': ' + ctx.raw + '%' : ctx.dataset.label + ': ' + ctx.raw + ' คน'; } } },
+      datalabels:{
+        display:function(ctx){ return Number(ctx.dataset.data[ctx.dataIndex] || 0) > 0; },
+        color:function(ctx){ return ctx.dataset.yAxisID === 'yPct' ? '#1E3A5F' : '#ffffff'; },
+        anchor:function(ctx){ return ctx.dataset.yAxisID === 'yPct' ? 'end' : 'center'; },
+        align:function(ctx){ return ctx.dataset.yAxisID === 'yPct' ? 'top' : 'center'; },
+        offset:function(ctx){ return ctx.dataset.yAxisID === 'yPct' ? 4 : 0; },
+        font:{ weight:'bold', size:10, family:'Sarabun' },
+        textStrokeColor:function(ctx){ return ctx.dataset.yAxisID === 'yPct' ? '#ffffff' : 'rgba(0,0,0,0.45)'; },
+        textStrokeWidth:2,
+        formatter:function(value, ctx){ return ctx.dataset.yAxisID === 'yPct' ? value + '%' : value; }
+      }
+    },
+    scales:{
+      x:{ stacked:false, ticks:{ font:{ family:'Sarabun', size:xFontSize || 9 }, maxRotation:35, minRotation:35 } },
+      y:{ stacked:false, beginAtZero:true, position:'left', title:{ display:true, text:'คน' } },
+      yPct:{ beginAtZero:true, max:100, position:'right', grid:{ drawOnChartArea:false }, ticks:{ callback:function(v){ return v + '%'; } }, title:{ display:true, text:'ผิดปกติ (%)' } }
+    }
+  };
+}
 
-  // ขยายความกว้างกล่อง เพื่อไม่ให้กราฟ 4 แท่งเบียดกัน (แท่งละ 50px รวม 200px ต่อ 1 รพ.สต.)
-  var hospContainer = document.getElementById('hospChartContainer');
-  if(hospContainer) {
-      var calcWidthHosp = hLabels.length * 200; 
-      if (calcWidthHosp < hospContainer.parentElement.clientWidth) calcWidthHosp = hospContainer.parentElement.clientWidth;
-      hospContainer.style.width = calcWidthHosp + 'px';
+function renderBarChart() {
+  var ctx = document.getElementById('barChart').getContext('2d');
+  var ctxHosp = document.getElementById('hospChart').getContext('2d');
+  var ctxSchool = document.getElementById('schoolChart').getContext('2d');
+
+  if (G.barInst) G.barInst.destroy();
+  if (G.hospInst) G.hospInst.destroy();
+  if (G.schoolInst) G.schoolInst.destroy();
+
+  var type = document.getElementById('chartType').value;
+  var labels = [], datasets = [];
+
+  if (type === 'amphoe') {
+    var ampRows = buildAmphoeChartRows_();
+    labels = ampRows.map(function(d){ return d.label; });
+    datasets = [
+      { label:'ปกติ', data:ampRows.map(function(d){ return d.normal; }), backgroundColor:'#16A34A' },
+      { label:'ผิดปกติ(ทั้งหมด)', data:ampRows.map(function(d){ return d.abnormal; }), backgroundColor:'#ca8a04' },
+      { label:'ส่งต่อ', data:ampRows.map(function(d){ return d.referred; }), backgroundColor:'#ea580c' },
+      { label:'ตัดแว่น', data:ampRows.map(function(d){ return d.glasses; }), backgroundColor:'#dc2626' }
+    ];
+  } else {
+    labels = ['ปกติ', 'ผิดปกติ(ทั้งหมด)', 'ส่งต่อ', 'ตัดแว่น'];
+    datasets = [{ label:'จำนวน (คน)', data:[G.kpi.normal || 0, G.kpi.abnormalTotal !== undefined ? G.kpi.abnormalTotal : (G.kpi.abnormal || 0), (G.kpi.referredRaw !== undefined ? G.kpi.referredRaw : G.kpi.referred) || 0, G.kpi.glasses || 0], backgroundColor:['#16A34A', '#ca8a04', '#ea580c', '#dc2626'] }];
   }
 
-  G.hospInst = new Chart(ctxHosp, { 
-    type: 'bar', 
-    data: { labels: hLabels, datasets: hDatasets }, 
-    options: { 
-      responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, 
-      onClick: function(evt, elements) { 
-        if (!elements.length) return; 
-        var hcLabel = hLabels[elements[0].index]; 
-        // ค้นหารหัส รพ.สต. จาก Label ที่คลิก
-        var hcObj = G.chartData.hosp.find(function(h){ return h.label === hcLabel; }); 
-        if(hcObj) { 
-            var el = document.getElementById('fHosp'); 
-            el.value = (el.value === hcObj.hospcode) ? '' : hcObj.hospcode; 
-            applyFilters(); // <--- เพิ่มตัวนี้เพื่อให้กรองตาราง
-        } 
-      }, 
-      plugins: { 
-        legend: { position: 'bottom', labels: { font: { size: 11, family: 'Sarabun' } } }, 
-        datalabels: { display: function(ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; }, color: '#ffffff', font: { weight: 'bold', size: 12, family: 'Sarabun' }, textStrokeColor: 'rgba(0,0,0,0.6)', textStrokeWidth: 2 } 
-      }, 
-      scales: { 
-        x: { 
-          stacked: false, 
-          ticks: { 
-            font: { family: 'Sarabun', size: 9 }, // แก้ไขตรงนี้: ลดขนาดจาก 11 เป็น 9 เพื่อให้ชื่อแสดงครบ
-            maxRotation: 45, 
-            minRotation: 45 
-          } 
-        }, 
-        y: { stacked: false, beginAtZero: true } 
-      } 
-    }, plugins: [ChartDataLabels] 
+  G.barInst = new Chart(ctx, {
+    type:'bar', data:{ labels:labels, datasets:datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false, interaction:{ mode:'index', intersect:false },
+      onClick:function(evt, elements){
+        if (!elements.length) return;
+        var idx = elements[0].index;
+        if (type === 'amphoe') {
+          var amp = labels[idx];
+          var el = document.getElementById('fAmp');
+          el.value = (el.value === amp) ? '' : amp;
+          onAmpChange();
+          return;
+        }
+        var stats = ['normal','abnormal','referred','glasses'];
+        var stat = stats[idx];
+        var stEl = document.getElementById('fStat');
+        stEl.value = (stEl.value === stat) ? '' : stat;
+        applyFilters();
+      },
+      plugins:{ legend:{ display:(type !== 'total'), position:'bottom', labels:{ font:{ size:11, family:'Sarabun' } } }, datalabels:{ display:function(ctx){ return ctx.dataset.data[ctx.dataIndex] > 0; }, color:'#ffffff', font:{ weight:'bold', size:14, family:'Sarabun' }, textStrokeColor:'rgba(0,0,0,0.6)', textStrokeWidth:3 } },
+      scales:{ x:{ stacked:false, ticks:{ font:{ family:'Sarabun', size:12 } } }, y:{ stacked:false, beginAtZero:true } }
+    }, plugins:[ChartDataLabels]
   });
 
-  // --- กราฟ โรงเรียน ---
-  var sTally = {}; G.dispRows.forEach(function(r) { var s = r.school_name || 'ไม่ระบุโรงเรียน'; if (!sTally[s]) sTally[s] = { label: s, normal:0, abnormal:0, referred:0, glasses:0, total:0 }; sTally[s][r.status]++; sTally[s].total++; });
-  var sDataArr = Object.keys(sTally).sort().map(function(s) { 
-      var d = sTally[s]; return { label: d.label, normal: d.normal, abnormal: (d.total - d.normal), referred: d.referred, glasses: d.glasses, total: d.total }; 
-  }); 
-  var sLabels = sDataArr.map(function(d){ return d.label; }); 
-  var sDatasets = [ 
-    { label: 'ปกติ', data: sDataArr.map(function(d){ return d.normal; }), backgroundColor: '#16A34A' }, 
-    { label: 'ผิดปกติ(ทั้งหมด)', data: sDataArr.map(function(d){ return d.abnormal; }), backgroundColor: '#ca8a04' }, 
-    { label: 'ส่งต่อ', data: sDataArr.map(function(d){ return d.referred; }), backgroundColor: '#ea580c' }, 
-    { label: 'ตัดแว่น', data: sDataArr.map(function(d){ return d.glasses; }), backgroundColor: '#dc2626' } 
-  ];
-
-  // ขยายความกว้างกล่อง เพื่อไม่ให้กราฟเบียด (200px ต่อ 1 โรงเรียน)
-  var schoolContainer = document.getElementById('schoolChartContainer');
-  if(schoolContainer) {
-      var calcWidthSchool = sLabels.length * 280; 
-      if (calcWidthSchool < schoolContainer.parentElement.clientWidth) calcWidthSchool = schoolContainer.parentElement.clientWidth;
-      schoolContainer.style.width = calcWidthSchool + 'px';
+  var hData = topChartRows_(buildHospChartRows_());
+  var hLabels = hData.map(function(d){ return d.label; });
+  var hospContainer = document.getElementById('hospChartContainer');
+  if (hospContainer) {
+    var calcWidthHosp = Math.max(hospContainer.parentElement.clientWidth, hLabels.length * 120);
+    hospContainer.style.width = calcWidthHosp + 'px';
   }
+  G.hospInst = new Chart(ctxHosp, {
+    type:'bar', data:{ labels:hLabels, datasets:makeMixedStatusDatasets_(hData) },
+    options:mixedChartOptions_(function(evt, elements){
+      if (!elements.length) return;
+      var item = hData[elements[0].index];
+      if (!item) return;
+      var el = document.getElementById('fHosp');
+      el.value = (el.value === item.hospcode) ? '' : item.hospcode;
+      onHospFilterChange();
+    }, 9), plugins:[ChartDataLabels]
+  });
 
-  G.schoolInst = new Chart(ctxSchool, { 
-    type: 'bar', 
-    data: { labels: sLabels, datasets: sDatasets }, 
-    options: { 
-      responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, 
-      onClick: function(evt, elements) { 
-        if (!elements.length) return; 
-        var schLabel = sLabels[elements[0].index]; 
-        var el = document.getElementById('fSch'); 
-        // เปลี่ยนค่าใน Dropdown ตามชื่อโรงเรียนที่คลิก
-        el.value = (el.value === schLabel) ? '' : schLabel; 
-        applyFilters(); // <--- เพิ่มตัวนี้เพื่อให้กรองตาราง
-      }, 
-      plugins: { 
-        legend: { position: 'bottom', labels: { font: { size: 11, family: 'Sarabun' } } }, 
-        datalabels: { display: function(ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; }, color: '#ffffff', font: { weight: 'bold', size: 13, family: 'Sarabun' }, textStrokeColor: 'rgba(0,0,0,0.6)', textStrokeWidth: 2 } 
-      }, 
-      scales: { 
-        x: { 
-          stacked: false, 
-          ticks: { 
-            font: { family: 'Sarabun', size: 11 }, // แก้ไขตรงนี้: ลดขนาดจาก 11 เป็น 9 เพื่อให้ชื่อแสดงครบ
-            maxRotation: 35, 
-            minRotation: 35 
-          } 
-        }, 
-        y: { stacked: false, beginAtZero: true } 
-      } 
-    }, plugins: [ChartDataLabels] 
+  var sDataArr = topChartRows_(buildSchoolChartRows_());
+  var sLabels = sDataArr.map(function(d){ return d.label; });
+  var schoolContainer = document.getElementById('schoolChartContainer');
+  if (schoolContainer) {
+    var calcWidthSchool = Math.max(schoolContainer.parentElement.clientWidth, sLabels.length * 150);
+    schoolContainer.style.width = calcWidthSchool + 'px';
+  }
+  G.schoolInst = new Chart(ctxSchool, {
+    type:'bar', data:{ labels:sLabels, datasets:makeMixedStatusDatasets_(sDataArr) },
+    options:mixedChartOptions_(function(evt, elements){
+      if (!elements.length) return;
+      var item = sDataArr[elements[0].index];
+      if (!item) return;
+      var el = document.getElementById('fSch');
+      el.value = (el.value === item.label) ? '' : item.label;
+      applyFilters();
+    }, 10), plugins:[ChartDataLabels]
   });
 }
 
@@ -4688,6 +4806,11 @@ function getRad(name) { var els = document.querySelectorAll('input[name="'+name+
 function setRad(name, val) { var els = document.querySelectorAll('input[name="'+name+'"]'); for(var i=0;i<els.length;i++){ if(els[i].value===val) els[i].checked=true; } }
 function saveScr() {
   var btn = document.getElementById('btnSScr'); 
+  if (btn.disabled) { toast('กำลังบันทึกข้อมูล กรุณารอ...', 'inf'); return; }
+  function restoreScrButton_() {
+    btn.disabled = false;
+    btn.innerHTML = _editMode ? '💾 อัปเดตข้อมูล' : '💾 บันทึก';
+  }
   // 🎯 ดึงแค่ตัวเลข
   var cid = document.getElementById('s-cid').value.replace(/\D/g, '').trim(); 
   
@@ -4702,7 +4825,7 @@ function saveScr() {
   
   if (_editMode) { 
       google.script.run.withSuccessHandler(function(r) { 
-          btn.disabled = false; btn.innerHTML = '💾 อัปเดตข้อมูล'; 
+          restoreScrButton_(); 
           var res = JSON.parse(r); 
           if (res.ok) { 
               toast(res.msg, 'ok'); closePanel('scr'); forceRefresh(); 
@@ -4719,10 +4842,13 @@ function saveScr() {
               // ---------------------------------------------
               
           } else toast(res.msg, 'err'); 
+      }).withFailureHandler(function(e) {
+          restoreScrButton_();
+          toast('บันทึกไม่สำเร็จ: ' + (e.message || e), 'err');
       }).updateScreeningData(d); 
   } else { 
       google.script.run.withSuccessHandler(function(r) { 
-          btn.disabled = false; btn.innerHTML = '💾 บันทึก'; 
+          restoreScrButton_(); 
           var res = JSON.parse(r); 
           if (res.ok) { 
               toast(res.msg, 'ok'); closePanel('scr'); forceRefresh();
@@ -4733,13 +4859,19 @@ function saveScr() {
                   checkBehEligible(activeFlow.cid);
               });
           } else toast(res.msg, 'err'); 
+      }).withFailureHandler(function(e) {
+          restoreScrButton_();
+          toast('บันทึกไม่สำเร็จ: ' + (e.message || e), 'err');
       }).saveScreeningData(d); 
   }
 }
 
 function editRow(cid) {
+    if (G.isEditingRow) { toast('กำลังดึงข้อมูลรายการก่อนหน้า กรุณารอ...', 'inf'); return; }
+    G.isEditingRow = true;
     toast('กำลังดึงข้อมูล...', 'inf');
     google.script.run.withSuccessHandler(function(r) {
+        G.isEditingRow = false;
         var res = JSON.parse(r);
         if (res.ok) {
             _editMode = true; var d = res.data; document.getElementById('scrPanelTitle').innerHTML = '✏️ แก้ไขข้อมูลคัดกรองสายตา'; document.getElementById('btnSScr').innerHTML = '💾 อัปเดตข้อมูล';
@@ -4754,6 +4886,9 @@ function editRow(cid) {
             document.getElementById('vr-n').value = d.va_r_naked; document.getElementById('vl-n').value = d.va_l_naked; document.getElementById('vr-g').value = d.va_r_glasses; document.getElementById('vl-g').value = d.va_l_glasses; document.getElementById('vr-p').value = d.ph_r; document.getElementById('vl-p').value = d.ph_l; document.getElementById('vou-naked').value = d.va_naked_OU || ''; document.getElementById('vou-glasses').value = d.va_glasses_OU || '';
             setRad('ex-cov', d.cover_test || 'ปกติ'); setRad('ex-hir', d.hirschberg || 'ปกติ'); setRad('ex-col', d.color_vision || 'ปกติ'); setRad('ex-ste', d.stereopsis || 'ปกติ'); document.getElementById('s-diag').value = d.diagnosis; document.getElementById('s-ref').value = d.referral; fillSchoolCoords(); document.getElementById('ov-scr').classList.add('open'); document.getElementById('panel-scr').classList.add('open');
         } else { toast(res.msg, 'err'); }
+    }).withFailureHandler(function(e) {
+        G.isEditingRow = false;
+        toast('ดึงข้อมูลไม่สำเร็จ: ' + (e.message || e), 'err');
     }).getScreeningRecord(cid);
 }
 
@@ -4828,10 +4963,11 @@ function searchSatUser(val) {
 
 function saveSat() {
   var btn = document.getElementById('btnSSat'); var hc = document.getElementById('sat-hc').value; if (!hc) { toast('กรุณาระบุรหัส รพ.สต.','err'); return; }
+  if (btn.disabled) { toast('กำลังบันทึกแบบประเมิน กรุณารอ...', 'inf'); return; }
   var d = { eval_type: document.getElementById('sat-type').value, cid: document.getElementById('sat-search-cid').value, hospcode:hc, eval_sex:document.getElementById('sat-sex').value, eval_age:document.getElementById('sat-age').value, eval_class:document.getElementById('sat-cls').value, school_name: document.getElementById('sat-sch').value, comment_s:document.getElementById('sat-str').value, comment_i:document.getElementById('sat-imp').value, recommend:(document.querySelector('input[name="satrec"]:checked')||{}).value||'' };
   for (var i=1;i<=10;i++){ var el=document.querySelector('input[name="sq'+i+'"]:checked'); d['q'+i] = el?el.value:5; }
   btn.disabled=true; btn.innerHTML='<span class="sp"></span> บันทึก...';
-  google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึกแบบประเมิน'; var res=JSON.parse(r); if(res.ok){toast(res.msg,'ok');closePanel('sat');forceRefresh();}else toast(res.msg,'err'); }).saveSatisfactionData(d);
+  google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึกแบบประเมิน'; var res=JSON.parse(r); if(res.ok){toast(res.msg,'ok');closePanel('sat');forceRefresh();}else toast(res.msg,'err'); }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึกแบบประเมิน'; toast('บันทึกไม่สำเร็จ: '+(e.message||e),'err'); }).saveSatisfactionData(d);
 }
 
 function buildTestQ(type) { var h = ''; var choices = ['ก','ข','ค','ง']; QS.forEach(function(q, i) { var n = i+1; h += '<div class="q-block"><div class="q-num">ข้อ '+n+'. '+q.q+'</div><div class="q-choices">'; q.c.forEach(function(c, ci) { h += '<label><input type="radio" name="'+type+'q'+n+'" value="'+choices[ci]+'"> '+c+'</label>'; }); h += '</div></div>'; }); document.getElementById(type+'QBody').innerHTML = h; }
@@ -4848,28 +4984,46 @@ function checkEligible(type, cid) {
 
 function getTestAns(type) { var ans={}; for(var i=1;i<=10;i++){ var el=document.querySelector('input[name="'+type+'q'+i+'"]:checked'); ans['q'+i]=el?el.value:''; } return ans; }
 
-function savePre() { var btn=document.getElementById('btnSPre'); var cid=document.getElementById('pre-cid').value.trim(); if(!/^\d{13}$/.test(cid)){toast('เลขบัตรประชาชน 13 หลักไม่ถูกต้อง','err');return;} var d=Object.assign({cid:cid},getTestAns('pre')); btn.disabled=true; btn.innerHTML='<span class="sp"></span> บันทึก...'; google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึก Pre-test'; var res=JSON.parse(r); if(res.ok){ document.getElementById('preSN').textContent=res.data.total; document.getElementById('preSC').style.display='block'; toast(res.msg,'ok'); 
+function savePre() { var btn=document.getElementById('btnSPre'); if(btn.disabled){toast('กำลังบันทึก Pre-test กรุณารอ...','inf');return;} var cid=document.getElementById('pre-cid').value.trim(); if(!/^\d{13}$/.test(cid)){toast('เลขบัตรประชาชน 13 หลักไม่ถูกต้อง','err');return;} var d=Object.assign({cid:cid},getTestAns('pre')); btn.disabled=true; btn.innerHTML='<span class="sp"></span> บันทึก...'; google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึก Pre-test'; var res=JSON.parse(r); if(res.ok){ document.getElementById('preSN').textContent=res.data.total; document.getElementById('preSC').style.display='block'; toast(res.msg,'ok'); 
 setTimeout(function(){ 
     closePanel('pre'); forceRefresh(); 
     // 💡 แจ้งเตือน Flow ให้ไป Post-Test
     if(activeFlow.active && activeFlow.cid === cid) {
         triggerFlow('post', 'บันทึกสำเร็จ! ลำดับต่อไปกรุณาทำ <b>แบบทดสอบหลังอบรม (Post-Test)</b>', function() { openPanel('post'); document.getElementById('post-cid').value=activeFlow.cid; checkEligible('post', activeFlow.cid); });
     }
-}, 2200); }else toast(res.msg,'err'); }).savePreTest(d); }
+}, 2200); }else toast(res.msg,'err'); }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึก Pre-test'; toast('บันทึกไม่สำเร็จ: '+(e.message||e),'err'); }).savePreTest(d); }
 
 // นำไปแทนที่ savePost เดิม
-function savePost() { var btn=document.getElementById('btnSPost'); var cid=document.getElementById('post-cid').value.trim(); if(!/^\d{13}$/.test(cid)){toast('เลขบัตรประชาชน 13 หลักไม่ถูกต้อง','err');return;} var d=Object.assign({cid:cid},getTestAns('post')); btn.disabled=true; btn.innerHTML='<span class="sp"></span> บันทึก...'; google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึก Post-test'; var res=JSON.parse(r); if(res.ok){ document.getElementById('postSN').textContent=res.data.total; document.getElementById('postSC').style.display='block'; toast(res.msg,'ok'); 
+function savePost() { var btn=document.getElementById('btnSPost'); if(btn.disabled){toast('กำลังบันทึก Post-test กรุณารอ...','inf');return;} var cid=document.getElementById('post-cid').value.trim(); if(!/^\d{13}$/.test(cid)){toast('เลขบัตรประชาชน 13 หลักไม่ถูกต้อง','err');return;} var d=Object.assign({cid:cid},getTestAns('post')); btn.disabled=true; btn.innerHTML='<span class="sp"></span> บันทึก...'; google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึก Post-test'; var res=JSON.parse(r); if(res.ok){ document.getElementById('postSN').textContent=res.data.total; document.getElementById('postSC').style.display='block'; toast(res.msg,'ok'); 
 setTimeout(function(){ 
     closePanel('post'); forceRefresh(); 
     // 💡 แจ้งเตือนข้ามติดตามผล ไปยังแบบประเมินความพึงพอใจ
     if(activeFlow.active && activeFlow.cid === cid) {
         triggerFlow('sat', 'บันทึกสำเร็จ! หลังจากอบรมและรับแว่นไปแล้ว จะมีเจ้าหน้าที่แจ้งให้ทำแบบประเมินผลของการติดตามการใช้แว่นตา (ซึ่งเมนูติดตามผลยังไม่ต้องทำตอนนี้)<br><br>ลำดับต่อไปให้ไปทำ <b>แบบประเมินความพึงพอใจ</b> เพื่อจบขั้นตอนในวันนี้', function() { openPanel('sat'); searchSatUser(activeFlow.cid); document.getElementById('sat-search-cid').value = activeFlow.cid; });
     }
-}, 2200); }else toast(res.msg,'err'); }).savePostTest(d); }
+}, 2200); }else toast(res.msg,'err'); }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึก Post-test'; toast('บันทึกไม่สำเร็จ: '+(e.message||e),'err'); }).savePostTest(d); }
 
 function openDel(cid) { G.delTarget={cid:cid,sheet:'screening_data'}; document.getElementById('delCidShow').textContent=cid; document.getElementById('delErr').textContent=''; document.getElementById('delMov').classList.add('open'); }
 function closeDel(){ document.getElementById('delMov').classList.remove('open'); }
-function confirmDel(){ google.script.run.withSuccessHandler(function(r){ var res=JSON.parse(r); if(res.ok){toast(res.msg,'ok');closeDel();forceRefresh();}else document.getElementById('delErr').textContent=res.msg; }).deleteRecord(G.delTarget.sheet,G.delTarget.cid); }
+function confirmDel(){
+  if (G.isDeleting) { toast('กำลังลบข้อมูล กรุณารอ...', 'inf'); return; }
+  var btn = document.getElementById('btnConfirmDel');
+  var oldHtml = btn ? btn.innerHTML : '';
+  G.isDeleting = true;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังลบ...'; }
+  document.getElementById('delErr').textContent = '';
+  google.script.run.withSuccessHandler(function(r){
+    G.isDeleting = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = oldHtml || 'ยืนยันลบ'; }
+    var res=JSON.parse(r);
+    if(res.ok){toast(res.msg,'ok');closeDel();forceRefresh();}
+    else document.getElementById('delErr').textContent=res.msg;
+  }).withFailureHandler(function(e){
+    G.isDeleting = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = oldHtml || 'ยืนยันลบ'; }
+    document.getElementById('delErr').textContent = e.message || e;
+  }).deleteRecord(G.delTarget.sheet,G.delTarget.cid);
+}
 
 function doExportCSV() {
   if (!G.dispRows.length) { toast('ไม่มีข้อมูลให้ส่งออก','err'); return; }
@@ -5401,6 +5555,7 @@ function checkBehEligible(cid) {
 
 function saveBeh() {
   var btn = document.getElementById('btnSBeh'); var cid = document.getElementById('beh-cid').value.trim();
+  if (btn.disabled) { toast('กำลังบันทึกแบบสอบถาม กรุณารอ...', 'inf'); return; }
   if (!/^\d{13}$/.test(cid)) { toast('เลขบัตรประชาชน 13 หลักไม่ถูกต้อง', 'err'); return; }
   var devices = [], purposes = [], symptoms = [];
   document.querySelectorAll('#beh-device input:checked').forEach(function(el)  { devices.push(el.value); });
@@ -5419,6 +5574,9 @@ function saveBeh() {
           setTimeout(function(){ triggerFlow(flow.next, flow.msg, flow.action); }, 600);
         }
       } else { toast(res.msg, 'err'); }
+    }).withFailureHandler(function(e) {
+      btn.disabled = false; btn.innerHTML = '💾 บันทึกแบบสอบถาม';
+      toast('บันทึกไม่สำเร็จ: ' + (e.message || e), 'err');
     }).saveBehaviorData(d);
 }
 
@@ -6166,6 +6324,7 @@ function checkFupEligible(cid) {
 
 function saveFup() {
   var btn = document.getElementById('btnSFup');
+  if (btn.disabled) { toast('กำลังบันทึกการติดตามผล กรุณารอ...', 'inf'); return; }
   var cid = document.getElementById('fup-cid').value.trim();
   if (!/^\d{13}$/.test(cid)) { toast('เลขบัตรประชาชน 13 หลักไม่ถูกต้อง', 'err'); return; }
   
@@ -6389,11 +6548,16 @@ function testLine() {
 
 // ฟังก์ชันสำหรับรีโหลดหน้าเว็บใหม่ทั้งหมดแบบล้างแคช (เสมือนการกด Ctrl + Shift + R)
 async function hardReload() {
+  if (G.isDashboardReloading) { toast('กำลังโหลด Dashboard อยู่ กรุณารอ...', 'inf'); return; }
+  var btn = document.getElementById('btnHardReload');
+  var oldHtml = btn ? btn.innerHTML : '';
+  G.isDashboardReloading = true;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="sp"></span> โหลด...'; }
   toast('🔄 กำลังล้างแคชและโหลดข้อมูลใหม่ทั้งหมด...', 'inf');
   clearDashboardClientCache_(true);
 
   // ล้างตัวกรองทั้งหมดก่อน
-  ['fAmp','fHosp','fSch','fStat','fSex'].forEach(function(id){
+  ['fAmp','fTambon','fHosp','fSch','fStat','fSex'].forEach(function(id){
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -6426,6 +6590,9 @@ async function hardReload() {
     setTimeout(function(){ toast('✅ โหลดข้อมูลใหม่สำเร็จ', 'ok'); }, 800);
   } catch (err) {
     toast('❌ การเชื่อมต่อล้มเหลว: ' + err.message, 'err');
+  } finally {
+    G.isDashboardReloading = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = oldHtml || '🔄 โหลดใหม่'; }
   }
 }
 
@@ -6587,24 +6754,49 @@ function updateVaDropdowns() {
 // ============================================================
 var OP = {
   charts: {},
-  filters: { amphoe:'', tambon:'', hospcode:'', school:'' },
+  filters: { amphoe:'', tambon:'', hospcode:'', school:'', status:'' },
   behData: null,
   fupData: null,
-  isExporting: false
+  isExporting: false,
+  isPrinting: false
 };
+
+function setOnePageExportBusy_(busy) {
+  var btn = document.getElementById('btnOPExport');
+  if (!btn) return;
+  if (busy) {
+    btn.dataset.oldHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="sp"></span> Export...';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = btn.dataset.oldHtml || '📥 Export PNG';
+    delete btn.dataset.oldHtml;
+  }
+}
+function resetOnePageExportState_() {
+  OP.isExporting = false;
+  setOnePageExportBusy_(false);
+}
+function refreshOnePageIfOpen_() {
+  try {
+    var panel = document.getElementById('panel-onepage');
+    if (panel && panel.classList.contains('open') && typeof renderOnePage === 'function') renderOnePage();
+  } catch(e) {}
+}
 
 function loadHtml2Canvas(cb) {
   if (window.html2canvas) { cb(); return; }
   var s = document.createElement('script');
   s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
   s.onload = cb;
-  s.onerror = function() { toast('โหลด html2canvas ไม่สำเร็จ', 'err'); OP.isExporting = false; };
+  s.onerror = function() { toast('โหลด html2canvas ไม่สำเร็จ', 'err'); resetOnePageExportState_(); };
   document.head.appendChild(s);
 }
 
 function openOnePagePanel() {
   if (!G.session.loggedIn) { toast('กรุณาเข้าสู่ระบบก่อนใช้เมนูนี้', 'err'); return; }
-  OP.filters = { amphoe:'', tambon:'', hospcode:'', school:'' };
+  OP.filters = { amphoe:'', tambon:'', hospcode:'', school:'', status:'' };
   
   // Apply session restriction for non-admin
   if (G.session.role === 'user' && G.session.hospcode !== 'all') {
@@ -6630,6 +6822,8 @@ function buildOnePageFilters() {
   amps.forEach(function(a){ html += '<option value="'+e_(a)+'">'+e_(a)+'</option>'; });
   document.getElementById('op-f-amphoe').innerHTML = html;
   document.getElementById('op-f-amphoe').value = OP.filters.amphoe;
+  var opStatusEl = document.getElementById('op-f-status');
+  if (opStatusEl) opStatusEl.value = OP.filters.status || '';
   
   if (G.session.role === 'user' && G.session.hospcode !== 'all') {
     document.getElementById('op-f-amphoe').disabled = true;
@@ -6695,25 +6889,28 @@ function onOPAmpChange()    { OP.filters.amphoe   = document.getElementById('op-
 function onOPTambonChange() { OP.filters.tambon   = document.getElementById('op-f-tambon').value;   OP.filters.hospcode=''; OP.filters.school=''; rebuildHcOptions(); loadOnePageData(); }
 function onOPHcChange()     { OP.filters.hospcode = document.getElementById('op-f-hospcode').value; OP.filters.school=''; rebuildSchoolOptions(); loadOnePageData(); }
 function onOPSchoolChange() { OP.filters.school   = document.getElementById('op-f-school').value;   loadOnePageData(); }
+function onOPStatusChange() { OP.filters.status   = document.getElementById('op-f-status').value;   loadOnePageData(); }
 
 function clearOPFilters() {
   if (G.session.role !== 'admin' && G.session.hospcode !== 'all') {
     toast('ผู้ใช้ทั่วไปไม่สามารถยกเลิกตัวกรอง รพ.สต. ได้', 'inf');
-    OP.filters.tambon=''; OP.filters.school='';
+    OP.filters.tambon=''; OP.filters.school=''; OP.filters.status='';
     document.getElementById('op-f-tambon').value = '';
     document.getElementById('op-f-school').value = '';
+    document.getElementById('op-f-status').value = '';
     loadOnePageData();
     return;
   }
   document.getElementById('op-f-amphoe').value = '';
-  OP.filters = { amphoe:'', tambon:'', hospcode:'', school:'' };
+  document.getElementById('op-f-status').value = '';
+  OP.filters = { amphoe:'', tambon:'', hospcode:'', school:'', status:'' };
   rebuildTambonOptions();
   loadOnePageData();
 }
 
 function loadOnePageData() {
   toast('⏳ กำลังโหลดข้อมูลสรุป...', 'inf');
-  var params = { amphoe: OP.filters.amphoe, hospcode: OP.filters.hospcode, school: OP.filters.school };
+  var params = { amphoe: OP.filters.amphoe, tambon: OP.filters.tambon, hospcode: OP.filters.hospcode, school: OP.filters.school, status: OP.filters.status };
   var loaded = 0;
   function checkDone() { loaded++; if (loaded === 2) renderOnePage(); }
   
@@ -6735,6 +6932,12 @@ function filterOnePageRows() {
     if (f.tambon   && r.tambon      !== f.tambon)   return false;
     if (f.hospcode && r.hospcode    !== f.hospcode) return false;
     if (f.school   && r.school_name !== f.school)   return false;
+    if (f.status) {
+      if (f.status === 'normal' && r.status !== 'normal') return false;
+      else if (f.status === 'abnormal' && r.status === 'normal') return false;
+      else if (f.status === 'referred' && r.status !== 'referred' && r.status !== 'glasses') return false;
+      else if (f.status === 'glasses' && r.status !== 'glasses') return false;
+    }
     return true;
   });
 }
@@ -6786,6 +6989,10 @@ function renderOnePage() {
   if (OP.filters.tambon)   scope.push('ต.' + OP.filters.tambon);
   if (OP.filters.hospcode) { var h = G.hospList.find(function(x){return x.hospcode === OP.filters.hospcode;}); if (h) scope.push(h.name); }
   if (OP.filters.school)   scope.push(OP.filters.school);
+  if (OP.filters.status) {
+    var statusLabels = { normal:'ผลปกติ', abnormal:'ผลผิดปกติ', referred:'ส่งต่อ', glasses:'ตัดแว่น' };
+    scope.push(statusLabels[OP.filters.status] || OP.filters.status);
+  }
   document.getElementById('op-scope').textContent = scope.length ? '(' + scope.join(' • ') + ')' : '(ภาพรวมจังหวัดสมุทรสาคร)';
   
   // KPI
@@ -7069,8 +7276,12 @@ function buildOPFollowup(m) {
 
 function buildOPImages() {
   var imgs = []; var seen = {};
+  var hospMeta = (typeof getHospMetaMap_ === 'function') ? getHospMetaMap_() : {};
   G.hospSummaryData.forEach(function(h){
+    var meta = hospMeta[h.hospcode] || {};
+    var tambon = h.tambon || meta.tambon || '';
     if (OP.filters.amphoe && h.amphoe !== OP.filters.amphoe) return;
+    if (OP.filters.tambon && tambon !== OP.filters.tambon) return;
     if (OP.filters.hospcode && h.hospcode !== OP.filters.hospcode) return;
     if (!h.pics) return;
     var urls = String(h.pics).split('\n').map(function(u){return u.trim();}).filter(Boolean);
@@ -7129,6 +7340,11 @@ function buildOPInsights(m) {
 }
 
 function printOnePage() {
+  if (OP.isPrinting) { toast('กำลังเตรียมพิมพ์ กรุณารอ...', 'inf'); return; }
+  var btn = document.getElementById('btnOPPrint');
+  var oldHtml = btn ? btn.innerHTML : '';
+  OP.isPrinting = true;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="sp"></span> พิมพ์...'; }
   document.body.classList.add('print-onepage');
   var styleEl = document.getElementById('op-print-style');
   if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = 'op-print-style'; document.head.appendChild(styleEl); }
@@ -7138,6 +7354,8 @@ function printOnePage() {
     setTimeout(function() {
       document.body.classList.remove('print-onepage');
       if (styleEl) styleEl.innerHTML = '';
+      OP.isPrinting = false;
+      if (btn) { btn.disabled = false; btn.innerHTML = oldHtml || '🖨 พิมพ์ PDF'; }
     }, 1000);
   }, 300);
 }
@@ -7145,9 +7363,10 @@ function printOnePage() {
 async function exportOnePageAsImage() {
   if (OP.isExporting) { toast('กำลังประมวลผลอยู่ กรุณารอ', 'inf'); return; }
   OP.isExporting = true;
+  setOnePageExportBusy_(true);
   
   var target = document.getElementById('op-print-area');
-  if (!target) { toast('ไม่พบพื้นที่ส่งออก', 'err'); OP.isExporting = false; return; }
+  if (!target) { toast('ไม่พบพื้นที่ส่งออก', 'err'); resetOnePageExportState_(); return; }
 
   toast('⏳ กำลังดึงข้อมูลรูปภาพ (Proxy)... เพื่อป้องกันจอดำ', 'inf');
 
@@ -7182,7 +7401,7 @@ async function exportOnePageAsImage() {
   // 2. เรียกใช้ html2canvas ตามปกติ
   toast('⏳ กำลังโหลด Library สร้างภาพ...', 'inf');
   loadHtml2Canvas(function() {
-    if (!window.html2canvas) { OP.isExporting = false; return; }
+    if (!window.html2canvas) { resetOnePageExportState_(); return; }
     toast('⏳ กำลังสร้างภาพ ความละเอียดสูง (2x)... อาจใช้เวลา 5-10 วินาที', 'inf');
     
     setTimeout(function() {
@@ -7221,10 +7440,10 @@ async function exportOnePageAsImage() {
             delete images[j].dataset.origSrc;
           }
         }
-        OP.isExporting = false;
+        resetOnePageExportState_();
 
       }).catch(function(err) {
-        OP.isExporting = false;
+        resetOnePageExportState_();
         toast('❌ Export ไม่สำเร็จ: ' + (err.message || 'อาจติดปัญหาเซิร์ฟเวอร์'), 'err');
       });
     }, 800); // ดีเลย์รอให้ Browser วาดรูป Base64 ลงจอให้เรียบร้อยก่อนแคปภาพ
@@ -7280,8 +7499,10 @@ function applyRowDataOnly_(result, paramsKey, forceFresh) {
   var needsFullRender = !G.kpi || !G.kpi.total || !G.hospSummaryData || !G.hospSummaryData.length;
   G.allRows = result.allRows || []; G.dispRows = result.allRows || [];
   G.fullRowsReady = true;
+  refreshOnePageIfOpen_();
   if (hasActiveDashboardFilter_()) {
     try { applyFilters(); } catch(e) { console.error('applyFilters after full load error:', e); }
+    refreshOnePageIfOpen_();
     return;
   }
   if (needsFullRender) {
