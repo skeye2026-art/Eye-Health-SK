@@ -1612,7 +1612,7 @@ async function fetchSupa(table, select = '*') {
     const res = await fetch(`${SUPABASE_URL}/${table}?select=${select}`, {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
     });
-    if (!res.ok) throw new Error('Fetch Error');
+    if (!res.ok) throw new Error('Supabase fetch error: ' + table + ' (' + res.status + ')');
     return res.json();
 }
 // ==============================================================
@@ -2095,6 +2095,111 @@ var G = {
   session:{loggedIn:false,user:'',role:'',hospcode:''}, settings:{}, hospList:[], schoolList:[], vaList:[], vaMap: {}, natList:[], links:[], videos: [], allRows:[], dispRows:[], chartData: { amphoe: [], hosp: [], school: [] }, satCharts: {}, kpi: {}, hospSummaryData: [],
   barInst:null, pieInst:null, lineInst:null, hospInst:null, schoolInst:null, satBreakdownInst:null, satTypePieInst:null, delTarget:{cid:'',sheet:''}
 };
+var INIT_DATA_CACHE = { data:null, ts:0, ttl:600000 };
+var _initDataPromise = null;
+var TABLE_PAGE_CACHE = { map:new Map(), ttl:30000 };
+var _tablePageInFlight = new Map();
+
+function stableKey_(obj) {
+  var sorted = {};
+  Object.keys(obj || {}).sort().forEach(function(k) { sorted[k] = obj[k]; });
+  return JSON.stringify(sorted);
+}
+
+function getStoredSession_() {
+  var token = '';
+  try { token = sessionStorage.getItem('EYE_SESSION_TOKEN') || localStorage.getItem('EYE_SESSION_TOKEN') || ''; } catch(e) {}
+  var session = {loggedIn:false,user:'',role:'',hospcode:''};
+  if (!token) return session;
+  try {
+    var payload = JSON.parse(atob(token.split('.')[1]));
+    if (Date.now() <= payload.exp) session = {loggedIn:true, user:payload.user, role:payload.role, hospcode:payload.hospcode};
+  } catch(e) {}
+  return session;
+}
+
+async function loadInitDataDirect_(forceFresh) {
+  if (!forceFresh && INIT_DATA_CACHE.data && (Date.now() - INIT_DATA_CACHE.ts) < INIT_DATA_CACHE.ttl) {
+    return INIT_DATA_CACHE.data;
+  }
+  if (!forceFresh && _initDataPromise) return _initDataPromise;
+
+  _initDataPromise = Promise.all([
+    fetchSupa('settings'),
+    fetchSupa('hosp_data'),
+    fetchSupa('school_data'),
+    fetchSupa('va_mapping'),
+    fetchSupa('links_data', '*&order=ord.asc'),
+    fetchSupa('video_data', '*&order=ord.asc')
+  ]).then(function(results) {
+    var setRes = results[0], hospRes = results[1], schRes = results[2], vaRes = results[3], linkRes = results[4], vidRes = results[5];
+    var settings = {};
+    setRes.forEach(function(r) { if (r.key) settings[r.key] = r.value; });
+
+    var vaList = [], vaMap = {};
+    vaRes.forEach(function(r) {
+      if (r.label && r.label !== 'หน่วยฟุต (F)') {
+        vaList.push(r.label);
+        if (r.id) vaMap[r.id] = r.label;
+      }
+    });
+
+    var data = {
+      settings: settings,
+      natList: ['ไทย', 'พม่า', 'กัมพูชา', 'ลาว', 'อื่นๆ'],
+      hospList: hospRes.map(function(h) { return { hospcode:h.hospcode, name:h.name, tambon:h.tambon, amphoe:h.amphoe, province:h.province || 'สมุทรสาคร', lat:h.lat, lon:h.lon }; }).filter(function(h) { return h.hospcode; }),
+      schoolList: schRes.map(function(s) { return { code:s.code, name:s.name, address:s.address, aid:s.aid, lat:s.lat, lon:s.lon }; }).filter(function(s) { return s.name; }),
+      vaList: vaList,
+      vaMap: vaMap,
+      links: linkRes.map(function(l) { return { id:l.id, label:l.label, url:l.url, icon:l.iconurl, order:l.ord }; }),
+      videos: vidRes.map(function(v) { return { id:v.id, label:v.label, url:v.url, order:v.ord }; })
+    };
+    INIT_DATA_CACHE = { data:data, ts:Date.now(), ttl:INIT_DATA_CACHE.ttl };
+    return data;
+  }).finally(function() {
+    _initDataPromise = null;
+  });
+
+  return _initDataPromise;
+}
+
+function applyInitData_(data) {
+  data = data || {};
+  G.settings = data.settings || {};
+  G.hospList = data.hospList || [];
+  G.schoolList = data.schoolList || [];
+  G.vaList = data.vaList || [];
+  G.vaMap = data.vaMap || {};
+  G.natList = data.natList || ['ไทย', 'พม่า', 'กัมพูชา', 'ลาว', 'อื่นๆ'];
+  G.links = data.links || [];
+  G.videos = data.videos || [];
+  G.session = getStoredSession_();
+}
+
+function clearTablePageCache_() {
+  TABLE_PAGE_CACHE.map.clear();
+  _tablePageInFlight.clear();
+}
+
+function clearDashboardClientCache_(clearInit) {
+  clearTablePageCache_();
+  if (typeof DASH_CACHE !== 'undefined') DASH_CACHE = { data:null, ts:0, ttl:DASH_CACHE.ttl || 45000, paramsKey:'' };
+  if (typeof RAW_DATA_CACHE !== 'undefined') RAW_DATA_CACHE = { scrRows:null, hospRows:null, satRows:null, preRows:null, postRows:null, behRows:null, fupRows:null, ts:0, ttl:RAW_DATA_CACHE.ttl || 300000, userHosp:null };
+  if (typeof DASH_RPC_CACHE !== 'undefined') DASH_RPC_CACHE = { data:null, ts:0, ttl:DASH_RPC_CACHE.ttl || 45000, key:'' };
+  if (typeof DASH_INFLIGHT !== 'undefined') DASH_INFLIGHT = {};
+  if (typeof DASH_RPC_INFLIGHT !== 'undefined') DASH_RPC_INFLIGHT = {};
+  if (typeof G !== 'undefined') {
+    G.allRows = [];
+    G.dispRows = [];
+    G.chartData = { amphoe: [], hosp: [], school: [] };
+    G.satCharts = {};
+    G.kpi = {};
+    G.hospSummaryData = [];
+    G.behRows = null;
+    G.fupRows = null;
+  }
+  if (clearInit) INIT_DATA_CACHE = { data:null, ts:0, ttl:INIT_DATA_CACHE.ttl };
+}
 var myMap = null; var hospLayer = null; var schoolLayer = null; var _satClickIdx = null; var _editMode = false;
 
 // ฟังก์ชันสำหรับปิดบังเลขบัตรประชาชนตามหลัก PDPA
@@ -2386,7 +2491,7 @@ function clearFilters() {
   onAmpChange();
   applyFilters();
 }
-function forceRefresh() { clearFilters(); loadDashboard({}, true); toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf'); }
+function forceRefresh() { clearDashboardClientCache_(false); clearFilters(); loadDashboard({}, true); toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf'); }
 function mapCsvToRowDynamic(headers, cols) {
     var HEADER_MAP = {
         "level_edu": 0, "ระดับชั้น": 0,
@@ -2813,32 +2918,8 @@ window.onload = async function () {
     ChartDataLabels && Chart.register(ChartDataLabels); bindAutoDiagnose();
 
     try {
-        // 🚀 โหลดข้อมูลตั้งค่าระบบตรงจาก Supabase (ข้าม GAS = ไวปรี๊ด ไม่ติดคอขวด 10 วินาทีอีกต่อไป)
-        const [setRes, hospRes, schRes, vaRes, linkRes, vidRes] = await Promise.all([
-            fetchSupa('settings'), fetchSupa('hosp_data'), fetchSupa('school_data'), 
-            fetchSupa('va_mapping'), fetchSupa('links_data', '*&order=ord.asc'), fetchSupa('video_data', '*&order=ord.asc')
-        ]);
-
-        G.settings = {}; setRes.forEach(r => { if(r.key) G.settings[r.key] = r.value; });
-        G.natList = ['ไทย', 'พม่า', 'กัมพูชา', 'ลาว', 'อื่นๆ'];
-        G.hospList = hospRes.map(h => ({ hospcode: h.hospcode, name: h.name, tambon: h.tambon, amphoe: h.amphoe, province: h.province || 'สมุทรสาคร', lat: h.lat, lon: h.lon })).filter(h => h.hospcode);
-        G.schoolList = schRes.map(s => ({ code: s.code, name: s.name, address: s.address, aid: s.aid, lat: s.lat, lon: s.lon })).filter(s => s.name);
-        
-        G.vaList = []; G.vaMap = {};
-        vaRes.forEach(r => { if(r.label && r.label !== 'หน่วยฟุต (F)') { G.vaList.push(r.label); if(r.id) G.vaMap[r.id] = r.label; } });
-        
-        G.links = linkRes.map(l => ({ id: l.id, label: l.label, url: l.url, icon: l.iconurl, order: l.ord }));
-        G.videos = vidRes.map(v => ({ id: v.id, label: v.label, url: v.url, order: v.ord }));
-
-        // 🔐 จัดการ Session เช็คการล็อกอิน
-        let token = sessionStorage.getItem('EYE_SESSION_TOKEN') || localStorage.getItem('EYE_SESSION_TOKEN');
-        G.session = {loggedIn: false, user: '', role: '', hospcode: ''};
-        if(token) {
-            try {
-                let payload = JSON.parse(atob(token.split('.')[1]));
-                if(Date.now() <= payload.exp) G.session = {loggedIn: true, user: payload.user, role: payload.role, hospcode: payload.hospcode};
-            } catch(e){}
-        }
+        const initData = await loadInitDataDirect_(false);
+        applyInitData_(initData);
 
         // 🎨 ประกอบหน้า UI ขึ้นมาทันที
         applySettings(); buildDropdowns(); updateAuthUI(); initMap(); 
@@ -3259,12 +3340,14 @@ function buildDropdowns() {
   updateVaDropdowns();
   document.getElementById('vr-n').value = '20/20'; document.getElementById('vl-n').value = '20/20';
   var amps = []; G.hospList.forEach(function(h){ if(h.amphoe && amps.indexOf(h.amphoe)===-1) amps.push(h.amphoe); }); amps.sort();
-  var ampSel = document.getElementById('fAmp'); amps.forEach(function(a) { ampSel.innerHTML += '<option>' + a + '</option>'; });
+  var ampSel = document.getElementById('fAmp'); if (ampSel) ampSel.innerHTML = '<option value="">ทั้งหมด</option>';
+  if (ampSel) amps.forEach(function(a) { ampSel.innerHTML += '<option>' + a + '</option>'; });
   rebuildTambonOptions_('');   // ⬅️ เพิ่มบรรทัดนี้
   var hcHtml = '<option value="">ทั้งหมด</option>'; var formHcHtml = '<option value="">— เลือก รพ.สต. —</option>';
   G.hospList.forEach(function(h) { var txt = h.hospcode + ' ' + h.name; hcHtml += '<option value="' + h.hospcode + '">' + txt + '</option>'; formHcHtml += '<option value="' + h.hospcode + '">' + txt + '</option>'; });
   document.getElementById('fHosp').innerHTML = hcHtml; document.getElementById('s-hc').innerHTML = formHcHtml; document.getElementById('sat-hc').innerHTML = formHcHtml; document.getElementById('loc-hc').innerHTML = formHcHtml;
-  var schHtml = ''; G.schoolList.forEach(function(s) { document.getElementById('fSch').innerHTML += '<option value="' + s.name + '">' + s.name + '</option>'; schHtml += '<option value="' + e_(s.name) + '">'; });
+  var fSchEl = document.getElementById('fSch'); if (fSchEl) fSchEl.innerHTML = '<option value="">ทั้งหมด</option>';
+  var schHtml = ''; G.schoolList.forEach(function(s) { if (fSchEl) fSchEl.innerHTML += '<option value="' + s.name + '">' + s.name + '</option>'; schHtml += '<option value="' + e_(s.name) + '">'; });
   document.getElementById('dl-school').innerHTML = schHtml; document.getElementById('s-dt').value = (new Date()).toLocaleDateString('en-GB');
   var natOpts = '';
   if(G.natList && G.natList.length > 0) {
@@ -3379,7 +3462,7 @@ function updateAuthUI() {
     document.getElementById('sat-hc').disabled = false;
     document.getElementById('s-hc').disabled = false;
   }
-  if (G.dispRows.length > 0) renderTable(G.dispRows); if (G.hospSummaryData.length > 0) renderSummaryTable(G.hospSummaryData);
+  if (G.dispRows.length > 0) loadTablePage(currentPage || 1); if (G.hospSummaryData.length > 0) renderSummaryTable(G.hospSummaryData);
 }
 
 function renderHeatmap() {
@@ -3466,15 +3549,23 @@ function renderHeatmap() {
 
 // ---- cache เก็บผลลัพธ์ dashboard ไว้ชั่วคราว ป้องกันการยิง Supabase ถี่เกินไป ----
 var DASH_CACHE = { data: null, ts: 0, ttl: 45000, paramsKey: '' };
+var DASH_RPC_CACHE = { data: null, ts: 0, ttl: 45000, key: '' };
+var DASH_INFLIGHT = {};
+var DASH_RPC_INFLIGHT = {};
+// ---- cache ข้อมูลดิบ 7 ตาราง แยกจากผลลัพธ์ที่คำนวณแล้ว ไม่ผูกกับ filter ----
+var RAW_DATA_CACHE = { scrRows:null, hospRows:null, satRows:null, preRows:null, postRows:null, behRows:null, fupRows:null, ts:0, ttl:300000, userHosp:null };
  
 // ---- แทนที่ฟังก์ชัน loadDashboard(params) เดิมทั้งหมดด้วยอันนี้ ----
 function loadDashboard(params, forceFresh) {
   params = params || {};
-  var paramsKey = JSON.stringify(params) + '|' + (G.session.loggedIn ? G.session.hospcode : 'guest');
+  if (forceFresh) clearDashboardClientCache_(false);
+
+  var paramsKey = stableKey_(params) + '|' + (G.session.loggedIn ? G.session.hospcode : 'guest');
  
   if (!forceFresh && DASH_CACHE.data && DASH_CACHE.paramsKey === paramsKey &&
       (Date.now() - DASH_CACHE.ts) < DASH_CACHE.ttl) {
     applyDashboardResult_(DASH_CACHE.data);
+    try { if (typeof loadTablePage === 'function') loadTablePage(1); } catch(e) {}
     return;
   }
  
@@ -3486,32 +3577,92 @@ function loadDashboard(params, forceFresh) {
   // 🚀 Phase 1: RPC เร็ว — คำนวณ KPI/กราฟ/ตารางสรุปในฐานข้อมูลแล้วส่งกลับมาแค่ไม่กี่ KB
   //    แสดงผลได้ภายใน ~1-2 วิ โดยยังไม่ต้องรอข้อมูลรายคนเต็ม
   var userHosp = (G.session.loggedIn && G.session.hospcode !== 'all') ? G.session.hospcode : '';
-  fetchDashboardRPC_(userHosp)
+  fetchDashboardRPC_(userHosp, forceFresh)
     .then(function (partial) { applyPartialDashboardResult_(partial); })
     .catch(function (e) { console.warn('Phase1 RPC ไม่สำเร็จ (ไม่ร้ายแรง รอ Phase2 แทน):', e); });
  
   // 🐢 Phase 2: ของเดิม — โหลดข้อมูลรายคนเต็มมาเก็บ G.allRows (จำเป็นสำหรับค้นหา/แก้ไข/export)
   //    ทำงานคู่ขนานกับ Phase 1 ไม่ต้องรอ Phase 1 เสร็จก่อน
-  loadDashboardDirect_(params)
-    .then(function (result) { applyRowDataOnly_(result, paramsKey); })
+  var directPromise = (!forceFresh && DASH_INFLIGHT[paramsKey])
+    ? DASH_INFLIGHT[paramsKey]
+    : loadDashboardDirect_(params, forceFresh);
+  DASH_INFLIGHT[paramsKey] = directPromise;
+  directPromise
+    .then(function (result) { applyRowDataOnly_(result, paramsKey, !!forceFresh); })
     .catch(function (e) {
       console.error('loadDashboardDirect_ failed, fallback to GAS:', e);
       loadDashboardViaGAS_(params);
+    })
+    .finally(function() {
+      if (DASH_INFLIGHT[paramsKey] === directPromise) delete DASH_INFLIGHT[paramsKey];
     });
 }
  
 // ---- ยิง RPC ตัวเดียว ได้ผลสรุปกลับมาเร็วมาก (ไม่มีข้อมูลรายคน) ----
-async function fetchDashboardRPC_(userHosp) {
-  var res = await fetch(SUPABASE_URL + '/rpc/get_dashboard_summary', {
+async function fetchDashboardRPC_(userHosp, forceFresh) {
+  var cacheKey = userHosp || 'all';
+  if (!forceFresh && DASH_RPC_CACHE.data && DASH_RPC_CACHE.key === cacheKey &&
+      (Date.now() - DASH_RPC_CACHE.ts) < DASH_RPC_CACHE.ttl) {
+    return DASH_RPC_CACHE.data;
+  }
+  if (!forceFresh && DASH_RPC_INFLIGHT[cacheKey]) return DASH_RPC_INFLIGHT[cacheKey];
+
+  var rpcPromise = fetch(SUPABASE_URL + '/rpc/get_dashboard_summary', {
     method: 'POST',
     headers: {
       'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ p_user_hosp: userHosp || '' })
+  }).then(async function(res) {
+    if (!res.ok) throw new Error('RPC get_dashboard_summary error (' + res.status + ')');
+    var data = await res.json();
+    DASH_RPC_CACHE = { data:data, ts:Date.now(), ttl:DASH_RPC_CACHE.ttl, key:cacheKey };
+    return data;
+  }).finally(function() {
+    if (DASH_RPC_INFLIGHT[cacheKey] === rpcPromise) delete DASH_RPC_INFLIGHT[cacheKey];
   });
-  if (!res.ok) throw new Error('RPC get_dashboard_summary error (' + res.status + ')');
-  return await res.json();
+  DASH_RPC_INFLIGHT[cacheKey] = rpcPromise;
+  return rpcPromise;
+}
+async function fetchScreeningTablePage_(page, forceFresh) {
+  var userHosp = (G.session.loggedIn && G.session.role !== 'admin' && G.session.hospcode && G.session.hospcode !== 'all')
+    ? G.session.hospcode : '';
+  var srchEl = document.getElementById('srchBox');
+
+  var payload = {
+    p_user_hosp: userHosp,
+    p_hospcode: document.getElementById('fHosp').value || '',
+    p_amphoe: document.getElementById('fAmp').value || '',
+    p_tambon: document.getElementById('fTambon').value || '',
+    p_school: document.getElementById('fSch').value || '',
+    p_status: document.getElementById('fStat').value || '',
+    p_sex: document.getElementById('fSex').value || '',
+    p_search: srchEl ? srchEl.value.trim() : '',
+    p_page: page || 1,
+    p_page_size: 50
+  };
+
+  var cacheKey = stableKey_(payload);
+  var cached = TABLE_PAGE_CACHE.map.get(cacheKey);
+  if (!forceFresh && cached && (Date.now() - cached.ts) < TABLE_PAGE_CACHE.ttl) return cached.data;
+  if (!forceFresh && _tablePageInFlight.has(cacheKey)) return _tablePageInFlight.get(cacheKey);
+
+  var pagePromise = fetch(SUPABASE_URL + '/rpc/get_screening_table_page', {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(async function(res) {
+    if (!res.ok) throw new Error('RPC get_screening_table_page error (' + res.status + ')');
+    var data = await res.json();
+    TABLE_PAGE_CACHE.map.set(cacheKey, { data:data, ts:Date.now() });
+    return data;
+  }).finally(function() {
+    if (_tablePageInFlight.get(cacheKey) === pagePromise) _tablePageInFlight.delete(cacheKey);
+  });
+
+  _tablePageInFlight.set(cacheKey, pagePromise);
+  return pagePromise;
 }
  
 // ---- แสดงผล KPI/กราฟ/ตารางสรุปจาก Phase 1 ทันที (ยังไม่แตะ G.allRows/ตารางรายคน) ----
@@ -3535,6 +3686,7 @@ function applyPartialDashboardResult_(partial) {
 // ---- สำรอง: เส้นทางเดิมผ่าน GAS (ใช้เฉพาะตอน direct fetch ล้มเหลว) ----
 function loadDashboardViaGAS_(params) {
   if (G.session.loggedIn && G.session.hospcode !== 'all') params.userHosp = G.session.hospcode;
+  var cacheKey = stableKey_(params) + '|' + (G.session.loggedIn ? G.session.hospcode : 'guest');
   google.script.run.withSuccessHandler(function (r) {
     var d = JSON.parse(r);
     if (!d.ok) { toast('โหลดข้อมูลไม่สำเร็จ', 'err'); return; }
@@ -3543,7 +3695,7 @@ function loadDashboardViaGAS_(params) {
       kpi: d.data.kpi, hospSummaryData: d.data.hospSummary, satCharts: d.data.satCharts,
       allRows: d.data.rows
     };
-    DASH_CACHE = { data: result, ts: Date.now(), ttl: 45000, paramsKey: JSON.stringify(params) };
+    DASH_CACHE = { data: result, ts: Date.now(), ttl: DASH_CACHE.ttl || 45000, paramsKey: cacheKey };
     applyDashboardResult_(result);
   }).withFailureHandler(function (e) {
     toast('โหลด Dashboard ไม่สำเร็จทั้งสองทาง: ' + e.message, 'err');
@@ -3551,57 +3703,113 @@ function loadDashboardViaGAS_(params) {
 }
  
 // ---- ดึง 6 ตารางตรงจาก Supabase พร้อมกัน แล้วคำนวณผลเหมือน getDashboardData() ฝั่ง GAS ----
-async function loadDashboardDirect_(params) {
+async function loadDashboardDirect_(params, forceFresh) {
   var userHosp = (G.session.loggedIn && G.session.role !== 'admin' && G.session.hospcode && G.session.hospcode !== 'all')
     ? G.session.hospcode : '';
 
-  var scrSelect = userHosp ? ('*&hospcode=eq.' + encodeURIComponent(userHosp)) : '*';
-  var scrRows = await fetchSupaAll('screening_data', scrSelect);
+  // 🚀 ถ้ามี raw data cache ที่ยังไม่หมดอายุ และ scope ผู้ใช้ตรงกัน ให้ใช้ของเดิมเลย ไม่ต้องยิง Supabase ซ้ำ
+  var cacheFresh = !forceFresh && RAW_DATA_CACHE.scrRows &&
+    RAW_DATA_CACHE.userHosp === userHosp &&
+    (Date.now() - RAW_DATA_CACHE.ts) < RAW_DATA_CACHE.ttl;
 
-  var joinSuffix = '';
-  if (userHosp) {
-    var cids = scrRows.map(function (r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
-    joinSuffix = cids.length > 0 ? ('&cid=in.(' + cids.join(',') + ')') : '&cid=is.null';
+  var scrRows, hospRows, satRows, preRows, postRows, behRows, fupRows;
+
+  if (cacheFresh) {
+    scrRows = RAW_DATA_CACHE.scrRows; hospRows = RAW_DATA_CACHE.hospRows; satRows = RAW_DATA_CACHE.satRows;
+    preRows = RAW_DATA_CACHE.preRows; postRows = RAW_DATA_CACHE.postRows;
+    behRows = RAW_DATA_CACHE.behRows; fupRows = RAW_DATA_CACHE.fupRows;
+  } else {
+    var scrSelect = userHosp ? ('*&hospcode=eq.' + encodeURIComponent(userHosp)) : '*';
+
+    if (userHosp) {
+      // ผู้ใช้ถูกจำกัดสิทธิ์เฉพาะ รพ.สต. ตัวเอง — ต้องรู้ cid ก่อนถึงจะกรองตารางที่เหลือได้ จึงยังต้องรอ scrRows ก่อน
+      scrRows = await fetchSupaAll('screening_data', scrSelect);
+      var cids = scrRows.map(function (r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
+      var results = await Promise.all([
+        fetchSupaAll('hosp_data'),
+        fetchSupaByCidChunks_('satisfaction_data', cids),
+        fetchSupaByCidChunks_('pre_test', cids),
+        fetchSupaByCidChunks_('post_test', cids),
+        fetchSupaByCidChunks_('behavior_data', cids),
+        fetchSupaByCidChunks_('followup_data', cids)
+      ]);
+      hospRows = results[0]; satRows = results[1]; preRows = results[2];
+      postRows = results[3]; behRows = results[4]; fupRows = results[5];
+    } else {
+      // 🚀 admin/guest ไม่ต้องกรองตาม cid — ยิงทั้ง 7 ตารางพร้อมกันทีเดียว ไม่ต้องรอ screening_data ก่อน
+      var results = await Promise.all([
+        fetchSupaAll('screening_data', scrSelect),
+        fetchSupaAll('hosp_data'),
+        fetchSupaAll('satisfaction_data'),
+        fetchSupaAll('pre_test'),
+        fetchSupaAll('post_test'),
+        fetchSupaAll('behavior_data'),
+        fetchSupaAll('followup_data')
+      ]);
+      scrRows = results[0]; hospRows = results[1]; satRows = results[2];
+      preRows = results[3]; postRows = results[4]; behRows = results[5]; fupRows = results[6];
+    }
+
+    RAW_DATA_CACHE = {
+      scrRows: scrRows, hospRows: hospRows, satRows: satRows, preRows: preRows,
+      postRows: postRows, behRows: behRows, fupRows: fupRows,
+      ts: Date.now(), ttl: RAW_DATA_CACHE.ttl, userHosp: userHosp
+    };
   }
 
-  var results = await Promise.all([
-    Promise.resolve(scrRows),
-    fetchSupaAll('hosp_data'),
-    fetchSupaAll('satisfaction_data', '*' + joinSuffix),
-    fetchSupaAll('pre_test', '*' + joinSuffix),
-    fetchSupaAll('post_test', '*' + joinSuffix),
-    fetchSupaAll('behavior_data', '*' + joinSuffix),
-    fetchSupaAll('followup_data', '*' + joinSuffix)
-  ]);
-
-  G.behRows = results[5];
-  G.fupRows = results[6];
+  G.behRows = behRows;
+  G.fupRows = fupRows;
 
   return computeDashboardStats_(
-    results[0], results[1], results[2], results[3], results[4], results[5], results[6],
+    scrRows, hospRows, satRows, preRows, postRows, behRows, fupRows,
     params, userHosp
   );
 }
  
-// ---- ดึงข้อมูลทั้งตาราง แบ่งหน้าอัตโนมัติ (เกิน 1000 แถว) เหมือน supaFetch ฝั่ง GAS ----
+// ---- ดึงข้อมูลทั้งตาราง: ยิงหน้าแรกก่อนรู้จำนวนรวม แล้วยิงหน้าที่เหลือ "พร้อมกันทีเดียว" (ไม่ต้องรอทีละหน้า) ----
 async function fetchSupaAll(table, select) {
   select = select || '*';
-  var PAGE = 1000, all = [], from = 0;
-  while (true) {
-    var res = await fetch(SUPABASE_URL + '/' + table + '?select=' + select, {
-      headers: {
-        'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Range-Unit': 'items', 'Range': from + '-' + (from + PAGE - 1), 'Prefer': 'count=exact'
+  var PAGE = 1000;
+  var url = SUPABASE_URL + '/' + table + '?select=' + select;
+  var baseHeaders = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+
+  var firstRes = await fetch(url, {
+    headers: Object.assign({}, baseHeaders, { 'Range-Unit': 'items', 'Range': '0-' + (PAGE - 1), 'Prefer': 'count=exact' })
+  });
+  if (!firstRes.ok) throw new Error('Supabase fetch error: ' + table + ' (' + firstRes.status + ')');
+  var all = await firstRes.json();
+
+  if (all.length === PAGE) {
+    var rangeHeader = firstRes.headers.get('Content-Range') || '';
+    var total = parseInt(rangeHeader.split('/')[1], 10);
+    if (!isNaN(total) && total > PAGE) {
+      var reqs = [];
+      for (var from = PAGE; from < total && from <= 300000; from += PAGE) {
+        reqs.push(
+          fetch(url, { headers: Object.assign({}, baseHeaders, { 'Range-Unit': 'items', 'Range': from + '-' + (from + PAGE - 1) }) })
+            .then(function (r) { return r.ok ? r.json() : []; })
+        );
       }
-    });
-    if (!res.ok) throw new Error('Supabase fetch error: ' + table + ' (' + res.status + ')');
-    var chunk = await res.json();
-    all = all.concat(chunk);
-    if (chunk.length < PAGE) break;
-    from += PAGE;
-    if (from > 300000) break; // กันวนไม่รู้จบ
+      var restChunks = await Promise.all(reqs);
+      restChunks.forEach(function (chunk) { if (Array.isArray(chunk)) all = all.concat(chunk); });
+    }
   }
   return all;
+}
+
+async function fetchSupaByCidChunks_(table, cids) {
+  if (!cids || cids.length === 0) return [];
+  var CHUNK = 250;
+  var reqs = [];
+  for (var i = 0; i < cids.length; i += CHUNK) {
+    reqs.push(fetchSupaAll(table, '*&cid=in.(' + cids.slice(i, i + CHUNK).join(',') + ')'));
+  }
+  var chunks = await Promise.all(reqs);
+  var out = [];
+  chunks.forEach(function(chunk) {
+    if (Array.isArray(chunk)) out = out.concat(chunk);
+  });
+  return out;
 }
  
 // ---- เกณฑ์คำนวณสถานะ / คะแนน / ความเสี่ยง (พอร์ตมาจาก Code.gs ทุกตัวอักษร) ----
@@ -4338,8 +4546,8 @@ function doLogin() { var u = document.getElementById('lgUser').value.trim(); var
     sessionStorage.setItem('EYE_SESSION_TOKEN', d.data.token); 
     localStorage.removeItem('EYE_SESSION_TOKEN'); // ล้าง localStorage เดิมทิ้งเพื่อป้องกันการตีกัน
   }
-} catch(e){} closeLogin(); updateAuthUI(); toast('เข้าสู่ระบบสำเร็จ', 'ok'); forceRefresh(); } else { document.getElementById('lgErr').textContent = d.msg; } }).login(u, p); }
-function doLogout() { google.script.run.withSuccessHandler(function() { G.session = {loggedIn:false,user:'',role:'',hospcode:''}; try { sessionStorage.removeItem('EYE_SESSION_TOKEN'); localStorage.removeItem('EYE_SESSION_TOKEN'); } catch(e){} updateAuthUI(); loadDashboard({}); toast('ออกจากระบบแล้ว', 'ok'); }).logout(); }
+} catch(e){} clearDashboardClientCache_(false); closeLogin(); updateAuthUI(); toast('เข้าสู่ระบบสำเร็จ', 'ok'); forceRefresh(); } else { document.getElementById('lgErr').textContent = d.msg; } }).login(u, p); }
+function doLogout() { google.script.run.withSuccessHandler(function() { G.session = {loggedIn:false,user:'',role:'',hospcode:''}; try { sessionStorage.removeItem('EYE_SESSION_TOKEN'); localStorage.removeItem('EYE_SESSION_TOKEN'); } catch(e){} clearDashboardClientCache_(false); updateAuthUI(); loadDashboard({}, true); toast('ออกจากระบบแล้ว', 'ok'); }).logout(); }
 function calcAge() { var bdStr = document.getElementById('s-bd').value; if (!bdStr) return; var parts = bdStr.split('/'); if(parts.length===3) { var y = parseInt(parts[2], 10); if(y > 2400) y -= 543; var dt = new Date(y, parseInt(parts[1])-1, parseInt(parts[0])); document.getElementById('s-age').value = Math.floor((new Date()-dt)/(365.25*24*3600*1000)); } }
 function onCidInput(cid) { 
   var btn = document.getElementById('btnSScr');
@@ -6054,8 +6262,9 @@ function testLine() {
 }
 
 // ฟังก์ชันสำหรับรีโหลดหน้าเว็บใหม่ทั้งหมดแบบล้างแคช (เสมือนการกด Ctrl + Shift + R)
-function hardReload() {
+async function hardReload() {
   toast('🔄 กำลังล้างแคชและโหลดข้อมูลใหม่ทั้งหมด...', 'inf');
+  clearDashboardClientCache_(true);
 
   // ล้างตัวกรองทั้งหมดก่อน
   ['fAmp','fHosp','fSch','fStat','fSex'].forEach(function(id){
@@ -6073,46 +6282,25 @@ function hardReload() {
     if (window[k]) { try { window[k].destroy(); } catch(e){} window[k] = null; }
   });
 
-  // ดึง InitData ใหม่ทั้งหมด (settings, hospList, videos, links, session)
-  google.script.run
-    .withSuccessHandler(function(r) {
-      try {
-        var d = JSON.parse(r);
-        if (!d.ok) { toast('❌ โหลดข้อมูลไม่สำเร็จ: ' + d.msg, 'err'); return; }
+  try {
+    var initData = await loadInitDataDirect_(true);
+    applyInitData_(initData);
 
-        G.settings   = d.data.settings   || {};
-        G.hospList   = d.data.hospList   || [];
-        G.schoolList = d.data.schoolList || [];
-        G.vaList     = d.data.vaList     || [];
-        G.vaMap      = d.data.vaMap      || {};
-        G.session    = d.data.session    || {loggedIn:false};
-        G.videos     = d.data.videos     || [];
+    applySettings();
+    buildDropdowns();
+    updateAuthUI();
+    renderLinks(G.links || []);
+    renderVideoPlaylist(G.videos || []);
+    if (G.videos.length > 0) renderVideo(G.videos[0].url); else renderVideo('');
+    if (G.settings.marquee_imgs) renderImageMarquee(G.settings.marquee_imgs);
 
-        applySettings();
-        buildDropdowns();
-        updateAuthUI();
-        renderLinks(d.data.links || []);
-        renderVideoPlaylist(G.videos);
-        if (G.videos.length > 0) renderVideo(G.videos[0].url);
-        if(G.settings.marquee_imgs) {
-        renderImageMarquee(G.settings.marquee_imgs);
-    }
+    loadDashboard({}, true);
 
-        // โหลด Dashboard ใหม่ทั้งหมด
-        loadDashboard({}, true);
-
-        // รีเฟรชแผนที่
-        if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 400);
-
-        setTimeout(function(){ toast('✅ โหลดข้อมูลใหม่สำเร็จ', 'ok'); }, 800);
-      } catch (err) {
-        toast('❌ Error: ' + err.message, 'err');
-      }
-    })
-    .withFailureHandler(function(e) {
-      toast('❌ การเชื่อมต่อล้มเหลว: ' + e.message, 'err');
-    })
-    .getInitData();
+    if (myMap) setTimeout(function(){ myMap.invalidateSize(); }, 400);
+    setTimeout(function(){ toast('✅ โหลดข้อมูลใหม่สำเร็จ', 'ok'); }, 800);
+  } catch (err) {
+    toast('❌ การเชื่อมต่อล้มเหลว: ' + err.message, 'err');
+  }
 }
 
 function toggleAllChk(source) {
@@ -6930,134 +7118,48 @@ function debounceSearch() {
     }, 500);
 }
 
-async function loadTablePage(page) {
-    let tBody = document.getElementById('tBody');
-    if(!tBody) return;
-    tBody.innerHTML = '<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--accent);font-weight:bold;">⚡ กำลังโหลดข้อมูลพริบตาเดียวจาก Supabase...</td></tr>';
-    
-    currentPage = page || 1;
-    let limit = 50;
-    let from = (currentPage - 1) * limit;
-    let to = from + limit - 1;
-
-    let hospcode = document.getElementById('fHosp') ? document.getElementById('fHosp').value : '';
-    let amphoe = document.getElementById('fAmp') ? document.getElementById('fAmp').value : '';
-    let school = document.getElementById('fSch') ? document.getElementById('fSch').value : '';
-    let tambon = document.getElementById('fTambon') ? document.getElementById('fTambon').value : '';
-    let search = document.getElementById('srchBox') ? document.getElementById('srchBox').value.trim() : '';
-
-    let ep = 'screening_data?select=*&order=cid.asc';
-    let sessionRole = (typeof G !== 'undefined' && G.session && G.session.role) ? G.session.role : 'guest';
-    let sessionHosp = (typeof G !== 'undefined' && G.session && G.session.hospcode) ? G.session.hospcode : 'all';
-
-    if (sessionRole !== 'admin' && sessionHosp !== 'all' && sessionHosp !== '') {
-        ep += '&hospcode=eq.' + sessionHosp;
-    } else if (hospcode) {
-        ep += '&hospcode=eq.' + hospcode;
-    }
-    
-    if (amphoe) ep += '&amphoe=eq.' + amphoe;
-    if (tambon) ep += '&tambon=eq.' + tambon;
-    if (school) ep += '&school_name=eq.' + school;
-    if (search) ep += '&or=(cid.ilike.*' + search + '*,student_name.ilike.*' + search + '*)';
-
-    try {
-        const res = await fetch(`${SUPABASE_URL}/${ep}`, {
-            method: 'GET',
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Range-Unit': 'items', 'Range': from + '-' + to, 'Prefer': 'count=exact' }
-        });
-
-        if (!res.ok) throw new Error('Supabase Error: ' + res.status);
-        const rows = await res.json();
-        const contentRange = res.headers.get('Content-Range') || '0-0/0';
-        const totalCount = parseInt(contentRange.split('/')[1]) || 0;
-        totalPages = Math.ceil(totalCount / limit) || 1;
-
-        let cids = rows.map(r => String(r.cid).replace(/\D/g, '')).filter(Boolean);
-        let cidQuery = cids.length > 0 ? 'cid=in.(' + cids.join(',') + ')' : 'cid=is.null';
-
-        const [preRes, postRes, satRes, fupRes, hospRes] = await Promise.all([
-            fetch(`${SUPABASE_URL}/pre_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-            fetch(`${SUPABASE_URL}/post_test?select=cid,total&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-            fetch(`${SUPABASE_URL}/satisfaction_data?select=cid,q1,q2,q3,q4,q5,q6,q7,q8,q9,q10&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-            fetch(`${SUPABASE_URL}/followup_data?select=cid,f_days&${cidQuery}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json()),
-            fetch(`${SUPABASE_URL}/hosp_data?select=hospcode,name,amphoe`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }).then(r => r.json())
-        ]);
-
-        let preMap = {}, postMap = {}, satMap = {}, fupMap = {}, hospMap = {};
-        preRes.forEach(r => preMap[r.cid] = r.total);
-        postRes.forEach(r => postMap[r.cid] = r.total);
-        fupRes.forEach(r => fupMap[r.cid] = r.f_days || 'มีข้อมูล');
-        hospRes.forEach(r => hospMap[r.hospcode] = { name: r.name, amphoe: r.amphoe });
-        satRes.forEach(r => {
-            let sum = 0, count = 0;
-            for(let i=1; i<=10; i++) { if(r['q'+i] >= 1) { sum += r['q'+i]; count++; } }
-            satMap[r.cid] = count > 0 ? Math.round((sum/count)*100)/100 : null;
-        });
-
-        function calcStatusClient_(obj, hasFup) {
-            var diag = String(obj.diagnosis || '').trim();
-            if (diag === 'สายตาปกต') diag = 'สายตาปกติ';
-            var ref = String(obj.referral || '').trim();
-            var noRefer = ['', 'ไม่จำเป็นต้องส่งต่อ', 'ไม่ส่ง'].indexOf(ref) >= 0;
-            if (!noRefer && hasFup) return 'glasses';
-            if (!noRefer) return 'referred';
-            if (diag && diag !== 'สายตาปกติ') return 'abnormal';
-            return 'normal';
-        }
-
-        let formattedRows = rows.map(obj => {
-            let cid = String(obj.cid).replace(/\D/g, '');
-            let hc = String(obj.hospcode || '').trim();
-            let hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ' };
-            let pre = preMap[cid] || null, post = postMap[cid] || null;
-            let gain = (pre !== null && post !== null) ? (pre >= 10 ? 100 : Math.round((post-pre)/(10-pre)*100)) : null;
-            return {
-                cid: cid,
-                student_name: String(obj.student_name || '').trim(),
-                school_class: String(obj.school_class || '').trim(),
-                school_name: String(obj.school_name || '').trim(),
-                hospcode: hc, hosp_name: hInfo.name, amphoe: hInfo.amphoe,
-                sex: String(obj.sex || '').trim(),
-                treatment: String(obj.treatment || '').trim(),
-                nationality: String(obj.nationality || 'ไทย').trim(),
-                va_r_naked: String(obj.va_r_naked || '').trim(),
-                va_l_naked: String(obj.va_l_naked || '').trim(),
-                va_naked_OU: String(obj.va_naked_ou || '').trim(),
-                va_r_glasses: String(obj.va_r_glasses || '').trim(),
-                va_l_glasses: String(obj.va_l_glasses || '').trim(),
-                va_glasses_OU: String(obj.va_glasses_ou || '').trim(),
-                ph_r: String(obj.ph_r || '').trim(),
-                ph_l: String(obj.ph_l || '').trim(),
-                diagnosis: String(obj.diagnosis || '').trim(),
-                referral: String(obj.referral || '').trim(),
-                examiner: String(obj.examiner || '').trim(),
-                status: calcStatusClient_(obj, !!fupMap[cid]),
-                pre: pre, post: post, gain: gain,
-                sat: satMap[cid] || null,
-                fup_status: fupMap[cid] || null,
-                screen_date: String(obj.screen_date || '')
-            };
-        });
-
-        document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
-        document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
-        document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
-        renderTable(formattedRows);
-    } catch (e) {
-        console.error(e);
-        if(typeof toast === 'function') toast('โหลดตารางล้มเหลว: ' + e.message, 'err');
-    }
+async function loadTablePage(page, forceFresh) {
+  let tBody = document.getElementById('tBody');
+  if (!tBody) return;
+  try {
+    var res = await fetchScreeningTablePage_(page, forceFresh);
+    totalPages = res.totalPages || 1;
+    currentPage = res.page || 1;
+    document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
+    document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
+    document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
+    renderTable(res.rows || []);
+    document.getElementById('tInfo').textContent = 'พบทั้งหมด ' + res.total + ' รายการ';
+  } catch (e) {
+    console.warn('RPC table page ล้มเหลว ใช้ข้อมูลในเครื่องแทน:', e);
+    // fallback เดิม: หั่นจาก G.dispRows ที่โหลดไว้แล้ว
+    var rows = G.dispRows || [];
+    var limit = 50;
+    totalPages = Math.max(1, Math.ceil(rows.length / limit));
+    currentPage = Math.min(Math.max(page || 1, 1), totalPages);
+    var from = (currentPage - 1) * limit;
+    document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
+    document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
+    document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
+    renderTable(rows.slice(from, from + limit));
+  }
 }
 
 function changePage(direction) {
     let newPage = currentPage + direction;
     if(newPage >= 1 && newPage <= totalPages) loadTablePage(newPage);
 }
-function applyRowDataOnly_(result, paramsKey) {
-  DASH_CACHE = { data: result, ts: Date.now(), ttl: 45000, paramsKey: paramsKey };
-  G.allRows = result.allRows; G.dispRows = result.allRows;
-  try { if (G.dispRows.length && typeof renderTable === 'function') renderTable(G.dispRows); } catch (e) { console.error('renderTable error:', e); }
+function applyRowDataOnly_(result, paramsKey, forceFresh) {
+  DASH_CACHE = { data: result, ts: Date.now(), ttl: DASH_CACHE.ttl || 45000, paramsKey: paramsKey };
+  var needsFullRender = !G.kpi || !G.kpi.total || !G.hospSummaryData || !G.hospSummaryData.length;
+  G.allRows = result.allRows || []; G.dispRows = result.allRows || [];
+  if (needsFullRender) {
+    try { applyDashboardResult_(result); } catch(e) { console.error('applyDashboardResult error:', e); }
+  }
+  try {
+    if (G.dispRows.length && typeof loadTablePage === 'function') loadTablePage(1, !!forceFresh);
+    else renderTable([]);
+  } catch (e) { console.error('renderTable error:', e); }
   if (myMap) setTimeout(function () { myMap.invalidateSize(); }, 300);
 }
 function loadBehDashboardViaGAS_(params) {
