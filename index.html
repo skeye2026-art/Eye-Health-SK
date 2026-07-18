@@ -539,6 +539,76 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     .beh-kpi { grid-template-columns: 1fr !important; }
 }
 
+/* Mobile usability overrides */
+@media screen and (max-width: 768px) {
+  html, body { height: auto; min-height: 100%; overflow: auto; }
+  #app { height: auto; min-height: 100dvh; }
+  .main { display: block; overflow: visible; }
+  .content { overflow: visible; }
+  .hdr { align-items: flex-start; gap: 8px; }
+  .hdr-logo { width: 34px; height: 34px; }
+  .hdr-text { min-width: 160px; }
+  .hdr-right { scrollbar-width: thin; }
+  .link-grid { flex-wrap: nowrap; overflow-x: auto; margin: 0 8px 8px; padding: 8px; }
+  .custom-btn { flex: 0 0 auto; min-height: 40px; }
+  .kpi-row {
+    display: flex !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+    gap: 7px;
+    padding: 8px 10px;
+    scroll-snap-type: x proximity;
+  }
+  .kpi { flex: 0 0 126px; min-width: 126px; scroll-snap-align: start; padding: 8px 6px; }
+  .kpi-v { font-size: 20px; }
+  .sidebar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 8px;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    padding: 10px;
+  }
+  .sidebar .sb-title, .sidebar .add-sec, #addSecGuest { grid-column: 1 / -1; }
+  .fl { margin: 0; align-self: end; }
+  .fsel, .btn-clr { min-height: 38px; font-size: 12px; }
+  .btn-clr { margin-top: 0; align-self: end; }
+  .add-sec {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .add-sec .sb-title { grid-column: 1 / -1; }
+  .btn-form { min-height: 38px; justify-content: center; text-align: center; padding: 8px 6px; }
+  .sum-tbl-wrap { max-height: 260px; overflow: auto; }
+  #mapCard, #videoCard { height: 310px !important; }
+  #mainMap { height: 260px !important; }
+  .tbl-sec { min-height: 430px; padding: 8px; }
+  .tbl-ctrl { flex-wrap: wrap; gap: 6px; }
+  .srch { flex: 1 1 100%; min-height: 38px; font-size: 13px; }
+  .btn-sec, .btn-exp { flex: 1 1 auto; min-height: 38px; }
+  .tbl-wrap { min-height: 320px; max-height: 68vh; }
+  .dtbl th, .dtbl td { padding: 7px 9px; }
+  .ph { padding: 12px; }
+  .ph-t { font-size: 13px; line-height: 1.25; }
+  .pb { padding: 12px; }
+  .pf { position: sticky; bottom: 0; z-index: 3; background: #fff; }
+  .pf .btn-p, .pf .btn-sec { flex: 1 1 auto; justify-content: center; min-height: 42px; }
+  .beh-filter select, .op-controls select { min-height: 38px; font-size: 13px; }
+  .toast-wrap { left: 10px; right: 10px; bottom: 10px; }
+  .toast { width: 100%; max-width: none; }
+}
+
+@media screen and (max-width: 480px) {
+  .sidebar, .add-sec { grid-template-columns: 1fr; }
+  .kpi { flex-basis: 118px; min-width: 118px; }
+  .sys-name { font-size: 12px; }
+  .org-name { font-size: 10px; }
+  #mapCard, #videoCard { height: 280px !important; }
+  .tbl-wrap { max-height: 72vh; }
+}
+
 </style>
 </head>
 <body>
@@ -2101,6 +2171,51 @@ var INIT_DATA_CACHE = { data:null, ts:0, ttl:600000 };
 var _initDataPromise = null;
 var TABLE_PAGE_CACHE = { map:new Map(), ttl:30000 };
 var _tablePageInFlight = new Map();
+
+function normalizeThaiDigits_(value) {
+  var map = {'๐':'0','๑':'1','๒':'2','๓':'3','๔':'4','๕':'5','๖':'6','๗':'7','๘':'8','๙':'9'};
+  return String(value || '').replace(/[๐-๙]/g, function(ch) { return map[ch] || ch; });
+}
+
+function normalizeSchoolClass_(value) {
+  var raw = normalizeThaiDigits_(value).toLowerCase().trim();
+  if (!raw) return '';
+  var compact = raw
+    .replace(/\s+/g, '')
+    .replace(/ชั้น|ระดับ|ศึกษา|ปีที่|ปี/g, '')
+    .replace(/[()]/g, '');
+  var stage = '';
+  if (/อนุบาล|^อ\.?\d|^อ\d|^k\d/.test(compact)) stage = 'a';
+  else if (/ประถม|^ป\.?\d|^ป\d|^p\d/.test(compact)) stage = 'p';
+  else if (/มัธยม|^ม\.?\d|^ม\d|^m\d/.test(compact)) stage = 'm';
+
+  var digitMatch = compact.match(/\d+/);
+  if (!digitMatch) return compact;
+  var digits = digitMatch[0];
+  var firstDigit = digits.charAt(0);
+  var grade = parseInt(firstDigit, 10);
+  if (isNaN(grade) || grade < 1 || grade > 6) return compact;
+
+  if (!stage) stage = 'p';
+  return stage + grade;
+}
+
+function schoolClassMatches_(actual, filterValue) {
+  if (!filterValue) return true;
+  var target = normalizeSchoolClass_(filterValue);
+  if (!target) return true;
+  return normalizeSchoolClass_(actual) === target;
+}
+
+function getSchoolClassRange_(value) {
+  var c = normalizeSchoolClass_(value);
+  if (/^a[1-3]$/.test(c)) return 'อนุบาล';
+  if (/^p[1-3]$/.test(c)) return 'ป.1-ป.3';
+  if (/^p[4-6]$/.test(c)) return 'ป.4-ป.6';
+  if (/^m[1-3]$/.test(c)) return 'ม.1-ม.3';
+  if (/^m[4-6]$/.test(c)) return 'ม.4-ม.6';
+  return '';
+}
 
 function stableKey_(obj) {
   var sorted = {};
@@ -5932,7 +6047,7 @@ function loadBehDashboard() {
     if (fTambon && demo.tambon !== fTambon) return;
     if (fSchool && demo.school_name !== fSchool) return;
     if (fSex && demo.sex !== fSex) return;
-    if (fClass && demo.school_class !== fClass) return;
+    if (!schoolClassMatches_(demo.school_class, fClass)) return;
     if (fStatus === 'abnormal') { if (demo.status === 'normal') return; }
     else if (fStatus === 'referred') { if (demo.status !== 'referred' && demo.status !== 'glasses') return; }
     else if (fStatus && demo.status !== fStatus) return;
@@ -6279,7 +6394,7 @@ function loadFupDashboard() {
     if (fTambon && demo.tambon !== fTambon) return;
     if (fSchool && demo.school_name !== fSchool) return;
     if (fSex && demo.sex !== fSex) return;
-    if (fClass && demo.school_class !== fClass) return;
+    if (!schoolClassMatches_(demo.school_class, fClass)) return;
  
     totalCnt++;
     var fBoard = r.f_board || '', fBook = r.f_book || '', fScreen = r.f_screen || '', fSport = r.f_sport || '',
@@ -7532,11 +7647,14 @@ function buildOPClassBreakdown(m) {
   m.rows.forEach(function(r){
     var lev = String(r.level_edu || r.school_class || '').trim();
     var key = null;
+    key = getSchoolClassRange_(r.level_edu || r.school_class || '');
+    if (!key) {
     if (lev.indexOf('อ.') === 0 || lev.indexOf('อนุบาล') > -1 || lev.indexOf('ก่อน') > -1) key = 'อนุบาล';
     else if (/ป\.[1-3]/.test(lev)) key = 'ป.1-ป.3';
     else if (/ป\.[4-6]/.test(lev)) key = 'ป.4-ป.6';
     else if (/ม\.[1-3]/.test(lev)) key = 'ม.1-ม.3';
     else if (/ม\.[4-6]/.test(lev)) key = 'ม.4-ม.6';
+    }
     if (key) { totals[key]++; if (r.status !== 'normal') ranges[key]++; }
   });
   var html = '<table class="op-mini-tbl"><thead><tr><th>ชั้นเรียน</th><th style="text-align:center;">คัด</th><th style="text-align:center;">ผิด</th><th style="text-align:center;">%</th></tr></thead><tbody>';
@@ -7835,3 +7953,4 @@ function loadFupDashboardViaGAS_(params) {
 </script>
 </body>
 </html>
+
