@@ -3751,6 +3751,27 @@ function scheduleFullDashboardLoad_(params, forceFresh, paramsKey, delayMs) {
       });
   }, Math.max(0, delayMs || 0));
 }
+
+function ensureFullRowsReady_(onReady, onFallback) {
+  if (G.fullRowsReady && G.allRows && G.allRows.length) { onReady(); return; }
+  toast('กำลังเตรียมข้อมูลครั้งแรก...', 'inf');
+  var params = {};
+  var paramsKey = stableKey_(params) + '|' + (G.session.loggedIn ? G.session.hospcode : 'guest');
+  var directPromise = DASH_INFLIGHT[paramsKey] || loadDashboardDirect_(params, false);
+  DASH_INFLIGHT[paramsKey] = directPromise;
+  directPromise
+    .then(function(result) {
+      applyRowDataOnly_(result, paramsKey, false);
+      onReady();
+    })
+    .catch(function(e) {
+      console.warn('เตรียมข้อมูลแบบ direct ไม่สำเร็จ:', e);
+      if (onFallback) onFallback();
+    })
+    .finally(function() {
+      if (DASH_INFLIGHT[paramsKey] === directPromise) delete DASH_INFLIGHT[paramsKey];
+    });
+}
  
 // ---- ยิง RPC ตัวเดียว ได้ผลสรุปกลับมาเร็วมาก (ไม่มีข้อมูลรายคน) ----
 async function fetchDashboardRPC_(userHosp, forceFresh) {
@@ -3779,6 +3800,117 @@ async function fetchDashboardRPC_(userHosp, forceFresh) {
   DASH_RPC_INFLIGHT[cacheKey] = rpcPromise;
   return rpcPromise;
 }
+
+function normalizeNullableNumber_(v) {
+  if (v === null || v === undefined || v === '') return null;
+  var n = Number(v);
+  return isNaN(n) ? null : n;
+}
+
+function normalizeScreeningTableRow_(r) {
+  r = r || {};
+  var row = Object.assign({}, r);
+  var cid = String(row.cid || '').replace(/\D/g, '');
+  row.cid = cid;
+  row.student_name = row.student_name || row.full_name || String(((row.pname || '') + (row.fname || '') + ' ' + (row.lname || ''))).trim();
+  row.school_class = row.school_class || row.level_class || row.level_edu || '';
+  row.school_name = row.school_name || row.school || '';
+  row.hospcode = String(row.hospcode || row.hc || '').trim();
+  var h = (G.hospList || []).find(function(x){ return x.hospcode === row.hospcode; }) || {};
+  row.hosp_name = row.hosp_name || h.name || '';
+  row.amphoe = row.amphoe || h.amphoe || '';
+  row.tambon = row.tambon || h.tambon || '';
+  row.va_naked_OU = row.va_naked_OU || row.va_naked_ou || row.va_ou_naked || '';
+  row.va_glasses_OU = row.va_glasses_OU || row.va_glasses_ou || row.va_ou_glasses || '';
+  row.status = row.status || calcStatusClient_(row, !!(row.has_followup || row.fup_status));
+  row.sat = normalizeNullableNumber_(row.sat);
+  row.pre = normalizeNullableNumber_(row.pre);
+  row.post = normalizeNullableNumber_(row.post);
+  row.gain = normalizeNullableNumber_(row.gain);
+  row.beh_risk = row.beh_risk || null;
+  row.fup_status = row.fup_status || null;
+  row.treatment = row.treatment || '';
+  row.screen_date = formatDateClient_(row.screen_date);
+  return row;
+}
+
+function normalizeScreeningPageResult_(data, payload) {
+  var page = Number(payload.p_page || 1);
+  var pageSize = Number(payload.p_page_size || 50);
+  var rows = [];
+  var total = 0;
+  var totalPages = 1;
+
+  if (Array.isArray(data)) {
+    rows = data;
+    var first = rows[0] || {};
+    total = Number(first.total_count || first.total || first.full_count || first.row_count || rows.length) || rows.length;
+    totalPages = Math.max(1, Math.ceil(total / pageSize));
+  } else if (data && typeof data === 'object') {
+    rows = data.rows || data.data || data.items || data.records || [];
+    if (!Array.isArray(rows) && Array.isArray(data.result)) rows = data.result;
+    if (!Array.isArray(rows)) rows = [];
+    total = Number(data.total || data.totalCount || data.total_count || data.count || data.row_count || rows.length) || rows.length;
+    totalPages = Number(data.totalPages || data.total_pages) || Math.max(1, Math.ceil(total / pageSize));
+    page = Number(data.page || data.currentPage || data.current_page || page) || page;
+  }
+
+  return {
+    rows: rows.map(normalizeScreeningTableRow_),
+    total: total,
+    totalPages: totalPages,
+    page: page
+  };
+}
+
+async function fetchScreeningTablePageRest_(payload) {
+  var page = Number(payload.p_page || 1);
+  var pageSize = Number(payload.p_page_size || 50);
+  var from = (page - 1) * pageSize;
+  var to = from + pageSize - 1;
+  var qs = ['select=*', 'order=cid.asc'];
+  var hc = payload.p_hospcode || payload.p_user_hosp || '';
+  if (hc) qs.push('hospcode=eq.' + encodeURIComponent(hc));
+  if (payload.p_amphoe) qs.push('amphoe=eq.' + encodeURIComponent(payload.p_amphoe));
+  if (payload.p_tambon) qs.push('tambon=eq.' + encodeURIComponent(payload.p_tambon));
+  if (payload.p_school) qs.push('school_name=eq.' + encodeURIComponent(payload.p_school));
+  if (payload.p_sex) qs.push('sex=eq.' + encodeURIComponent(payload.p_sex));
+  var search = String(payload.p_search || '').trim();
+  if (search) {
+    var s = encodeURIComponent('*' + search.replace(/[(),]/g, ' ') + '*');
+    qs.push('or=(cid.ilike.' + s + ',student_name.ilike.' + s + ',fname.ilike.' + s + ',lname.ilike.' + s + ')');
+  }
+
+  var res = await fetch(SUPABASE_URL + '/screening_data?' + qs.join('&'), {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Range-Unit': 'items',
+      'Range': from + '-' + to,
+      'Prefer': 'count=exact'
+    }
+  });
+  if (!res.ok) throw new Error('REST screening_data error (' + res.status + ')');
+  var rows = await res.json();
+  var rangeHeader = res.headers.get('Content-Range') || '';
+  var total = Number((rangeHeader.split('/')[1] || '').trim());
+  if (isNaN(total)) total = rows.length;
+  var normalized = {
+    rows: rows.map(normalizeScreeningTableRow_),
+    total: total,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    page: page
+  };
+  if (payload.p_status) {
+    normalized.rows = normalized.rows.filter(function(r) {
+      if (payload.p_status === 'abnormal') return r.status !== 'normal';
+      if (payload.p_status === 'referred') return r.status === 'referred' || r.status === 'glasses';
+      return r.status === payload.p_status;
+    });
+  }
+  return normalized;
+}
+
 async function fetchScreeningTablePage_(page, forceFresh) {
   var userHosp = (G.session.loggedIn && G.session.role !== 'admin' && G.session.hospcode && G.session.hospcode !== 'all')
     ? G.session.hospcode : '';
@@ -3809,8 +3941,13 @@ async function fetchScreeningTablePage_(page, forceFresh) {
   }).then(async function(res) {
     if (!res.ok) throw new Error('RPC get_screening_table_page error (' + res.status + ')');
     var data = await res.json();
-    TABLE_PAGE_CACHE.map.set(cacheKey, { data:data, ts:Date.now() });
-    return data;
+    var normalized = normalizeScreeningPageResult_(data, payload);
+    if (!normalized.rows.length && (G.kpi && Number(G.kpi.total || 0) > 0)) {
+      try { normalized = await fetchScreeningTablePageRest_(payload); }
+      catch(restErr) { console.warn('REST table fallback failed:', restErr); }
+    }
+    TABLE_PAGE_CACHE.map.set(cacheKey, { data:normalized, ts:Date.now() });
+    return normalized;
   }).finally(function() {
     if (_tablePageInFlight.get(cacheKey) === pagePromise) _tablePageInFlight.delete(cacheKey);
   });
@@ -3969,6 +4106,18 @@ async function fetchSupaByCidChunks_(table, cids) {
 // ---- เกณฑ์คำนวณสถานะ / คะแนน / ความเสี่ยง (พอร์ตมาจาก Code.gs ทุกตัวอักษร) ----
 var ANS_KEY_CLIENT = ['ข', 'ก', 'ง', 'ข', 'ค', 'ข', 'ค', 'ค', 'ค', 'ค'];
 var NO_REFER_VALUES_CLIENT = ['', 'ไม่จำเป็นต้องส่งต่อ', 'ไม่ส่ง'];
+
+function calcStatusClient_(row, hasFollowup) {
+  row = row || {};
+  var diagnosis = String(row.diagnosis || '').trim();
+  if (diagnosis === 'สายตาปกต') diagnosis = 'สายตาปกติ';
+  var referral = String(row.referral || '').trim();
+  var noRefer = NO_REFER_VALUES_CLIENT.indexOf(referral) >= 0;
+  if (!noRefer && hasFollowup) return 'glasses';
+  if (!noRefer) return 'referred';
+  if (diagnosis && diagnosis !== 'สายตาปกติ') return 'abnormal';
+  return 'normal';
+}
  
 function calcTestScoreClient_(row) {
   var score = 0;
@@ -4221,6 +4370,13 @@ function closeImg() {
     }
 }
 
+function parseImageUrls_(value) {
+  return String(value || '')
+    .split(/[\n,]+/)
+    .map(function(u){ return u.trim(); })
+    .filter(Boolean);
+}
+
 function renderSummaryTable(data) {
   var tb = document.getElementById('hospSumBody');
   if (!tb) return;
@@ -4244,7 +4400,7 @@ function renderSummaryTable(data) {
     try {
         var picHtml = '<span style="color:var(--muted2); font-size:10px;">—</span>';
         if (r.pics) {
-          var urls = String(r.pics).split('\n');
+          var urls = parseImageUrls_(r.pics);
           var links = urls.map(function(url, idx) {
             url = url.trim();
             if (!url) return '';
@@ -4267,7 +4423,7 @@ function loadHospLocData() {
   var hObj = G.hospList.find(function(x){ return x.hospcode === hc; }); var sumObj = G.hospSummaryData ? G.hospSummaryData.find(function(x){ return x.hospcode === hc; }) : null;
   document.getElementById('loc-lat').value = hObj ? (hObj.lat || '') : ''; document.getElementById('loc-lon').value = hObj ? (hObj.lon || '') : '';
   var picsHtml = '';
-  if (sumObj && sumObj.pics) { var urls = String(sumObj.pics).split('\n').map(function(u){return u.trim();}).filter(Boolean); urls.forEach(function(url, idx) { picsHtml += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;background:#f8faff;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;"><a href="javascript:void(0)" onclick="showImg(\''+url+'\')" style="font-size:11px;font-weight:600;color:var(--blue);text-decoration:underline;">ดูภาพที่ '+(idx+1)+'</a><button class="btn-del2" style="margin-left:auto;" onclick="delPic(\''+hc+'\', \''+url+'\')">🗑 ลบภาพนี้</button></div>'; });
+  if (sumObj && sumObj.pics) { var urls = parseImageUrls_(sumObj.pics); urls.forEach(function(url, idx) { picsHtml += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;background:#f8faff;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;"><a href="javascript:void(0)" onclick="showImg(\''+url+'\')" style="font-size:11px;font-weight:600;color:var(--blue);text-decoration:underline;">ดูภาพที่ '+(idx+1)+'</a><button class="btn-del2" style="margin-left:auto;" onclick="delPic(\''+hc+'\', \''+url+'\')">🗑 ลบภาพนี้</button></div>'; });
   } else { picsHtml = '<div style="font-size:11px;color:var(--muted)">ยังไม่มีภาพผลงาน</div>'; } document.getElementById('loc-current-pics').innerHTML = picsHtml;
 }
 function delPic(hc, url) { if(!confirm('ยืนยันการลบภาพนี้? (การลบจะลบภาพออกจากระบบอย่างถาวร)')) return; toast('กำลังลบภาพ...', 'inf'); google.script.run.withSuccessHandler(function(r){ var res = JSON.parse(r); if(res.ok) { toast('ลบภาพสำเร็จ','ok'); closePanel('loc'); forceRefresh(); } else { toast(res.msg,'err'); } }).deleteHospFileLink(hc, url); }
@@ -4277,7 +4433,26 @@ function saveLoc() {
   var fileInput = document.getElementById('loc-pics'); var files = fileInput.files; if (files.length > 2) { toast('แนบภาพได้สูงสุด 2 ภาพเท่านั้น', 'err'); return; } var valid = true; for (var i = 0; i < files.length; i++) { if (files[i].size > 2 * 1024 * 1024) { toast('ไฟล์ ' + files[i].name + ' มีขนาดเกิน 2MB', 'err'); valid = false; } } if (!valid) return;
   btn.disabled=true; btn.innerHTML='<span class="sp"></span> กำลังเตรียมข้อมูล...'; var promises = [];
   for (var i = 0; i < files.length; i++) { promises.push(new Promise(function(resolve, reject) { var f = files[i]; var reader = new FileReader(); reader.onload = function(e) { resolve({ name: f.name, mimeType: f.type, data: e.target.result.split(',')[1] }); }; reader.readAsDataURL(f); })); }
-  Promise.all(promises).then(function(picData) { btn.innerHTML='<span class="sp"></span> กำลังอัปโหลด...'; var d = { hospcode: hc, lat_h: document.getElementById('loc-lat').value, lon_h: document.getElementById('loc-lon').value, pics: picData }; google.script.run.withSuccessHandler(function(r){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; var res=JSON.parse(r); if(res.ok){ toast(res.msg,'ok'); document.getElementById('loc-pics').value=''; closePanel('loc'); forceRefresh(); } else toast(res.msg,'err'); }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; toast(e.message,'err'); }).updateHospLocation(d); });
+  Promise.all(promises).then(function(picData) {
+    btn.innerHTML='<span class="sp"></span> กำลังอัปโหลด...';
+    var d = { hospcode: hc, lat_h: document.getElementById('loc-lat').value, lon_h: document.getElementById('loc-lon').value, pics: picData };
+    google.script.run.withSuccessHandler(function(r){
+      btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล';
+      var res=JSON.parse(r);
+      if(res.ok){
+        var data = res.data || {};
+        var hObj = (G.hospList || []).find(function(x){ return x.hospcode === hc; });
+        if (hObj) { hObj.lat = data.lat || d.lat_h || hObj.lat; hObj.lon = data.lon || d.lon_h || hObj.lon; hObj.pics = data.pics || hObj.pics || ''; }
+        var sumObj = (G.hospSummaryData || []).find(function(x){ return x.hospcode === hc; });
+        if (sumObj) sumObj.pics = data.pics || sumObj.pics || '';
+        toast(res.msg,'ok');
+        document.getElementById('loc-pics').value='';
+        loadHospLocData();
+        renderSummaryTable(G.hospSummaryData || []);
+        if (typeof renderHeatmap === 'function') renderHeatmap();
+      } else toast(res.msg,'err');
+    }).withFailureHandler(function(e){ btn.disabled=false; btn.innerHTML='💾 บันทึกข้อมูล'; toast(e.message,'err'); }).updateHospLocation(d);
+  });
 }
 
 function toggleHospFilter(hospcode) { var el = document.getElementById('fHosp'); if (el.value === hospcode) { el.value = ''; } else { el.value = hospcode; } try { rebuildSchoolOptions_(); } catch(e) {} applyFilters(); }
@@ -5702,7 +5877,7 @@ function loadBehDashboard() {
  
   // ข้อมูลยังโหลดไม่เสร็จ (เพิ่งเข้าเว็บใหม่ๆ) → ใช้ทาง GAS สำรองไปก่อน
   if (!G.behRows || !G.allRows || !G.allRows.length) {
-    loadBehDashboardViaGAS_(params);
+    ensureFullRowsReady_(loadBehDashboard, function(){ loadBehDashboardViaGAS_(params); });
     return;
   }
  
@@ -5731,7 +5906,9 @@ function loadBehDashboard() {
     if (fSchool && demo.school_name !== fSchool) return;
     if (fSex && demo.sex !== fSex) return;
     if (fClass && demo.school_class !== fClass) return;
-    if (fStatus && demo.status !== fStatus) return;
+    if (fStatus === 'abnormal') { if (demo.status === 'normal') return; }
+    else if (fStatus === 'referred') { if (demo.status !== 'referred' && demo.status !== 'glasses') return; }
+    else if (fStatus && demo.status !== fStatus) return;
  
     var devArr = String(r.q_device || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
     var purArr = String(r.q_purpose || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
@@ -6049,7 +6226,7 @@ function loadFupDashboard() {
   };
  
   if (!G.fupRows || !G.allRows || !G.allRows.length) {
-    loadFupDashboardViaGAS_(params);
+    ensureFullRowsReady_(loadFupDashboard, function(){ loadFupDashboardViaGAS_(params); });
     return;
   }
  
@@ -6908,9 +7085,103 @@ function clearOPFilters() {
   loadOnePageData();
 }
 
+function rowMatchesOnePageParams_(demo, params) {
+  demo = demo || {};
+  if (params.amphoe && demo.amphoe !== params.amphoe) return false;
+  if (params.tambon && demo.tambon !== params.tambon) return false;
+  if (params.hospcode && demo.hospcode !== params.hospcode) return false;
+  if (params.school && demo.school_name !== params.school) return false;
+  if (params.status === 'normal' && demo.status !== 'normal') return false;
+  if (params.status === 'abnormal' && demo.status === 'normal') return false;
+  if (params.status === 'referred' && demo.status !== 'referred' && demo.status !== 'glasses') return false;
+  if (params.status === 'glasses' && demo.status !== 'glasses') return false;
+  return true;
+}
+
+function buildOnePageBehaviorLocal_(params) {
+  var scrMap = {};
+  (G.allRows || []).forEach(function(r){ if (r.cid) scrMap[r.cid] = r; });
+  var timeMap = {'ไม่ใช้':0,'ไม่ถึง 1 ชม.':0.5,'1-2 ชม.':1.5,'2-3 ชม.':2.5,'3-4 ชม.':3.5,'มากกว่า 4 ชม.':5};
+  var distance = {'ใกล้กว่า 1 ฟุต':0,'ประมาณ 1 ฟุต':0,'มากกว่า 1 ฟุต':0};
+  var rest = {'พักทุก 20 นาที':0,'พักบ้างบางครั้ง':0,'ไม่ค่อยพัก':0};
+  var blue = {'มีการใช้':0,'ไม่มีการใช้':0};
+  var timeSlots = { we_eve:{ total:0, count:0, dist:{} } };
+  var total = 0, heavy = 0;
+
+  (G.behRows || []).forEach(function(r){
+    var cid = String(r.cid || '').trim();
+    var demo = scrMap[cid];
+    if (!demo || !rowMatchesOnePageParams_(demo, params)) return;
+    total++;
+    var wk = 0, we = 0;
+    ['q_time_wk_morn','q_time_wk_noon','q_time_wk_eve'].forEach(function(k){ var v = String(r[k] || '').trim(); if (timeMap[v] !== undefined) wk += timeMap[v]; });
+    ['q_time_we_morn','q_time_we_noon','q_time_we_eve'].forEach(function(k){ var v = String(r[k] || '').trim(); if (timeMap[v] !== undefined) we += timeMap[v]; });
+    var eve = String(r.q_time_we_eve || '').trim();
+    if (timeMap[eve] !== undefined) { timeSlots.we_eve.total += timeMap[eve]; timeSlots.we_eve.count++; timeSlots.we_eve.dist[eve] = (timeSlots.we_eve.dist[eve] || 0) + 1; }
+    if (wk > 4 || we > 4) heavy++;
+    var distVal = String(r.q_dist || '').trim(); if (distance[distVal] !== undefined) distance[distVal]++;
+    var restVal = String(r.q_rest || '').trim(); if (rest[restVal] !== undefined) rest[restVal]++;
+    var blueVal = String(r.q_blue || '').trim(); if (blueVal.indexOf('มี') === 0) blue['มีการใช้']++; else if (blueVal.indexOf('ไม่') === 0) blue['ไม่มีการใช้']++;
+  });
+
+  return {
+    kpi: { total: total, heavyUsePct: total ? Math.round(heavy / total * 100) : 0 },
+    distance: distance,
+    rest: rest,
+    blue: blue,
+    timeSlots: timeSlots
+  };
+}
+
+function buildOnePageFollowupLocal_(params) {
+  var scrMap = {};
+  (G.allRows || []).forEach(function(r){ if (r.cid) scrMap[r.cid] = r; });
+  var total = 0, daily = 0, good = 0;
+  var qol = { board:0, focus:0, headache:0 };
+  function isBetter_(v) { return v === 'ดีขึ้นมาก' || v === 'ดีขึ้น'; }
+  function isHeadBetter_(v) { return v === 'ลดลงมาก' || v === 'ลดลง'; }
+
+  (G.fupRows || []).forEach(function(r){
+    var cid = String(r.cid || '').trim();
+    var demo = scrMap[cid];
+    if (!demo || !rowMatchesOnePageParams_(demo, params)) return;
+    total++;
+    if (String(r.f_days || '').trim() === '6-7 วัน') daily++;
+    var cStatus = String(r.c_status || '').trim();
+    if (cStatus.indexOf('ดีมาก') > -1 || cStatus.indexOf('ดี แต่') > -1) good++;
+    if (isBetter_(String(r.q_board || '').trim())) qol.board++;
+    if (isBetter_(String(r.q_focus || '').trim())) qol.focus++;
+    if (isHeadBetter_(String(r.q_headache || '').trim())) qol.headache++;
+  });
+
+  return {
+    kpi: {
+      total: total,
+      dailyWearPct: total ? Math.round(daily / total * 100) : 0,
+      goodCondPct: total ? Math.round(good / total * 100) : 0
+    },
+    qolImpPct: {
+      board: total ? Math.round(qol.board / total * 100) : 0,
+      focus: total ? Math.round(qol.focus / total * 100) : 0,
+      headache: total ? Math.round(qol.headache / total * 100) : 0
+    }
+  };
+}
+
 function loadOnePageData() {
   toast('⏳ กำลังโหลดข้อมูลสรุป...', 'inf');
   var params = { amphoe: OP.filters.amphoe, tambon: OP.filters.tambon, hospcode: OP.filters.hospcode, school: OP.filters.school, status: OP.filters.status };
+  if (G.fullRowsReady && G.allRows && G.allRows.length && G.behRows && G.fupRows) {
+    OP.behData = buildOnePageBehaviorLocal_(params);
+    OP.fupData = buildOnePageFollowupLocal_(params);
+    renderOnePage();
+    return;
+  }
+  ensureFullRowsReady_(function(){
+    OP.behData = buildOnePageBehaviorLocal_(params);
+    OP.fupData = buildOnePageFollowupLocal_(params);
+    renderOnePage();
+  }, function(){
   var loaded = 0;
   function checkDone() { loaded++; if (loaded === 2) renderOnePage(); }
   
@@ -6923,6 +7194,7 @@ function loadOnePageData() {
     try { var res = JSON.parse(r); OP.fupData = res.ok ? res.data : null; } catch(e) { OP.fupData = null; }
     checkDone();
   }).withFailureHandler(function(){ OP.fupData = null; checkDone(); }).getFollowupDashboard(params);
+  });
 }
 
 function filterOnePageRows() {
@@ -7284,7 +7556,7 @@ function buildOPImages() {
     if (OP.filters.tambon && tambon !== OP.filters.tambon) return;
     if (OP.filters.hospcode && h.hospcode !== OP.filters.hospcode) return;
     if (!h.pics) return;
-    var urls = String(h.pics).split('\n').map(function(u){return u.trim();}).filter(Boolean);
+    var urls = parseImageUrls_(h.pics);
     urls.forEach(function(u){ if (!seen[u] && imgs.length < 40) { imgs.push(u); seen[u] = true; } });
   });
   imgs.sort(function(){ return Math.random() - 0.5; });
@@ -7536,3 +7808,4 @@ function loadFupDashboardViaGAS_(params) {
 </script>
 </body>
 </html>
+
