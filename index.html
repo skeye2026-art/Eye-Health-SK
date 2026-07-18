@@ -3939,7 +3939,10 @@ async function fetchScreeningTablePage_(page, forceFresh) {
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   }).then(async function(res) {
-    if (!res.ok) throw new Error('RPC get_screening_table_page error (' + res.status + ')');
+    if (!res.ok) {
+      console.warn('RPC get_screening_table_page ไม่พร้อม (' + res.status + ') ใช้ REST fallback แทน');
+      return await fetchScreeningTablePageRest_(payload);
+    }
     var data = await res.json();
     var normalized = normalizeScreeningPageResult_(data, payload);
     if (!normalized.rows.length && (G.kpi && Number(G.kpi.total || 0) > 0)) {
