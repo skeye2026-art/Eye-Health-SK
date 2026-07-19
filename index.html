@@ -110,6 +110,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .score-card{background:linear-gradient(135deg,#dbeafe,#ede9fe);border-radius:10px;padding:16px;text-align:center;margin-top:10px} .score-big{font-size:42px;font-weight:800;color:var(--accent);line-height:1} .score-label{font-size:13px;color:var(--muted);margin-top:4px}
 .btn-p{padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-weight:700;font-size:13px;transition:.15s;display:flex;align-items:center;gap:5px;cursor:pointer;} .btn-p:hover{background:var(--accent-d)} .btn-p:disabled{background:#93bbf9;cursor:not-allowed}
 .btn-sec{padding:8px 14px;background:#f1f5f9;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:12px;transition:.15s;cursor:pointer;} .btn-sec:hover{background:#e2e8f0}
+.sselect{position:relative;width:100%;min-width:0}.sselect-native{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;min-width:1px!important;padding:0!important;border:0!important}.sselect-input{width:100%;min-height:30px;border:1px solid var(--border);border-radius:6px;padding:6px 30px 6px 9px;font-size:12px;line-height:1.25;background:#fff;color:var(--text);outline:none;font-family:inherit;transition:.15s}.sselect-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,130,246,.1)}.sselect-toggle{position:absolute;right:4px;top:4px;width:24px;height:22px;border:0;background:transparent;color:var(--muted);font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer}.sselect-toggle:hover{background:#f1f5f9;color:var(--primary)}.sselect-menu{display:none;position:absolute;z-index:620;left:0;right:0;top:calc(100% + 3px);max-height:220px;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:7px;box-shadow:0 12px 28px rgba(15,23,42,.16);padding:4px}.sselect.open .sselect-menu{display:block}.sselect-option{padding:6px 8px;border-radius:5px;font-size:12px;line-height:1.25;cursor:pointer;white-space:normal;word-break:break-word}.sselect-option:hover,.sselect-option.active{background:#eef2ff;color:var(--primary)}.sselect-option.selected{font-weight:700;color:var(--accent)}.sselect-empty{padding:9px 8px;font-size:12px;color:var(--muted2);text-align:center}.sselect.disabled{opacity:.65}.sselect.disabled .sselect-input,.sselect.disabled .sselect-toggle{cursor:not-allowed;background:#f1f5f9}.sidebar .sselect{margin-bottom:6px}.beh-filter .sselect-input,.op-controls .sselect-input{min-height:35px}.op-controls .sselect{width:auto;min-width:130px;flex:0 1 180px}.fg .sselect-input{background:#fafcff}.fg .sselect-input:focus{background:#fff}
 .btn-print{padding:8px 14px;background:var(--teal);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;transition:.15s;display:flex;align-items:center;gap:4px;cursor:pointer;} .btn-print:hover{background:#0f766e} .btn-geo{padding:5px 10px;background:#0d9488;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;}
 .btn-del2{padding:3px 8px;border:1px solid #fca5a5;border-radius:4px;background:#fff;color:var(--red);font-size:10px;font-weight:600;cursor:pointer;} .btn-del2:hover{background:var(--red-bg)}
 .mov{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s} .mov.open{opacity:1;pointer-events:all} .mbox{background:#fff;border-radius:18px;padding:30px 28px;width:360px;box-shadow:0 25px 60px rgba(0,0,0,.2);position:relative} .m-ico{text-align:center;font-size:44px;margin-bottom:6px} .m-ttl{font-size:20px;font-weight:800;color:var(--primary);text-align:center;margin-bottom:2px} .m-sub{font-size:11.5px;color:var(--muted2);text-align:center;margin-bottom:22px} .lf{margin-bottom:13px} .lf label{font-size:11.5px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px} .lf input{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;outline:none;transition:.15s;background:#f8faff} .lf input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.12)} .btn-lgn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;margin-top:6px;transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px} .btn-lgn:hover{background:var(--accent-d)} .btn-lgn:disabled{background:#93bbf9;cursor:not-allowed} .btn-guest{width:100%;padding:9px;background:none;color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:12px;margin-top:7px;transition:.15s} .btn-guest:hover{background:#f1f5f9} .lerr{color:var(--red);font-size:12px;text-align:center;margin-top:8px;min-height:16px}
@@ -1256,7 +1257,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <div class="beh-filter" style="background:#fdf2f8; border-color:#fbcfe8; grid-template-columns: repeat(5, 1fr);">
   <select id="fdf-amphoe" onchange="onFupAmpChange()" style="border-color:#f9a8d4;"><option value="">อำเภอ ทั้งหมด</option></select>
   <select id="fdf-tambon" onchange="onFupTambonChange()" style="border-color:#f9a8d4;"><option value="">ตำบล ทั้งหมด</option></select>
-  <select id="fdf-hosp" onchange="onFupDashboard()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
+  <select id="fdf-hosp" onchange="onFupHospChange()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
   <select id="fdf-school" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">โรงเรียนทั้งหมด</option></select>
   <select id="fdf-sex" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
 </div>
@@ -1676,22 +1677,21 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
 <script>
 
-const SUPABASE_URL = 'https://hiqbjnlwzjcxbvqgwifi.supabase.co/rest/v1';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpcWJqbmx3empjeGJ2cWd3aWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MjA3NDUsImV4cCI6MjA5Nzk5Njc0NX0.Nup80KSYFU7dUPc0iBHd7on3AscEJZiSfdgGeqtJcb8';
-// 🟢 วางโค้ดนี้ลงไป (เพิ่มใหม่)
+const SUPABASE_URL = '';
+const SUPABASE_KEY = '';
+// Supabase direct client access is disabled. Data now comes from GAS/Google Sheets.
 async function fetchSupa(table, select = '*') {
-    const res = await fetch(`${SUPABASE_URL}/${table}?select=${select}`, {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-    });
-    if (!res.ok) throw new Error('Supabase fetch error: ' + table + ' (' + res.status + ')');
-    return res.json();
+    throw new Error('Supabase direct fetch disabled: use GAS/Google Sheets');
 }
 // ==============================================================
 // 🚀 GITHUB PAGES POLYFILL v6.2 
 // ✨ Features: Auto-Retry + Double-Click Guard + Loading Indicator
 // ==============================================================
 const CONFIG = {
-  GAS_API_URL: "https://script.google.com/macros/s/AKfycbwprr5FwI-xWZahSm8LV63f0U9_AB_IlPuVoKsK0LcPEW1CTrUPu4N13ARI01tZvU4/exec",
+  GAS_API_URL: (function(){
+    var url = "<?= getWebAppUrl_() ?>";
+    return (url && url.charAt(0) !== '<') ? url : "https://script.google.com/macros/s/AKfycbwprr5FwI-xWZahSm8LV63f0U9_AB_IlPuVoKsK0LcPEW1CTrUPu4N13ARI01tZvU4/exec";
+  })(),
   MAX_RETRY: 5,           // จำนวนครั้งสูงสุดที่จะลองใหม่
   RETRY_BASE_MS: 3000     // หน่วงเวลาฐาน: 2s → 4s → 6s + jitter
 };
@@ -1861,6 +1861,7 @@ async function _callApiWithRetry(action, payloadData) {
 }
 
 // ─── สร้าง google.script.run แบบจำลอง ───
+if (!(window.google && window.google.script && window.google.script.run)) {
 window.google = window.google || {};
 window.google.script = window.google.script || {};
 
@@ -1932,6 +1933,7 @@ window.google.script.run = (function() {
   }
   return createRunner(null, null);
 })();
+}
 // ==============================================================
 // ⬇️ โค้ดเดิมของคุณทั้งหมด (var G_extraClickIdx = ... ลงไป) ปล่อยไว้เหมือนเดิม ⬇️
 // ==============================================================
@@ -2235,42 +2237,34 @@ function getStoredSession_() {
   return session;
 }
 
+function gasRunJson_(methodName) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return new Promise(function(resolve, reject) {
+    var runner = google.script.run
+      .withSuccessHandler(function(r) {
+        try {
+          var parsed = (typeof r === 'string') ? JSON.parse(r) : r;
+          resolve(parsed);
+        } catch (e) {
+          reject(e);
+        }
+      })
+      .withFailureHandler(function(e) {
+        reject(e || new Error('GAS call failed: ' + methodName));
+      });
+    runner[methodName].apply(runner, args);
+  });
+}
+
 async function loadInitDataDirect_(forceFresh) {
   if (!forceFresh && INIT_DATA_CACHE.data && (Date.now() - INIT_DATA_CACHE.ts) < INIT_DATA_CACHE.ttl) {
     return INIT_DATA_CACHE.data;
   }
   if (!forceFresh && _initDataPromise) return _initDataPromise;
 
-  _initDataPromise = Promise.all([
-    fetchSupa('settings'),
-    fetchSupa('hosp_data'),
-    fetchSupa('school_data'),
-    fetchSupa('va_mapping'),
-    fetchSupa('links_data', '*&order=ord.asc'),
-    fetchSupa('video_data', '*&order=ord.asc')
-  ]).then(function(results) {
-    var setRes = results[0], hospRes = results[1], schRes = results[2], vaRes = results[3], linkRes = results[4], vidRes = results[5];
-    var settings = {};
-    setRes.forEach(function(r) { if (r.key) settings[r.key] = r.value; });
-
-    var vaList = [], vaMap = {};
-    vaRes.forEach(function(r) {
-      if (r.label && r.label !== 'หน่วยฟุต (F)') {
-        vaList.push(r.label);
-        if (r.id) vaMap[r.id] = r.label;
-      }
-    });
-
-    var data = {
-      settings: settings,
-      natList: ['ไทย', 'พม่า', 'กัมพูชา', 'ลาว', 'อื่นๆ'],
-      hospList: hospRes.map(function(h) { return { hospcode:h.hospcode, name:h.name, tambon:h.tambon, amphoe:h.amphoe, province:h.province || 'สมุทรสาคร', lat:h.lat, lon:h.lon }; }).filter(function(h) { return h.hospcode; }),
-      schoolList: schRes.map(function(s) { return { code:s.code, name:s.name, address:s.address, aid:s.aid, lat:s.lat, lon:s.lon }; }).filter(function(s) { return s.name; }),
-      vaList: vaList,
-      vaMap: vaMap,
-      links: linkRes.map(function(l) { return { id:l.id, label:l.label, url:l.url, icon:l.iconurl, order:l.ord }; }),
-      videos: vidRes.map(function(v) { return { id:v.id, label:v.label, url:v.url, order:v.ord }; })
-    };
+  _initDataPromise = gasRunJson_('getInitData').then(function(res) {
+    if (!res || !res.ok) throw new Error((res && res.msg) || 'โหลดข้อมูลเริ่มต้นไม่สำเร็จ');
+    var data = res.data || {};
     INIT_DATA_CACHE = { data:data, ts:Date.now(), ttl:INIT_DATA_CACHE.ttl };
     return data;
   }).finally(function() {
@@ -2290,7 +2284,8 @@ function applyInitData_(data) {
   G.natList = data.natList || ['ไทย', 'พม่า', 'กัมพูชา', 'ลาว', 'อื่นๆ'];
   G.links = data.links || [];
   G.videos = data.videos || [];
-  G.session = getStoredSession_();
+  var storedSession = getStoredSession_();
+  G.session = (data.session && data.session.loggedIn) ? data.session : storedSession;
 }
 
 function clearTablePageCache_() {
@@ -2454,7 +2449,210 @@ function convertFile() {
     reader.readAsText(file, encoding);
 }
 
-function toast(msg, type) { var wrap = document.getElementById('toastWrap'); if (!wrap) return; var t = document.createElement('div'); var icon = type === 'ok' ? '✅ ' : type === 'err' ? '❌ ' : 'ℹ️ '; t.className = 'toast t-' + (type || 'inf'); t.innerHTML = icon + msg; wrap.appendChild(t); setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(100%)'; t.style.transition = 'all 0.3s ease'; setTimeout(function() { t.remove(); }, 300); }, 3000); }
+function toast(msg, type) { window.__lastActionToastAt = Date.now(); var wrap = document.getElementById('toastWrap'); if (!wrap) return; var t = document.createElement('div'); var icon = type === 'ok' ? '✅ ' : type === 'err' ? '❌ ' : 'ℹ️ '; t.className = 'toast t-' + (type || 'inf'); t.innerHTML = icon + msg; wrap.appendChild(t); setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(100%)'; t.style.transition = 'all 0.3s ease'; setTimeout(function() { t.remove(); }, 300); }, 3000); }
+
+var SEARCHABLE_SELECT_IDS_ = [
+  'fAmp','fTambon','fHosp','fSch',
+  'bf-amphoe','bf-tambon','bf-hosp','bf-school',
+  'fdf-amphoe','fdf-tambon','fdf-hosp','fdf-school',
+  'op-f-amphoe','op-f-tambon','op-f-hospcode','op-f-school',
+  's-hc','sat-hc','loc-hc'
+];
+
+function optionText_(opt) {
+  return opt ? String(opt.textContent || opt.innerText || '').replace(/\s+/g, ' ').trim() : '';
+}
+function getSearchableOptions_(sel) {
+  return Array.prototype.slice.call(sel.options || []).map(function(opt, idx) {
+    return { value: opt.value, text: optionText_(opt), index: idx, disabled: !!opt.disabled };
+  }).filter(function(opt) { return opt.text !== ''; });
+}
+function renderSearchableMenu_(sel, query) {
+  var ui = sel && sel._searchUi;
+  if (!ui) return;
+  var q = String(query || '').trim().toLowerCase();
+  var rows = getSearchableOptions_(sel).filter(function(opt) {
+    return !q || opt.text.toLowerCase().indexOf(q) !== -1 || String(opt.value || '').toLowerCase().indexOf(q) !== -1;
+  });
+  ui.menu.innerHTML = '';
+  if (!rows.length) {
+    var empty = document.createElement('div');
+    empty.className = 'sselect-empty';
+    empty.textContent = 'ไม่พบรายการที่ค้นหา';
+    ui.menu.appendChild(empty);
+    return;
+  }
+  rows.slice(0, 120).forEach(function(opt) {
+    var item = document.createElement('div');
+    item.className = 'sselect-option' + (sel.value === opt.value ? ' selected' : '');
+    item.textContent = opt.text;
+    item.dataset.value = opt.value;
+    item.dataset.index = String(opt.index);
+    item.addEventListener('mousedown', function(ev) {
+      ev.preventDefault();
+      if (opt.disabled) return;
+      sel.selectedIndex = opt.index;
+      syncSearchableSelect_(sel);
+      closeSearchableSelect_(sel);
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      sel.focus();
+    });
+    ui.menu.appendChild(item);
+  });
+}
+function syncSearchableSelect_(sel) {
+  var ui = sel && sel._searchUi;
+  if (!ui) return;
+  var opt = sel.options && sel.options[sel.selectedIndex];
+  ui.input.value = optionText_(opt);
+  ui.wrap.classList.toggle('disabled', !!sel.disabled);
+  ui.input.disabled = !!sel.disabled;
+  ui.toggle.disabled = !!sel.disabled;
+  renderSearchableMenu_(sel, '');
+}
+function openSearchableSelect_(sel, query) {
+  var ui = sel && sel._searchUi;
+  if (!ui || sel.disabled) return;
+  document.querySelectorAll('.sselect.open').forEach(function(wrap) {
+    if (wrap !== ui.wrap) wrap.classList.remove('open');
+  });
+  ui.wrap.classList.add('open');
+  renderSearchableMenu_(sel, query || '');
+}
+function closeSearchableSelect_(sel) {
+  var ui = sel && sel._searchUi;
+  if (ui) ui.wrap.classList.remove('open');
+}
+function installSearchableSelect_(id) {
+  var sel = document.getElementById(id);
+  if (!sel || sel._searchUi || sel.tagName !== 'SELECT') return;
+  var wrap = document.createElement('div');
+  wrap.className = 'sselect';
+  sel.parentNode.insertBefore(wrap, sel);
+  wrap.appendChild(sel);
+  sel.classList.add('sselect-native');
+
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'sselect-input';
+  input.autocomplete = 'off';
+  input.placeholder = 'พิมพ์เพื่อค้นหา...';
+  var toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'sselect-toggle';
+  toggle.innerHTML = '⌄';
+  toggle.setAttribute('aria-label', 'เปิดรายการ');
+  var menu = document.createElement('div');
+  menu.className = 'sselect-menu';
+  wrap.insertBefore(input, sel);
+  wrap.appendChild(toggle);
+  wrap.appendChild(menu);
+  sel._searchUi = { wrap: wrap, input: input, toggle: toggle, menu: menu };
+
+  input.addEventListener('focus', function() {
+    openSearchableSelect_(sel, '');
+    setTimeout(function(){ input.select(); }, 0);
+  });
+  input.addEventListener('input', function() {
+    openSearchableSelect_(sel, input.value);
+  });
+  input.addEventListener('keydown', function(ev) {
+    var opts = Array.prototype.slice.call(menu.querySelectorAll('.sselect-option'));
+    var active = menu.querySelector('.sselect-option.active');
+    var idx = active ? opts.indexOf(active) : -1;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      if (!opts.length) return;
+      if (active) active.classList.remove('active');
+      idx = ev.key === 'ArrowDown' ? Math.min(idx + 1, opts.length - 1) : Math.max(idx - 1, 0);
+      if (idx < 0) idx = 0;
+      opts[idx].classList.add('active');
+      opts[idx].scrollIntoView({ block: 'nearest' });
+    } else if (ev.key === 'Enter') {
+      if (active) {
+        ev.preventDefault();
+        active.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      }
+    } else if (ev.key === 'Escape') {
+      closeSearchableSelect_(sel);
+      syncSearchableSelect_(sel);
+    }
+  });
+  toggle.addEventListener('click', function(ev) {
+    ev.preventDefault();
+    if (wrap.classList.contains('open')) closeSearchableSelect_(sel);
+    else { input.focus(); openSearchableSelect_(sel, ''); }
+  });
+  sel.addEventListener('change', function() { syncSearchableSelect_(sel); });
+  new MutationObserver(function() { syncSearchableSelect_(sel); })
+    .observe(sel, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
+  syncSearchableSelect_(sel);
+}
+function initSearchableDropdowns_() {
+  SEARCHABLE_SELECT_IDS_.forEach(installSearchableSelect_);
+  refreshSearchableSelects_();
+}
+function refreshSearchableSelects_() {
+  SEARCHABLE_SELECT_IDS_.forEach(function(id) {
+    var sel = document.getElementById(id);
+    if (sel && sel._searchUi) syncSearchableSelect_(sel);
+  });
+}
+document.addEventListener('click', function(ev) {
+  if (!ev.target || !ev.target.closest) return;
+  if (ev.target.closest('.sselect')) return;
+  document.querySelectorAll('.sselect.open').forEach(function(wrap) { wrap.classList.remove('open'); });
+});
+
+function inferButtonActionHint_(btn) {
+  if (!btn || btn.disabled || btn.dataset.noActionHint === '1') return '';
+  var onclick = String(btn.getAttribute('onclick') || '');
+  var text = String(btn.textContent || btn.title || '').replace(/\s+/g, ' ').trim();
+  var tag = String(btn.tagName || '').toLowerCase();
+  if (tag === 'a' && btn.classList && btn.classList.contains('custom-btn')) return 'กำลังเปิดลิงก์' + (text ? ': ' + text : '') + '...';
+  if (btn.classList && btn.classList.contains('kpi')) return 'กำลังกรองข้อมูลตามตัวชี้วัด...';
+  if (btn.classList && btn.classList.contains('beh-k')) return 'กำลังกรองข้อมูลใน Dashboard...';
+  if (/closePanel|closeLogin|closePwdMgr|closePrintModal|closeDel|closeFlow|closeImg/.test(onclick) || /ยกเลิก|ปิดหน้าต่าง|ปิด$/.test(text)) return '';
+  if (/openPanel\('scr'\)/.test(onclick)) return 'กำลังเปิดแบบคัดกรองสายตา...';
+  if (/openPanel\('beh'\)/.test(onclick)) return 'กำลังเปิดแบบสอบถามพฤติกรรมหน้าจอ...';
+  if (/openPanel\('fup'\)/.test(onclick)) return 'กำลังเปิดแบบติดตามผลแว่นตา...';
+  if (/openPanel\('sat'\)/.test(onclick)) return 'กำลังเปิดแบบประเมินความพึงพอใจ...';
+  if (/openPanel\('pre'\)/.test(onclick)) return 'กำลังเปิด Pre-test...';
+  if (/openPanel\('post'\)/.test(onclick)) return 'กำลังเปิด Post-test...';
+  if (/openPanel\('manual'\)/.test(onclick)) return 'กำลังเปิดคู่มือ...';
+  if (/openPanel\('conv'\)/.test(onclick)) return 'กำลังเปิดระบบนำเข้าไฟล์...';
+  if (/openBehDashboard/.test(onclick)) return 'กำลังเปิด Dashboard พฤติกรรม...';
+  if (/openFupDashboard/.test(onclick)) return 'กำลังเปิด Dashboard ติดตามแว่นตา...';
+  if (/openOnePagePanel/.test(onclick)) return 'กำลังเปิด One Page Dashboard...';
+  if (/openLogin/.test(onclick)) return 'กำลังเปิดหน้าต่างเข้าสู่ระบบ...';
+  if (/openPwdMgr/.test(onclick)) return 'กำลังเปิดหน้าต่างเปลี่ยนรหัส...';
+  if (/doLogout/.test(onclick)) return 'กำลังออกจากระบบ...';
+  if (/clear|ล้าง/.test(onclick + text)) return 'กำลังล้างตัวกรอง...';
+  if (/print|Print|พิมพ์|ปริ้น/.test(onclick + text)) return 'กำลังเตรียมพิมพ์...';
+  if (/export|Export|download|ดาวน์โหลด|โหลด Template/.test(onclick + text)) return 'กำลังเตรียมไฟล์ดาวน์โหลด...';
+  if (/import|Import|นำเข้า/.test(onclick + text)) return 'กำลังนำเข้าข้อมูล...';
+  if (/convert|แปลง/.test(onclick + text)) return 'กำลังแปลงไฟล์...';
+  if (/save|บันทึก/.test(onclick + text)) return 'กำลังบันทึกข้อมูล...';
+  if (/delete|del|ลบ/.test(onclick + text)) return 'กำลังลบข้อมูล...';
+  if (/edit|แก้ไข/.test(onclick + text)) return 'กำลังเปิดข้อมูลเพื่อแก้ไข...';
+  if (/reload|refresh|โหลดใหม่|รีโหลด/.test(onclick + text)) return 'กำลังโหลดข้อมูลใหม่...';
+  if (/test|ทดสอบ/.test(onclick + text)) return 'กำลังทดสอบการทำงาน...';
+  if (/getGeo|พิกัด/.test(onclick + text)) return 'กำลังขอพิกัดจากอุปกรณ์...';
+  if (/open|จัดการ|ตั้งค่า|ดู/.test(onclick + text)) return 'กำลังเปิดหน้าต่าง...';
+  return '';
+}
+document.addEventListener('click', function(ev) {
+  if (!ev.target || !ev.target.closest) return;
+  var btn = ev.target.closest('button, a.custom-btn, [role="button"], .kpi, .beh-k');
+  if (!btn) return;
+  var msg = btn.getAttribute('data-action-hint') || inferButtonActionHint_(btn);
+  if (!msg) return;
+  var clickedAt = Date.now();
+  setTimeout(function() {
+    if ((window.__lastActionToastAt || 0) >= clickedAt) return;
+    toast(msg, 'inf');
+  }, 160);
+}, true);
 
 function hasActiveDashboardFilter_() {
   var ids = ['fAmp', 'fTambon', 'fHosp', 'fSch', 'fStat', 'fSex', 'srchBox'];
@@ -3604,6 +3802,7 @@ function buildDropdowns() {
       natOpts = '<option value="ไทย">ไทย</option><option value="พม่า">พม่า</option><option value="กัมพูชา">กัมพูชา</option>';
   }
   if(document.getElementById('s-nat')) document.getElementById('s-nat').innerHTML = natOpts;
+  initSearchableDropdowns_();
 }
 
 function onHcChange() {
@@ -3644,12 +3843,14 @@ function rebuildTambonOptions_(amp) {
   tambons.sort();
   var html = '<option value="">ทั้งหมด</option>'; tambons.forEach(function(t){ html += '<option>'+t+'</option>'; });
   document.getElementById('fTambon').innerHTML = html;
+  refreshSearchableSelects_();
 }
 function rebuildHospOptions_(amp, tam) {
   var html = '<option value="">ทั้งหมด</option>';
   G.hospList.filter(function(h){ return (!amp||h.amphoe===amp) && (!tam||h.tambon===tam); })
     .forEach(function(h){ html += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
   document.getElementById('fHosp').innerHTML = html;
+  refreshSearchableSelects_();
 }
 function rebuildSchoolOptions_() {
   var hc = document.getElementById('fHosp').value;
@@ -3665,6 +3866,7 @@ function rebuildSchoolOptions_() {
   var html = '<option value="">ทั้งหมด</option>';
   Object.keys(schools).sort().forEach(function(s){ html += '<option>'+s+'</option>'; });
   document.getElementById('fSch').innerHTML = html;
+  refreshSearchableSelects_();
 }
 function updateAuthUI() {
   // [v6.3] Reset admin-only buttons ก่อนเสมอ ป้องกัน state ค้างจาก session เดิม
@@ -3833,17 +4035,10 @@ function loadDashboard(params, forceFresh) {
   document.getElementById('hospSumBody').innerHTML =
     '<tr><td colspan="12" style="text-align:center;padding:12px;">⏳ กำลังโหลด...</td></tr>';
  
-  // 🚀 Phase 1: RPC เร็ว — คำนวณ KPI/กราฟ/ตารางสรุปในฐานข้อมูลแล้วส่งกลับมาแค่ไม่กี่ KB
-  //    แสดงผลได้ภายใน ~1-2 วิ โดยยังไม่ต้องรอข้อมูลรายคนเต็ม
-  var userHosp = (G.session.loggedIn && G.session.hospcode !== 'all') ? G.session.hospcode : '';
-  fetchDashboardRPC_(userHosp, forceFresh)
-    .then(function (partial) { applyPartialDashboardResult_(partial); })
-    .catch(function (e) { console.warn('Phase1 RPC ไม่สำเร็จ (ไม่ร้ายแรง รอ Phase2 แทน):', e); });
- 
-  // Phase 1.5: ตารางรายบุคคลหน้าแรกมาจาก RPC แยกต่างหากก่อน เพื่อให้เห็นรายการทันที
+  // ตารางรายบุคคลหน้าแรกโหลดผ่าน GAS/Google Sheets ก่อน แล้วข้อมูลเต็มตามมาในขั้นถัดไป
   try { if (typeof loadTablePage === 'function') loadTablePage(1, !!forceFresh); } catch(e) { console.warn('loadTablePage initial failed:', e); }
 
-  // Phase 2: โหลดชุดเต็มแบบหน่วงเวลาเล็กน้อยหลังหน้าแรกแสดง ลดการแย่ง network/main thread ตอนเปิดระบบ
+  // โหลดชุดเต็มแบบหน่วงเวลาเล็กน้อยหลังหน้าแรกแสดง ลดการแย่ง network/main thread ตอนเปิดระบบ
   scheduleFullDashboardLoad_(params, forceFresh, paramsKey, hasActiveDashboardFilter_() ? 0 : 1800);
 }
 
@@ -3890,30 +4085,7 @@ function ensureFullRowsReady_(onReady, onFallback) {
  
 // ---- ยิง RPC ตัวเดียว ได้ผลสรุปกลับมาเร็วมาก (ไม่มีข้อมูลรายคน) ----
 async function fetchDashboardRPC_(userHosp, forceFresh) {
-  var cacheKey = userHosp || 'all';
-  if (!forceFresh && DASH_RPC_CACHE.data && DASH_RPC_CACHE.key === cacheKey &&
-      (Date.now() - DASH_RPC_CACHE.ts) < DASH_RPC_CACHE.ttl) {
-    return DASH_RPC_CACHE.data;
-  }
-  if (!forceFresh && DASH_RPC_INFLIGHT[cacheKey]) return DASH_RPC_INFLIGHT[cacheKey];
-
-  var rpcPromise = fetch(SUPABASE_URL + '/rpc/get_dashboard_summary', {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ p_user_hosp: userHosp || '' })
-  }).then(async function(res) {
-    if (!res.ok) throw new Error('RPC get_dashboard_summary error (' + res.status + ')');
-    var data = await res.json();
-    DASH_RPC_CACHE = { data:data, ts:Date.now(), ttl:DASH_RPC_CACHE.ttl, key:cacheKey };
-    return data;
-  }).finally(function() {
-    if (DASH_RPC_INFLIGHT[cacheKey] === rpcPromise) delete DASH_RPC_INFLIGHT[cacheKey];
-  });
-  DASH_RPC_INFLIGHT[cacheKey] = rpcPromise;
-  return rpcPromise;
+  return Promise.reject(new Error('Supabase RPC disabled: running dashboard through GAS/Google Sheets'));
 }
 
 function normalizeNullableNumber_(v) {
@@ -3979,51 +4151,7 @@ function normalizeScreeningPageResult_(data, payload) {
 }
 
 async function fetchScreeningTablePageRest_(payload) {
-  var page = Number(payload.p_page || 1);
-  var pageSize = Number(payload.p_page_size || 50);
-  var from = (page - 1) * pageSize;
-  var to = from + pageSize - 1;
-  var qs = ['select=*', 'order=cid.asc'];
-  var hc = payload.p_hospcode || payload.p_user_hosp || '';
-  if (hc) qs.push('hospcode=eq.' + encodeURIComponent(hc));
-  if (payload.p_amphoe) qs.push('amphoe=eq.' + encodeURIComponent(payload.p_amphoe));
-  if (payload.p_tambon) qs.push('tambon=eq.' + encodeURIComponent(payload.p_tambon));
-  if (payload.p_school) qs.push('school_name=eq.' + encodeURIComponent(payload.p_school));
-  if (payload.p_sex) qs.push('sex=eq.' + encodeURIComponent(payload.p_sex));
-  var search = String(payload.p_search || '').trim();
-  if (search) {
-    var s = encodeURIComponent('*' + search.replace(/[(),]/g, ' ') + '*');
-    qs.push('or=(cid.ilike.' + s + ',student_name.ilike.' + s + ',fname.ilike.' + s + ',lname.ilike.' + s + ')');
-  }
-
-  var res = await fetch(SUPABASE_URL + '/screening_data?' + qs.join('&'), {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Range-Unit': 'items',
-      'Range': from + '-' + to,
-      'Prefer': 'count=exact'
-    }
-  });
-  if (!res.ok) throw new Error('REST screening_data error (' + res.status + ')');
-  var rows = await res.json();
-  var rangeHeader = res.headers.get('Content-Range') || '';
-  var total = Number((rangeHeader.split('/')[1] || '').trim());
-  if (isNaN(total)) total = rows.length;
-  var normalized = {
-    rows: rows.map(normalizeScreeningTableRow_),
-    total: total,
-    totalPages: Math.max(1, Math.ceil(total / pageSize)),
-    page: page
-  };
-  if (payload.p_status) {
-    normalized.rows = normalized.rows.filter(function(r) {
-      if (payload.p_status === 'abnormal') return r.status !== 'normal';
-      if (payload.p_status === 'referred') return r.status === 'referred' || r.status === 'glasses';
-      return r.status === payload.p_status;
-    });
-  }
-  return normalized;
+  throw new Error('Supabase REST fallback disabled: use GAS/Google Sheets');
 }
 
 async function fetchScreeningTablePage_(page, forceFresh) {
@@ -4049,21 +4177,9 @@ async function fetchScreeningTablePage_(page, forceFresh) {
   if (!forceFresh && cached && (Date.now() - cached.ts) < TABLE_PAGE_CACHE.ttl) return cached.data;
   if (!forceFresh && _tablePageInFlight.has(cacheKey)) return _tablePageInFlight.get(cacheKey);
 
-  var pagePromise = fetch(SUPABASE_URL + '/rpc/get_screening_table_page', {
-    method: 'POST',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  }).then(async function(res) {
-    if (!res.ok) {
-      console.warn('RPC get_screening_table_page ไม่พร้อม (' + res.status + ') ใช้ REST fallback แทน');
-      return await fetchScreeningTablePageRest_(payload);
-    }
-    var data = await res.json();
-    var normalized = normalizeScreeningPageResult_(data, payload);
-    if (!normalized.rows.length && (G.kpi && Number(G.kpi.total || 0) > 0)) {
-      try { normalized = await fetchScreeningTablePageRest_(payload); }
-      catch(restErr) { console.warn('REST table fallback failed:', restErr); }
-    }
+  var pagePromise = gasRunJson_('getScreeningPaginated', payload).then(function(res) {
+    if (!res || !res.ok) throw new Error((res && res.msg) || 'โหลดหน้าตารางไม่สำเร็จ');
+    var normalized = normalizeScreeningPageResult_(res.data || {}, payload);
     TABLE_PAGE_CACHE.map.set(cacheKey, { data:normalized, ts:Date.now() });
     return normalized;
   }).finally(function() {
@@ -4113,112 +4229,29 @@ function loadDashboardViaGAS_(params) {
  
 // ---- ดึง 6 ตารางตรงจาก Supabase พร้อมกัน แล้วคำนวณผลเหมือน getDashboardData() ฝั่ง GAS ----
 async function loadDashboardDirect_(params, forceFresh) {
-  var userHosp = (G.session.loggedIn && G.session.role !== 'admin' && G.session.hospcode && G.session.hospcode !== 'all')
-    ? G.session.hospcode : '';
-
-  // 🚀 ถ้ามี raw data cache ที่ยังไม่หมดอายุ และ scope ผู้ใช้ตรงกัน ให้ใช้ของเดิมเลย ไม่ต้องยิง Supabase ซ้ำ
-  var cacheFresh = !forceFresh && RAW_DATA_CACHE.scrRows &&
-    RAW_DATA_CACHE.userHosp === userHosp &&
-    (Date.now() - RAW_DATA_CACHE.ts) < RAW_DATA_CACHE.ttl;
-
-  var scrRows, hospRows, satRows, preRows, postRows, behRows, fupRows;
-
-  if (cacheFresh) {
-    scrRows = RAW_DATA_CACHE.scrRows; hospRows = RAW_DATA_CACHE.hospRows; satRows = RAW_DATA_CACHE.satRows;
-    preRows = RAW_DATA_CACHE.preRows; postRows = RAW_DATA_CACHE.postRows;
-    behRows = RAW_DATA_CACHE.behRows; fupRows = RAW_DATA_CACHE.fupRows;
-  } else {
-    var scrSelect = userHosp ? ('*&hospcode=eq.' + encodeURIComponent(userHosp)) : '*';
-
-    if (userHosp) {
-      // ผู้ใช้ถูกจำกัดสิทธิ์เฉพาะ รพ.สต. ตัวเอง — ต้องรู้ cid ก่อนถึงจะกรองตารางที่เหลือได้ จึงยังต้องรอ scrRows ก่อน
-      scrRows = await fetchSupaAll('screening_data', scrSelect);
-      var cids = scrRows.map(function (r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
-      var results = await Promise.all([
-        fetchSupaAll('hosp_data'),
-        fetchSupaByCidChunks_('satisfaction_data', cids),
-        fetchSupaByCidChunks_('pre_test', cids),
-        fetchSupaByCidChunks_('post_test', cids),
-        fetchSupaByCidChunks_('behavior_data', cids),
-        fetchSupaByCidChunks_('followup_data', cids)
-      ]);
-      hospRows = results[0]; satRows = results[1]; preRows = results[2];
-      postRows = results[3]; behRows = results[4]; fupRows = results[5];
-    } else {
-      // 🚀 admin/guest ไม่ต้องกรองตาม cid — ยิงทั้ง 7 ตารางพร้อมกันทีเดียว ไม่ต้องรอ screening_data ก่อน
-      var results = await Promise.all([
-        fetchSupaAll('screening_data', scrSelect),
-        fetchSupaAll('hosp_data'),
-        fetchSupaAll('satisfaction_data'),
-        fetchSupaAll('pre_test'),
-        fetchSupaAll('post_test'),
-        fetchSupaAll('behavior_data'),
-        fetchSupaAll('followup_data')
-      ]);
-      scrRows = results[0]; hospRows = results[1]; satRows = results[2];
-      preRows = results[3]; postRows = results[4]; behRows = results[5]; fupRows = results[6];
-    }
-
-    RAW_DATA_CACHE = {
-      scrRows: scrRows, hospRows: hospRows, satRows: satRows, preRows: preRows,
-      postRows: postRows, behRows: behRows, fupRows: fupRows,
-      ts: Date.now(), ttl: RAW_DATA_CACHE.ttl, userHosp: userHosp
-    };
-  }
-
-  G.behRows = behRows;
-  G.fupRows = fupRows;
-
-  return computeDashboardStats_(
-    scrRows, hospRows, satRows, preRows, postRows, behRows, fupRows,
-    params, userHosp
-  );
+  params = params || {};
+  if (G.session.loggedIn && G.session.hospcode !== 'all') params.userHosp = G.session.hospcode;
+  var res = await gasRunJson_('getDashboardData', params);
+  if (!res || !res.ok) throw new Error((res && res.msg) || 'โหลด Dashboard ไม่สำเร็จ');
+  var data = res.data || {};
+  G.behRows = data.behRows || null;
+  G.fupRows = data.fupRows || null;
+  return {
+    chartData: { amphoe: data.barChartAmphoe || [], hosp: data.barChartHosp || [], school: data.barChartSchool || [] },
+    kpi: data.kpi || {},
+    hospSummaryData: data.hospSummary || [],
+    satCharts: data.satCharts || {},
+    allRows: data.rows || []
+  };
 }
  
 // ---- ดึงข้อมูลทั้งตาราง: ยิงหน้าแรกก่อนรู้จำนวนรวม แล้วยิงหน้าที่เหลือ "พร้อมกันทีเดียว" (ไม่ต้องรอทีละหน้า) ----
 async function fetchSupaAll(table, select) {
-  select = select || '*';
-  var PAGE = 1000;
-  var url = SUPABASE_URL + '/' + table + '?select=' + select;
-  var baseHeaders = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
-
-  var firstRes = await fetch(url, {
-    headers: Object.assign({}, baseHeaders, { 'Range-Unit': 'items', 'Range': '0-' + (PAGE - 1), 'Prefer': 'count=exact' })
-  });
-  if (!firstRes.ok) throw new Error('Supabase fetch error: ' + table + ' (' + firstRes.status + ')');
-  var all = await firstRes.json();
-
-  if (all.length === PAGE) {
-    var rangeHeader = firstRes.headers.get('Content-Range') || '';
-    var total = parseInt(rangeHeader.split('/')[1], 10);
-    if (!isNaN(total) && total > PAGE) {
-      var reqs = [];
-      for (var from = PAGE; from < total && from <= 300000; from += PAGE) {
-        reqs.push(
-          fetch(url, { headers: Object.assign({}, baseHeaders, { 'Range-Unit': 'items', 'Range': from + '-' + (from + PAGE - 1) }) })
-            .then(function (r) { return r.ok ? r.json() : []; })
-        );
-      }
-      var restChunks = await Promise.all(reqs);
-      restChunks.forEach(function (chunk) { if (Array.isArray(chunk)) all = all.concat(chunk); });
-    }
-  }
-  return all;
+  throw new Error('Supabase direct fetch disabled: use GAS/Google Sheets');
 }
 
 async function fetchSupaByCidChunks_(table, cids) {
-  if (!cids || cids.length === 0) return [];
-  var CHUNK = 250;
-  var reqs = [];
-  for (var i = 0; i < cids.length; i += CHUNK) {
-    reqs.push(fetchSupaAll(table, '*&cid=in.(' + cids.slice(i, i + CHUNK).join(',') + ')'));
-  }
-  var chunks = await Promise.all(reqs);
-  var out = [];
-  chunks.forEach(function(chunk) {
-    if (Array.isArray(chunk)) out = out.concat(chunk);
-  });
-  return out;
+  throw new Error('Supabase direct fetch disabled: use GAS/Google Sheets');
 }
  
 // ---- เกณฑ์คำนวณสถานะ / คะแนน / ความเสี่ยง (พอร์ตมาจาก Code.gs ทุกตัวอักษร) ----
@@ -5098,6 +5131,7 @@ function openPanel(id) {
   } 
   document.getElementById('ov-'+id).classList.add('open'); 
   document.getElementById('panel-'+id).classList.add('open'); 
+  setTimeout(refreshSearchableSelects_, 0);
 }
 function closePanel(id) { document.getElementById('ov-'+id).classList.remove('open'); document.getElementById('panel-'+id).classList.remove('open'); }
 function openLogin() { document.getElementById('lgErr').textContent = ''; document.getElementById('loginMov').classList.add('open'); document.getElementById('lgUser').focus(); }
@@ -5925,6 +5959,7 @@ function openBehDashboard() {
   rebuildTambonSel_('bf-tambon', document.getElementById('bf-amphoe').value);
   // 🆕 เติมโรงเรียนให้ตรงตามขอบเขตอำเภอ/รพ.สต. ที่ล็อกไว้ตั้งแต่เปิดแผง (แทนการโชว์ทุกโรงเรียน)
   rebuildSchoolSel_('bf-school', document.getElementById('bf-amphoe').value, document.getElementById('bf-tambon').value, document.getElementById('bf-hosp').value);
+  initSearchableDropdowns_();
   openPanel('behdash');
   loadBehDashboard();
 }
@@ -5966,12 +6001,14 @@ function rebuildTambonSel_(id, amp) {
   var html = '<option value="">ตำบล ทั้งหมด</option>';
   tambons.forEach(function (t) { html += '<option>' + t + '</option>'; });
   document.getElementById(id).innerHTML = html;
+  refreshSearchableSelects_();
 }
 function rebuildHospSel_(id, amp, tam) {
   var html = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.filter(function(h){ return (!amp||h.amphoe===amp)&&(!tam||h.tambon===tam); })
     .forEach(function(h){ html += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
   document.getElementById(id).innerHTML = html;
+  refreshSearchableSelects_();
 }
 function rebuildSchoolSel_(id, amp, tam, hc) {
   var validHcs = {};
@@ -5987,6 +6024,7 @@ function rebuildSchoolSel_(id, amp, tam, hc) {
   var html = '<option value="">โรงเรียนทั้งหมด</option>';
   schools.forEach(function (s) { html += '<option value="' + e_(s) + '">' + e_(s) + '</option>'; });
   document.getElementById(id).innerHTML = html;
+  refreshSearchableSelects_();
 }
 
 function clearBehFilters() {
@@ -6313,6 +6351,7 @@ function openFupDashboard() {
   rebuildTambonSel_('fdf-tambon', document.getElementById('fdf-amphoe').value);
   // 🆕 เติมโรงเรียนให้ตรงตามขอบเขตที่ล็อกไว้ตั้งแต่เปิดแผง
   rebuildSchoolSel_('fdf-school', document.getElementById('fdf-amphoe').value, document.getElementById('fdf-tambon').value, document.getElementById('fdf-hosp').value);
+  initSearchableDropdowns_();
   openPanel('fupdash');
   loadFupDashboard();
 }
@@ -7151,6 +7190,7 @@ function buildOnePageFilters() {
   }
   
   rebuildTambonOptions();
+  initSearchableDropdowns_();
 }
 
 function rebuildTambonOptions() {
@@ -7164,6 +7204,7 @@ function rebuildTambonOptions() {
   tambons.forEach(function(t){ html += '<option value="'+e_(t)+'">'+e_(t)+'</option>'; });
   document.getElementById('op-f-tambon').innerHTML = html;
   rebuildHcOptions();
+  refreshSearchableSelects_();
 }
 
 function rebuildHcOptions() {
@@ -7183,6 +7224,7 @@ function rebuildHcOptions() {
     document.getElementById('op-f-hospcode').disabled = false;
   }
   rebuildSchoolOptions();
+  refreshSearchableSelects_();
 }
 
 function rebuildSchoolOptions() {
@@ -7202,6 +7244,7 @@ function rebuildSchoolOptions() {
   var html = '<option value="">โรงเรียน ทั้งหมด</option>';
   schools.forEach(function(s){ html += '<option value="'+e_(s)+'">'+e_(s)+'</option>'; });
   document.getElementById('op-f-school').innerHTML = html;
+  refreshSearchableSelects_();
 }
 
 function onOPAmpChange()    { OP.filters.amphoe   = document.getElementById('op-f-amphoe').value;   OP.filters.tambon=''; OP.filters.hospcode=''; OP.filters.school=''; rebuildTambonOptions(); loadOnePageData(); }
