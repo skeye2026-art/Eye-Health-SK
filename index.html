@@ -3913,6 +3913,7 @@ function renderSatBreakdownChart() {
   if (G.satBreakdownInst) G.satBreakdownInst.destroy();
   var type = document.getElementById('satBreakdownType').value; var dataArray = G.satCharts[type] || [];
   var labels = dataArray.map(function(d){ return d.label + ' (' + d.avg.toFixed(2) + ')'; });
+  setScrollableChartWidth_(ctx.canvas.parentNode, labels.length, 86, 620);
 
   G.satBreakdownInst = new Chart(ctx, {
     type: 'bar',
@@ -3947,12 +3948,13 @@ onClick: function(evt, elements) {
   applyFilters();
 },
       responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      datasets: { bar: { categoryPercentage: 0.56, barPercentage: 0.72, maxBarThickness: 34 } },
       plugins: {
         legend: { display: true, position: 'bottom', labels: { font: { family: 'Sarabun', size: 10 } } },
-        datalabels: { color: '#ffffff', font: { weight: 'bold', size: 12, family: 'Sarabun' }, textStrokeColor: 'rgba(0,0,0,0.5)', textStrokeWidth: 2, formatter: function(val, context) { if (val === 0) return ''; var total = 0; context.chart.data.datasets.forEach(function(ds) { total += ds.data[context.dataIndex] || 0; }); var pct = Math.round((val / total) * 100); return val + ' (' + pct + '%)'; } },
+        datalabels: { color: '#ffffff', rotation:-90, anchor:'center', align:'center', clamp:true, clip:false, font: { weight: 'bold', size: 11, family: 'Sarabun' }, textStrokeColor: 'rgba(0,0,0,0.55)', textStrokeWidth: 2, formatter: function(val, context) { if (val === 0) return ''; var total = 0; context.chart.data.datasets.forEach(function(ds) { total += ds.data[context.dataIndex] || 0; }); if (!total) return ''; var pct = Math.round((val / total) * 100); return pct + '%'; } },
         tooltip: { callbacks: { label: function(context) { var label = context.dataset.label || ''; var val = context.raw || 0; var total = 0; context.chart.data.datasets.forEach(function(ds) { total += ds.data[context.dataIndex] || 0; }); var pct = Math.round((val / total) * 100); return label + ': ' + val + ' คน (' + pct + '%)'; } } }
       },
-      scales: { x: { stacked: true, ticks: { font: { family: 'Sarabun', size: 11 } } }, y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Sarabun' } } } }
+      scales: { x: { stacked: true, ticks: { autoSkip:false, maxRotation:35, minRotation:35, font: { family: 'Sarabun', size: 11 } } }, y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Sarabun' } } } }
     }, plugins: [ChartDataLabels]
   });
 }
@@ -3986,7 +3988,8 @@ function renderSatTypePieChart() {
       plugins: {
 	
         legend: { position: 'bottom', labels: { font: { size: 9.5, family: 'Sarabun' } } },
-        datalabels: { color: '#ffffff', font: { weight: 'bold', size: 14, family: 'Sarabun' }, textStrokeColor: 'rgba(0,0,0,0.5)', textStrokeWidth: 2, formatter: function(val, context) { var total = context.chart.data.datasets[0].data.reduce(function(a,b){return a+b}, 0); var pct = Math.round((val / total) * 100); return val + ' คน\n(' + pct + '%)'; } }
+        datalabels: { color: '#ffffff', font: { weight: 'bold', size: 15, family: 'Sarabun' }, textStrokeColor: 'rgba(0,0,0,0.5)', textStrokeWidth: 2, formatter: function(val, context) { var total = context.chart.data.datasets[0].data.reduce(function(a,b){return a+b}, 0); if (!total || !val) return ''; var pct = Math.round((val / total) * 100); return pct + '%'; } },
+        tooltip: { callbacks: { label: function(context) { var total = context.chart.data.datasets[0].data.reduce(function(a,b){return a+b}, 0); var val = context.raw || 0; var pct = total ? Math.round((val / total) * 100) : 0; return (context.label || '') + ': ' + val + ' คน (' + pct + '%)'; } } }
       }
     }, plugins: [ChartDataLabels]
   });
@@ -5493,8 +5496,18 @@ function finalizeChartRow_(row) {
 }
 function topChartRows_(rows) {
   return (rows || []).filter(function(r){ return (Number(r.total) || 0) > 0; })
-    .sort(function(a,b){ return (b.total - a.total) || (b.abnormal - a.abnormal) || String(a.label || '').localeCompare(String(b.label || '')); })
-    .slice(0, 12);
+    .sort(function(a,b){
+      return (Number(b.abnormalPct || 0) - Number(a.abnormalPct || 0)) ||
+        (Number(b.abnormal || 0) - Number(a.abnormal || 0)) ||
+        (Number(b.total || 0) - Number(a.total || 0)) ||
+        String(a.label || '').localeCompare(String(b.label || ''));
+    });
+}
+function setScrollableChartWidth_(container, itemCount, pxPerItem, minWidth) {
+  if (!container) return;
+  var parentWidth = container.parentElement ? container.parentElement.clientWidth : 0;
+  var width = Math.max(parentWidth || 0, minWidth || 600, Math.max(1, itemCount || 1) * (pxPerItem || 120));
+  container.style.width = width + 'px';
 }
 function getHospMetaMap_() {
   var map = {};
@@ -5605,7 +5618,7 @@ function mixedChartOptions_(onClick, xFontSize) {
       }
     },
     scales:{
-      x:{ stacked:false, ticks:{ font:{ family:'Sarabun', size:xFontSize || 9 }, maxRotation:35, minRotation:35 } },
+      x:{ stacked:false, ticks:{ autoSkip:false, font:{ family:'Sarabun', size:xFontSize || 9 }, maxRotation:35, minRotation:35 } },
       y:{ stacked:false, beginAtZero:true, position:'left', title:{ display:true, text:'คน' } },
       yPct:{ beginAtZero:true, max:100, position:'right', grid:{ drawOnChartArea:false }, ticks:{ callback:function(v){ return v + '%'; } }, title:{ display:true, text:'ผิดปกติ (%)' } }
     }
@@ -5666,10 +5679,7 @@ function renderBarChart() {
   var hData = topChartRows_(buildHospChartRows_());
   var hLabels = hData.map(function(d){ return d.label; });
   var hospContainer = document.getElementById('hospChartContainer');
-  if (hospContainer) {
-    var calcWidthHosp = Math.max(hospContainer.parentElement.clientWidth, hLabels.length * 120);
-    hospContainer.style.width = calcWidthHosp + 'px';
-  }
+  setScrollableChartWidth_(hospContainer, hLabels.length, 128, 900);
   G.hospInst = new Chart(ctxHosp, {
     type:'bar', data:{ labels:hLabels, datasets:makeMixedStatusDatasets_(hData) },
     options:mixedChartOptions_(function(evt, elements){
@@ -5686,10 +5696,7 @@ function renderBarChart() {
   var sDataArr = topChartRows_(buildSchoolChartRows_());
   var sLabels = sDataArr.map(function(d){ return d.label; });
   var schoolContainer = document.getElementById('schoolChartContainer');
-  if (schoolContainer) {
-    var calcWidthSchool = Math.max(schoolContainer.parentElement.clientWidth, sLabels.length * 150);
-    schoolContainer.style.width = calcWidthSchool + 'px';
-  }
+  setScrollableChartWidth_(schoolContainer, sLabels.length, 156, 900);
   G.schoolInst = new Chart(ctxSchool, {
     type:'bar', data:{ labels:sLabels, datasets:makeMixedStatusDatasets_(sDataArr) },
     options:mixedChartOptions_(function(evt, elements){
