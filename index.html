@@ -92,7 +92,10 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 
 .charts-row{display:grid;gap:7px;padding:7px 8px;border-bottom:1px solid var(--border);flex-shrink:0;min-width:0}
 .chart-card{background:var(--card);border-radius:var(--rl);padding:9px 10px;border:1px solid var(--border);box-shadow:var(--shadow); flex-shrink:0; display:flex; flex-direction:column;min-width:0}
-.chart-ttl{font-size:10.5px;font-weight:700;color:var(--primary);margin-bottom:5px;display:flex;align-items:center;}
+.chart-ttl{font-size:10.5px;font-weight:700;color:var(--primary);margin-bottom:5px;display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap;}
+.chart-sort-label{margin-left:6px;color:var(--muted2);font-size:9.5px;font-weight:500;white-space:nowrap}
+.chart-sort-select{border:1px solid var(--border);border-radius:5px;background:#fff;color:var(--primary);font-family:inherit;font-size:10px;font-weight:700;padding:2px 6px;outline:none;flex:0 0 auto;max-width:128px}
+.chart-sort-select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,130,246,.1)}
 .chart-wrap{position:relative;flex:1;min-width:0;max-width:100%}
 .sat-charts-row{grid-template-columns:minmax(0,2.2fr) minmax(260px,1fr)!important;overflow:hidden}
 .sat-charts-row>.chart-card{overflow:hidden}
@@ -4353,19 +4356,44 @@ function updateAuthUI() {
 function renderHeatmap() {
   var wrap = document.getElementById('heatmapWrap');
   if (!wrap) return;
+  ensureDashboardSortControls_();
 
   var filterAmp = document.getElementById('fAmp').value;
   var filterTam = document.getElementById('fTambon').value;
   var filterHc  = document.getElementById('fHosp').value;
+  var stat = document.getElementById('fStat').value;
   var hospMeta = {}; (G.hospList || []).forEach(function(h){ if (h.hospcode) hospMeta[h.hospcode] = h; });
-  var data = (G.hospSummaryData || []).filter(function(h) {
-    var meta = hospMeta[h.hospcode] || {};
-    var tambon = h.tambon || meta.tambon || '';
-    if (filterAmp && h.amphoe !== filterAmp) return false;
-    if (filterTam && tambon !== filterTam) return false;
-    if (filterHc  && h.hospcode !== filterHc)  return false;
-    return h.total > 0;
-  });
+  var data = [];
+
+  if (G.fullRowsReady && Array.isArray(G.dispRows)) {
+    data = buildHospChartRows_();
+  } else {
+    data = (G.hospSummaryData || []).filter(function(h) {
+      var meta = hospMeta[h.hospcode] || {};
+      var tambon = h.tambon || meta.tambon || '';
+      if (filterAmp && h.amphoe !== filterAmp) return false;
+      if (filterTam && tambon !== filterTam) return false;
+      if (filterHc  && h.hospcode !== filterHc)  return false;
+      return h.total > 0;
+    }).map(function(h) {
+      var meta = hospMeta[h.hospcode] || {};
+      var c = countsFromSummaryRow_(h, stat);
+      return finalizeChartRow_({
+        label: h.name || meta.name || h.hospcode,
+        name: h.name || meta.name || h.hospcode,
+        hospcode: h.hospcode,
+        tambon: h.tambon || meta.tambon || '',
+        amphoe: h.amphoe || meta.amphoe || '',
+        normal: c.normal,
+        abnormal: c.abnormal,
+        referred: c.referred,
+        glasses: c.glasses,
+        total: c.total
+      });
+    });
+  }
+
+  data = topChartRows_(data, getSelectedChartSort_('heatmapSort'));
 
   if (!data.length) {
     wrap.innerHTML = '<p style="color:var(--muted);padding:14px;text-align:center;">ไม่มีข้อมูล</p>';
@@ -4396,10 +4424,11 @@ function renderHeatmap() {
 
   data.forEach(function(h, ri) {
     var total = h.total || 1;
+    var hospName = h.name || h.label || '';
     var rowBg = ri % 2 === 0 ? '#ffffff' : '#f8faff';
     html += '<tr>';
     html += '<td style="padding:4px 10px;border:1px solid #e2e8f0;background:'+rowBg+';position:sticky;left:0;font-weight:600;font-size:10.5px;white-space:nowrap;z-index:1;">'
-          + e_(h.hospcode) + '<br><span style="font-weight:400;color:var(--muted);">' + e_(h.name) + '</span></td>';
+          + e_(h.hospcode) + '<br><span style="font-weight:400;color:var(--muted);">' + e_(hospName) + '</span></td>';
     html += '<td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:700;background:'+rowBg+';">'+total+'</td>';
     cats.forEach(function(c){
       var count  = h[c.key] || 0;
@@ -5499,14 +5528,63 @@ function finalizeChartRow_(row) {
   row.normalPct = row.total > 0 ? Math.round(row.normal / row.total * 100) : 0;
   return row;
 }
-function topChartRows_(rows) {
+function chartSortOptions_() {
+  return [
+    { value:'normal', label:'ปกติ' },
+    { value:'abnormal', label:'ผิดปกติ' },
+    { value:'referred', label:'ส่งต่อ' },
+    { value:'glasses', label:'ตัดแว่น' },
+    { value:'abnormalPct', label:'ผิดปกติ (%)' }
+  ];
+}
+function getSelectedChartSort_(id) {
+  var el = document.getElementById(id);
+  return (el && el.value) ? el.value : 'abnormalPct';
+}
+function chartSortValue_(row, key) {
+  if (key === 'normal') return Number(row.normal) || 0;
+  if (key === 'abnormal') return Number(row.abnormal) || 0;
+  if (key === 'referred') return Number(row.referred) || 0;
+  if (key === 'glasses') return Number(row.glasses) || 0;
+  return Number(row.abnormalPct) || 0;
+}
+function topChartRows_(rows, sortKey) {
+  sortKey = sortKey || 'abnormalPct';
   return (rows || []).filter(function(r){ return (Number(r.total) || 0) > 0; })
     .sort(function(a,b){
-      return (Number(b.abnormalPct || 0) - Number(a.abnormalPct || 0)) ||
+      return (chartSortValue_(b, sortKey) - chartSortValue_(a, sortKey)) ||
         (Number(b.abnormal || 0) - Number(a.abnormal || 0)) ||
         (Number(b.total || 0) - Number(a.total || 0)) ||
         String(a.label || '').localeCompare(String(b.label || ''));
     });
+}
+function ensureChartSortControl_(controlId, targetId, renderFn) {
+  if (document.getElementById(controlId)) return;
+  var target = document.getElementById(targetId);
+  var card = target ? target.closest('.chart-card') : null;
+  var title = card ? card.querySelector('.chart-ttl') : null;
+  if (!title) return;
+  var lbl = document.createElement('span');
+  lbl.className = 'chart-sort-label';
+  lbl.textContent = 'เรียงตาม';
+  var sel = document.createElement('select');
+  sel.id = controlId;
+  sel.className = 'chart-sort-select';
+  chartSortOptions_().forEach(function(o) {
+    var opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    if (o.value === 'abnormalPct') opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.onchange = renderFn;
+  title.appendChild(lbl);
+  title.appendChild(sel);
+}
+function ensureDashboardSortControls_() {
+  ensureChartSortControl_('hospChartSort', 'hospChartContainer', renderBarChart);
+  ensureChartSortControl_('schoolChartSort', 'schoolChartContainer', renderBarChart);
+  ensureChartSortControl_('heatmapSort', 'heatmapWrap', renderHeatmap);
 }
 function setScrollableChartWidth_(container, itemCount, pxPerItem, minWidth) {
   if (!container) return;
@@ -5573,14 +5651,14 @@ function buildHospChartRows_() {
     G.dispRows.forEach(function(r){
       var hc = r.hospcode || 'ไม่ระบุ';
       var m = meta[hc] || {};
-      if (!grp[hc]) grp[hc] = Object.assign({ label:r.hosp_name || m.name || hc, hospcode:hc, tambon:r.tambon || m.tambon || '', amphoe:r.amphoe || m.amphoe || '' }, chartStatusTally_());
+      if (!grp[hc]) grp[hc] = Object.assign({ label:r.hosp_name || m.name || hc, name:r.hosp_name || m.name || hc, hospcode:hc, tambon:r.tambon || m.tambon || '', amphoe:r.amphoe || m.amphoe || '' }, chartStatusTally_());
       addChartStatus_(grp[hc], r.status);
     });
     return Object.keys(grp).map(function(k){ return finalizeChartRow_(grp[k]); });
   }
   return getSummaryRowsForFilters_(amp, tam, hcFilter).map(function(h){
     var m = meta[h.hospcode] || {};
-    var out = { label:h.name || m.name || h.hospcode, hospcode:h.hospcode, tambon:h.tambon || m.tambon || '', amphoe:h.amphoe || m.amphoe || '', normal:0, abnormal:0, referred:0, glasses:0, total:0 };
+    var out = { label:h.name || m.name || h.hospcode, name:h.name || m.name || h.hospcode, hospcode:h.hospcode, tambon:h.tambon || m.tambon || '', amphoe:h.amphoe || m.amphoe || '', normal:0, abnormal:0, referred:0, glasses:0, total:0 };
     addSummaryCounts_(out, h, stat);
     return finalizeChartRow_(out);
   });
@@ -5631,6 +5709,7 @@ function mixedChartOptions_(onClick, xFontSize) {
 }
 
 function renderBarChart() {
+  ensureDashboardSortControls_();
   var ctx = document.getElementById('barChart').getContext('2d');
   var ctxHosp = document.getElementById('hospChart').getContext('2d');
   var ctxSchool = document.getElementById('schoolChart').getContext('2d');
@@ -5681,7 +5760,7 @@ function renderBarChart() {
     }, plugins:[ChartDataLabels]
   });
 
-  var hData = topChartRows_(buildHospChartRows_());
+  var hData = topChartRows_(buildHospChartRows_(), getSelectedChartSort_('hospChartSort'));
   var hLabels = hData.map(function(d){ return d.label; });
   var hospContainer = document.getElementById('hospChartContainer');
   setScrollableChartWidth_(hospContainer, hLabels.length, 128, 900);
@@ -5698,7 +5777,7 @@ function renderBarChart() {
     }, 9), plugins:[ChartDataLabels]
   });
 
-  var sDataArr = topChartRows_(buildSchoolChartRows_());
+  var sDataArr = topChartRows_(buildSchoolChartRows_(), getSelectedChartSort_('schoolChartSort'));
   var sLabels = sDataArr.map(function(d){ return d.label; });
   var schoolContainer = document.getElementById('schoolChartContainer');
   setScrollableChartWidth_(schoolContainer, sLabels.length, 156, 900);
