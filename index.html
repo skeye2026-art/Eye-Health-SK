@@ -90,10 +90,15 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .sum-tbl-wrap{margin:7px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow);display:block;max-height:220px;overflow-y:auto; flex-shrink: 0;}
 .sum-tbl{width:100%;border-collapse:collapse;font-size:11px;} .sum-tbl th{background:#eef2ff;padding:6px 8px;text-align:center;font-weight:700;color:var(--primary);border-bottom:1px solid #c7d4f0;position:sticky;top:0;z-index:2;} .sum-tbl td{padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center;} .sum-tbl td:first-child{text-align:left;} .sum-tbl tr:hover td{background:#f5f8ff;} .tr-active td{background:#eef2ff!important;font-weight:700;color:var(--primary);}
 
-.charts-row{display:grid;gap:7px;padding:7px 8px;border-bottom:1px solid var(--border);flex-shrink:0}
-.chart-card{background:var(--card);border-radius:var(--rl);padding:9px 10px;border:1px solid var(--border);box-shadow:var(--shadow); flex-shrink:0; display:flex; flex-direction:column;}
+.charts-row{display:grid;gap:7px;padding:7px 8px;border-bottom:1px solid var(--border);flex-shrink:0;min-width:0}
+.chart-card{background:var(--card);border-radius:var(--rl);padding:9px 10px;border:1px solid var(--border);box-shadow:var(--shadow); flex-shrink:0; display:flex; flex-direction:column;min-width:0}
 .chart-ttl{font-size:10.5px;font-weight:700;color:var(--primary);margin-bottom:5px;display:flex;align-items:center;}
-.chart-wrap{position:relative;flex:1;}
+.chart-wrap{position:relative;flex:1;min-width:0;max-width:100%}
+.sat-charts-row{grid-template-columns:minmax(0,2.2fr) minmax(260px,1fr)!important;overflow:hidden}
+.sat-charts-row>.chart-card{overflow:hidden}
+.sat-scroll-wrap{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden}
+.sat-scroll-inner{height:180px;min-width:600px}
+.sat-pie-wrap{height:180px;overflow:hidden}
 #mainMap{height:250px;width:100%;border-radius:6px;z-index:1;}
 
 .tbl-sec{flex:1;padding:7px 8px;display:flex;flex-direction:column;overflow:hidden;min-height:200px; flex-shrink:0;}
@@ -779,7 +784,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
       </div>
     </div>
 
-    <div class="charts-row" style="grid-template-columns: 2.2fr 1fr; padding-top:0;">
+    <div class="charts-row sat-charts-row" style="padding-top:0;">
         <div class="chart-card" style="display:flex; flex-direction:column;">
             <div class="chart-ttl" style="justify-content:space-between;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px;">
               <select id="satBreakdownType" onchange="renderSatBreakdownChart(); renderSatTypePieChart();" style="border:none;font-weight:700;color:var(--purple);outline:none;cursor:pointer;background:transparent;font-family:inherit;font-size:11px;">
@@ -790,15 +795,15 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
               </select>
               <span style="font-weight:400;color:var(--muted2);font-size:9.5px;">— ระดับคะแนน 5=มากที่สุด, 4=มาก, 3=ปานกลาง, 2=น้อย, 1=น้อยที่สุด</span>
             </div>
-            <div class="chart-wrap" style="flex:1; overflow-x: auto;">
-                <div style="min-width: 600px; height: 180px;"><canvas id="satBreakdownChart"></canvas></div>
+            <div class="chart-wrap sat-scroll-wrap" style="flex:1;">
+                <div class="sat-scroll-inner"><canvas id="satBreakdownChart"></canvas></div>
             </div>
         </div>
         <div class="chart-card" style="display:flex; flex-direction:column;">
             <div class="chart-ttl" style="border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px;">
                 <span style="color:var(--purple);">🥧 สัดส่วนผู้ประเมิน</span> <span style="font-weight:400;color:var(--muted2);font-size:9.5px;margin-left:auto;">— แยกตามประเภท</span>
             </div>
-            <div class="chart-wrap" style="flex:1; height: 180px;"><canvas id="satTypePieChart"></canvas></div>
+            <div class="chart-wrap sat-pie-wrap" style="flex:1;"><canvas id="satTypePieChart"></canvas></div>
         </div>
     </div>
 
