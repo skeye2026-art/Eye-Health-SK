@@ -70,10 +70,15 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .sidebar{width:148px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);padding:10px 8px;overflow-y:auto;display:flex;flex-direction:column}
 .sb-title{font-size:11.5px;font-weight:700;color:var(--accent);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:4px}
 .fl{font-size:10px;color:var(--muted);font-weight:600;margin:5px 0 2px} .fsel{width:100%;border:1px solid var(--border);border-radius:5px;padding:4px 5px;font-size:11px;background:#f8faff;color:var(--text);outline:none;transition:.15s} .fsel:focus{border-color:var(--accent);background:#fff}
-.select-search-wrap{display:flex;flex-direction:column;gap:3px;min-width:0;width:100%}
+.select-search-wrap{display:flex;flex-direction:column;gap:3px;min-width:0;width:100%;position:relative}
 .select-search-input{width:100%;border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:11px;background:#fff;color:var(--text);outline:none;transition:.15s}
 .select-search-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,130,246,.1)}
 .select-search-wrap select{width:100%}
+.select-search-results{display:none;position:absolute;top:32px;left:0;right:0;z-index:260;background:#fff;border:1px solid var(--accent);border-radius:7px;box-shadow:0 8px 22px rgba(15,23,42,.16);max-height:220px;overflow:auto;padding:3px}
+.select-search-results.open{display:block}
+.select-search-item{padding:7px 9px;border-radius:5px;font-size:11px;line-height:1.35;color:var(--text);cursor:pointer;white-space:normal}
+.select-search-item:hover,.select-search-item.active{background:#eef4ff;color:var(--primary);font-weight:700}
+.select-search-empty{padding:8px 9px;font-size:11px;color:var(--muted2);text-align:center}
 .beh-filter .select-search-input,.op-controls .select-search-input{min-height:30px;font-size:11px;padding:5px 8px}
 .op-controls .select-search-wrap{min-width:130px;flex:0 1 150px}
 .btn-clr{width:100%;margin-top:10px;padding:5px;background:none;color:var(--muted);border:1px solid var(--border);border-radius:5px;font-size:11px;transition:.15s} .btn-clr:hover{background:#f1f5f9}
@@ -2181,6 +2186,48 @@ var _initDataPromise = null;
 var TABLE_PAGE_CACHE = { map:new Map(), ttl:30000 };
 var _tablePageInFlight = new Map();
 
+function readSessionCache_(key, ttl, scopeKey) {
+  try {
+    var raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    var cached = JSON.parse(raw);
+    if (!cached || !cached.data || (Date.now() - cached.ts) > ttl) return null;
+    if (scopeKey !== undefined && cached.scopeKey !== scopeKey) return null;
+    return cached.data;
+  } catch(e) {
+    return null;
+  }
+}
+
+function writeSessionCache_(key, data, scopeKey) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ data:data, ts:Date.now(), scopeKey:scopeKey || '' }));
+  } catch(e) {}
+}
+
+function removeSessionCache_(key) {
+  try { sessionStorage.removeItem(key); } catch(e) {}
+}
+
+function makeSessionCacheKey_(prefix, rawKey) {
+  var str = String(rawKey || '');
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return prefix + '_' + Math.abs(hash);
+}
+
+function removeSessionCachePrefix_(prefix) {
+  try {
+    for (var i = sessionStorage.length - 1; i >= 0; i--) {
+      var key = sessionStorage.key(i);
+      if (key && key.indexOf(prefix) === 0) sessionStorage.removeItem(key);
+    }
+  } catch(e) {}
+}
+
 function normalizeThaiDigits_(value) {
   var map = {'๐':'0','๑':'1','๒':'2','๓':'3','๔':'4','๕':'5','๖':'6','๗':'7','๘':'8','๙':'9'};
   return String(value || '').replace(/[๐-๙]/g, function(ch) { return map[ch] || ch; });
@@ -2248,6 +2295,13 @@ async function loadInitDataDirect_(forceFresh) {
   if (!forceFresh && INIT_DATA_CACHE.data && (Date.now() - INIT_DATA_CACHE.ts) < INIT_DATA_CACHE.ttl) {
     return INIT_DATA_CACHE.data;
   }
+  if (!forceFresh) {
+    var storedInitData = readSessionCache_('EYE_INIT_DATA_CACHE', INIT_DATA_CACHE.ttl);
+    if (storedInitData) {
+      INIT_DATA_CACHE = { data:storedInitData, ts:Date.now(), ttl:INIT_DATA_CACHE.ttl };
+      return storedInitData;
+    }
+  }
   if (!forceFresh && _initDataPromise) return _initDataPromise;
 
   _initDataPromise = Promise.all([
@@ -2281,6 +2335,7 @@ async function loadInitDataDirect_(forceFresh) {
       videos: vidRes.map(function(v) { return { id:v.id, label:v.label, url:v.url, order:v.ord }; })
     };
     INIT_DATA_CACHE = { data:data, ts:Date.now(), ttl:INIT_DATA_CACHE.ttl };
+    writeSessionCache_('EYE_INIT_DATA_CACHE', data);
     return data;
   }).finally(function() {
     _initDataPromise = null;
@@ -2305,6 +2360,7 @@ function applyInitData_(data) {
 function clearTablePageCache_() {
   TABLE_PAGE_CACHE.map.clear();
   _tablePageInFlight.clear();
+  removeSessionCachePrefix_('EYE_TABLE_PAGE_CACHE_');
 }
 
 function clearDashboardClientCache_(clearInit) {
@@ -2320,6 +2376,7 @@ function clearDashboardClientCache_(clearInit) {
   if (typeof DASH_INFLIGHT !== 'undefined') DASH_INFLIGHT = {};
   if (typeof DASH_RPC_INFLIGHT !== 'undefined') DASH_RPC_INFLIGHT = {};
   if (typeof DASH_FULL_LOAD_TIMER !== 'undefined' && DASH_FULL_LOAD_TIMER) { clearTimeout(DASH_FULL_LOAD_TIMER); DASH_FULL_LOAD_TIMER = null; }
+  removeSessionCache_('EYE_DASH_RPC_CACHE');
   if (typeof G !== 'undefined') {
     G.allRows = [];
     G.dispRows = [];
@@ -2332,7 +2389,10 @@ function clearDashboardClientCache_(clearInit) {
     G.behRows = null;
     G.fupRows = null;
   }
-  if (clearInit) INIT_DATA_CACHE = { data:null, ts:0, ttl:INIT_DATA_CACHE.ttl };
+  if (clearInit) {
+    INIT_DATA_CACHE = { data:null, ts:0, ttl:INIT_DATA_CACHE.ttl };
+    removeSessionCache_('EYE_INIT_DATA_CACHE');
+  }
 }
 var myMap = null; var hospLayer = null; var schoolLayer = null; var _satClickIdx = null; var _editMode = false;
 
@@ -2483,7 +2543,10 @@ var SEARCHABLE_SELECTS = {
   'fdf-school': 'ค้นหาโรงเรียน...',
   'op-f-tambon': 'ค้นหาตำบล...',
   'op-f-hospcode': 'ค้นหา รพ.สต....',
-  'op-f-school': 'ค้นหาโรงเรียน...'
+  'op-f-school': 'ค้นหาโรงเรียน...',
+  's-hc': 'ค้นหา รพ.สต....',
+  'sat-hc': 'ค้นหา รพ.สต....',
+  'loc-hc': 'ค้นหา รพ.สต....'
 };
 
 function normalizeSelectSearch_(value) {
@@ -2507,6 +2570,91 @@ function appendSearchOption_(select, opt) {
   select.appendChild(o);
 }
 
+function getSearchableMatches_(select, q) {
+  var options = select.__allSearchOptions || [];
+  var matched = [];
+  options.forEach(function(opt, idx) {
+    var haystack = normalizeSelectSearch_(opt.text + ' ' + opt.value);
+    if (idx === 0 || !q || haystack.indexOf(q) > -1) matched.push(opt);
+  });
+  return matched;
+}
+
+function hideSearchableResults_(select) {
+  if (!select || !select.__searchResults) return;
+  select.__searchResults.classList.remove('open');
+  select.__searchActiveIndex = -1;
+}
+
+function syncSearchableSelectInput_(select) {
+  if (!select || !select.__searchInput) return;
+  var opt = select.options[select.selectedIndex];
+  select.__searchInput.disabled = select.disabled;
+  select.__searchInput.value = select.value && opt ? (opt.textContent || opt.innerText || '') : '';
+}
+
+function setSearchResultActive_(select, nextIndex) {
+  if (!select || !select.__searchResults) return;
+  var items = Array.prototype.slice.call(select.__searchResults.querySelectorAll('.select-search-item'));
+  if (!items.length) return;
+  if (nextIndex < 0) nextIndex = items.length - 1;
+  if (nextIndex >= items.length) nextIndex = 0;
+  items.forEach(function(item, idx) { item.classList.toggle('active', idx === nextIndex); });
+  select.__searchActiveIndex = nextIndex;
+  items[nextIndex].scrollIntoView({ block: 'nearest' });
+}
+
+function chooseSearchableOption_(select, opt) {
+  if (!select || !opt || opt.disabled) return;
+  if (select.disabled) return;
+  if (!select.__allSearchOptions) cacheSearchableSelectOptions_(select);
+  select.__filteringSearch = true;
+  select.innerHTML = '';
+  (select.__allSearchOptions || []).forEach(function(savedOpt) { appendSearchOption_(select, savedOpt); });
+  select.__filteringSearch = false;
+  if (!Array.prototype.some.call(select.options, function(o) { return o.value === opt.value; })) {
+    appendSearchOption_(select, opt);
+  }
+  select.value = opt.value;
+  if (select.__searchInput) select.__searchInput.value = opt.value ? opt.text : '';
+  hideSearchableResults_(select);
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function renderSearchableResults_(select, matched, q) {
+  if (!select || !select.__searchResults) return;
+  var box = select.__searchResults;
+  var realMatches = (matched || []).filter(function(opt, idx) {
+    return idx !== 0 && !opt.disabled && opt.value !== '';
+  });
+  box.innerHTML = '';
+  select.__searchActiveIndex = -1;
+
+  if (!q) {
+    hideSearchableResults_(select);
+    return;
+  }
+
+  if (!realMatches.length) {
+    box.innerHTML = '<div class="select-search-empty">ไม่พบรายการที่ค้นหา</div>';
+    box.classList.add('open');
+    return;
+  }
+
+  realMatches.slice(0, 30).forEach(function(opt) {
+    var item = document.createElement('div');
+    item.className = 'select-search-item';
+    item.textContent = opt.text;
+    item.title = opt.text;
+    item.addEventListener('mousedown', function(ev) {
+      ev.preventDefault();
+      chooseSearchableOption_(select, opt);
+    });
+    box.appendChild(item);
+  });
+  box.classList.add('open');
+}
+
 function filterSearchableSelect_(selectId) {
   var select = document.getElementById(selectId);
   if (!select || !select.__searchInput) return;
@@ -2514,12 +2662,7 @@ function filterSearchableSelect_(selectId) {
   var q = normalizeSelectSearch_(select.__searchInput.value);
   var prev = select.value;
   var options = select.__allSearchOptions || [];
-  var matched = [];
-
-  options.forEach(function(opt, idx) {
-    var haystack = normalizeSelectSearch_(opt.text + ' ' + opt.value);
-    if (idx === 0 || !q || haystack.indexOf(q) > -1) matched.push(opt);
-  });
+  var matched = getSearchableMatches_(select, q);
 
   if (prev && !matched.some(function(opt) { return opt.value === prev; })) {
     var current = options.find(function(opt) { return opt.value === prev; });
@@ -2540,6 +2683,9 @@ function filterSearchableSelect_(selectId) {
   if (prev && matched.some(function(opt) { return opt.value === prev; })) select.value = prev;
   else if (!prev) select.value = '';
   select.__filteringSearch = false;
+
+  if (document.activeElement === select.__searchInput) renderSearchableResults_(select, matched, q);
+  else hideSearchableResults_(select);
 }
 
 function refreshSearchableSelect_(selectId, clearQuery) {
@@ -2549,6 +2695,7 @@ function refreshSearchableSelect_(selectId, clearQuery) {
   if (select.__searchInput) {
     if (clearQuery) select.__searchInput.value = '';
     filterSearchableSelect_(selectId);
+    if (clearQuery) hideSearchableResults_(select);
   }
 }
 
@@ -2566,18 +2713,66 @@ function makeSelectSearchable_(selectId, placeholder) {
   input.className = 'select-search-input';
   input.placeholder = placeholder || 'ค้นหา...';
   input.setAttribute('aria-label', placeholder || 'ค้นหารายการ');
+  input.disabled = select.disabled;
   wrap.insertBefore(input, select);
+  var results = document.createElement('div');
+  results.className = 'select-search-results';
+  wrap.appendChild(results);
 
   select.__searchInput = input;
+  select.__searchResults = results;
+  select.__searchActiveIndex = -1;
   select.dataset.searchInstalled = '1';
+  if (window.MutationObserver) {
+    select.__searchDisabledObserver = new MutationObserver(function() {
+      input.disabled = select.disabled;
+      if (select.disabled) hideSearchableResults_(select);
+    });
+    select.__searchDisabledObserver.observe(select, { attributes:true, attributeFilter:['disabled'] });
+  }
   input.addEventListener('input', function() { filterSearchableSelect_(selectId); });
+  input.addEventListener('focus', function() { filterSearchableSelect_(selectId); });
+  select.addEventListener('change', function() {
+    if (select.__filteringSearch) return;
+    syncSearchableSelectInput_(select);
+    hideSearchableResults_(select);
+  });
+  input.addEventListener('keydown', function(ev) {
+    if (!results.classList.contains('open') && input.value.trim()) filterSearchableSelect_(selectId);
+    var items = Array.prototype.slice.call(results.querySelectorAll('.select-search-item'));
+    if (ev.key === 'ArrowDown') {
+      ev.preventDefault();
+      var downIndex = select.__searchActiveIndex;
+      setSearchResultActive_(select, downIndex < 0 ? 0 : downIndex + 1);
+    } else if (ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      var upIndex = select.__searchActiveIndex;
+      setSearchResultActive_(select, upIndex < 0 ? items.length - 1 : upIndex - 1);
+    } else if (ev.key === 'Enter' && items.length) {
+      ev.preventDefault();
+      var idx = select.__searchActiveIndex >= 0 ? select.__searchActiveIndex : 0;
+      items[idx].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    } else if (ev.key === 'Escape') {
+      hideSearchableResults_(select);
+    }
+  });
   refreshSearchableSelect_(selectId, false);
+  syncSearchableSelectInput_(select);
 }
 
 function installSearchableDropdowns_() {
   Object.keys(SEARCHABLE_SELECTS).forEach(function(id) {
     makeSelectSearchable_(id, SEARCHABLE_SELECTS[id]);
   });
+  if (!document.__selectSearchOutsideInstalled) {
+    document.__selectSearchOutsideInstalled = true;
+    document.addEventListener('mousedown', function(ev) {
+      Object.keys(SEARCHABLE_SELECTS).forEach(function(id) {
+        var select = document.getElementById(id);
+        if (select && select.__searchResults && !select.__searchResults.parentNode.contains(ev.target)) hideSearchableResults_(select);
+      });
+    });
+  }
 }
 
 var ACTION_FEEDBACK_LAST = { msg: '', ts: 0 };
@@ -3319,32 +3514,84 @@ function triggerFlow(nextStep, msg, nextAction) {
 
 function closeFlow() { document.getElementById('flowMov').classList.remove('open'); }
 
+function runWhenIdle_(fn, timeout) {
+    if (window.requestIdleCallback) {
+        window.requestIdleCallback(fn, { timeout: timeout || 1200 });
+    } else {
+        setTimeout(fn, Math.min(timeout || 800, 800));
+    }
+}
+
+function initDeferredVisuals_() {
+    runWhenIdle_(function() {
+        try { initMap(); } catch(e) { console.warn('deferred initMap failed:', e); }
+        try {
+            if (G.videos && G.videos.length > 0) renderVideo(G.videos[0].url);
+            else renderVideo('');
+        } catch(e) { console.warn('deferred video render failed:', e); }
+        try {
+            if (G.settings && G.settings.marquee_imgs) renderImageMarquee(G.settings.marquee_imgs);
+        } catch(e) { console.warn('deferred marquee render failed:', e); }
+    }, 1200);
+}
+
+function hasPendingFullDashboardLoad_() {
+    return !!(DASH_FULL_LOAD_TIMER || (DASH_INFLIGHT && Object.keys(DASH_INFLIGHT).length));
+}
+
+function warmMiniDashboardCaches_() {
+    runWhenIdle_(function prewarmMiniDashboard() {
+        try {
+            if (hasPendingFullDashboardLoad_()) {
+                setTimeout(prewarmMiniDashboard, 1200);
+                return;
+            }
+            var userHosp = getUserHospScope_();
+            if (isMiniDashCacheFresh_(MINI_DASH_CACHE.beh, userHosp)) return;
+            fetchMiniDashboardData_('beh', false)
+                .then(applyMiniDashboardData_)
+                .catch(function(e) { console.warn('mini dashboard prewarm failed:', e); });
+        } catch(e) {
+            console.warn('mini dashboard prewarm skipped:', e);
+        }
+    }, 2500);
+}
+
 // 🟢 วางโค้ดนี้แทน window.onload ตัวเก่า 🟢
-window.onload = async function () {
+async function startApp_() {
+    if (window.__eyeAppStarted) return;
+    window.__eyeAppStarted = true;
     setDate(); buildSatQ(); buildTestQ('pre'); buildTestQ('post');
     document.addEventListener('keydown', function(e){
         if (e.key === 'Escape' && document.getElementById('imgModal').classList.contains('open')) closeImg();
     });
-    flatpickr(".datepicker", { dateFormat: "d/m/Y", locale: "th", formatDate: function(date, format, locale) { var d = String(date.getDate()).padStart(2, '0'); var m = String(date.getMonth() + 1).padStart(2, '0'); var y = date.getFullYear(); if(y < 2400) y += 543; return d + '/' + m + '/' + y; }, parseDate: function(datestr, format) { var parts = datestr.split('/'); if(parts.length === 3) { var y = parseInt(parts[2], 10); if (y > 2400) y -= 543; return new Date(y, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10)); } return new Date(); } });
-    ChartDataLabels && Chart.register(ChartDataLabels); bindAutoDiagnose();
+    if (window.flatpickr) flatpickr(".datepicker", { dateFormat: "d/m/Y", locale: "th", formatDate: function(date, format, locale) { var d = String(date.getDate()).padStart(2, '0'); var m = String(date.getMonth() + 1).padStart(2, '0'); var y = date.getFullYear(); if(y < 2400) y += 543; return d + '/' + m + '/' + y; }, parseDate: function(datestr, format) { var parts = datestr.split('/'); if(parts.length === 3) { var y = parseInt(parts[2], 10); if (y > 2400) y -= 543; return new Date(y, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10)); } return new Date(); } });
+    if (window.ChartDataLabels && window.Chart) Chart.register(ChartDataLabels);
+    bindAutoDiagnose();
 
     try {
         const initData = await loadInitDataDirect_(false);
         applyInitData_(initData);
 
         // 🎨 ประกอบหน้า UI ขึ้นมาทันที
-        applySettings(); buildDropdowns(); installSearchableDropdowns_(); installButtonActionFeedback_(); updateAuthUI(); initMap(); 
+        applySettings(); buildDropdowns(); installSearchableDropdowns_(); installButtonActionFeedback_(); updateAuthUI();
         renderLinks(G.links); renderVideoPlaylist(G.videos);
-        if(G.videos.length > 0) renderVideo(G.videos[0].url); else renderVideo('');
-        if(G.settings.marquee_imgs) renderImageMarquee(G.settings.marquee_imgs);
 
         // 📊 สั่งให้ดึง Dashboard และตารางรายชื่อพร้อมกัน (ขนาน) — เร็วขึ้นเพราะไม่ต้องรอต่อคิว
         loadDashboard({});
+        initDeferredVisuals_();
+        warmMiniDashboardCaches_();
         
     } catch(e) {
         toast('การเชื่อมต่อระบบล้มเหลว: ' + e.message, 'err');
     }
-};
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp_, { once:true });
+} else {
+    startApp_();
+}
 
 function renderVideo(url) {
     var wrap = document.getElementById('videoWrap');
@@ -3762,6 +4009,9 @@ function buildDropdowns() {
   refreshSearchableSelect_('fTambon', true);
   refreshSearchableSelect_('fHosp', true);
   refreshSearchableSelect_('fSch', true);
+  refreshSearchableSelect_('s-hc', true);
+  refreshSearchableSelect_('sat-hc', true);
+  refreshSearchableSelect_('loc-hc', true);
   var natOpts = '';
   if(G.natList && G.natList.length > 0) {
       G.natList.forEach(function(n) { natOpts += '<option value="'+n+'">'+n+'</option>'; });
@@ -3883,6 +4133,7 @@ function updateAuthUI() {
     document.getElementById('sat-hc').disabled = false;
     document.getElementById('s-hc').disabled = false;
   }
+  ['s-hc', 'sat-hc', 'loc-hc'].forEach(function(id) { syncSearchableSelectInput_(document.getElementById(id)); });
   if (G.dispRows.length > 0) loadTablePage(currentPage || 1); if (G.hospSummaryData.length > 0) renderSummaryTable(G.hospSummaryData);
 }
 
@@ -4068,6 +4319,13 @@ async function fetchDashboardRPC_(userHosp, forceFresh) {
       (Date.now() - DASH_RPC_CACHE.ts) < DASH_RPC_CACHE.ttl) {
     return DASH_RPC_CACHE.data;
   }
+  if (!forceFresh) {
+    var storedRpc = readSessionCache_('EYE_DASH_RPC_CACHE', DASH_RPC_CACHE.ttl, cacheKey);
+    if (storedRpc) {
+      DASH_RPC_CACHE = { data:storedRpc, ts:Date.now(), ttl:DASH_RPC_CACHE.ttl, key:cacheKey };
+      return storedRpc;
+    }
+  }
   if (!forceFresh && DASH_RPC_INFLIGHT[cacheKey]) return DASH_RPC_INFLIGHT[cacheKey];
 
   var rpcPromise = fetch(SUPABASE_URL + '/rpc/get_dashboard_summary', {
@@ -4081,6 +4339,7 @@ async function fetchDashboardRPC_(userHosp, forceFresh) {
     if (!res.ok) throw new Error('RPC get_dashboard_summary error (' + res.status + ')');
     var data = await res.json();
     DASH_RPC_CACHE = { data:data, ts:Date.now(), ttl:DASH_RPC_CACHE.ttl, key:cacheKey };
+    writeSessionCache_('EYE_DASH_RPC_CACHE', data, cacheKey);
     return data;
   }).finally(function() {
     if (DASH_RPC_INFLIGHT[cacheKey] === rpcPromise) delete DASH_RPC_INFLIGHT[cacheKey];
@@ -4220,6 +4479,14 @@ async function fetchScreeningTablePage_(page, forceFresh) {
   var cacheKey = stableKey_(payload);
   var cached = TABLE_PAGE_CACHE.map.get(cacheKey);
   if (!forceFresh && cached && (Date.now() - cached.ts) < TABLE_PAGE_CACHE.ttl) return cached.data;
+  var sessionPageKey = makeSessionCacheKey_('EYE_TABLE_PAGE_CACHE', cacheKey);
+  if (!forceFresh) {
+    var storedPage = readSessionCache_(sessionPageKey, TABLE_PAGE_CACHE.ttl, cacheKey);
+    if (storedPage) {
+      TABLE_PAGE_CACHE.map.set(cacheKey, { data:storedPage, ts:Date.now() });
+      return storedPage;
+    }
+  }
   if (!forceFresh && _tablePageInFlight.has(cacheKey)) return _tablePageInFlight.get(cacheKey);
 
   var pagePromise = fetch(SUPABASE_URL + '/rpc/get_screening_table_page', {
@@ -4238,6 +4505,7 @@ async function fetchScreeningTablePage_(page, forceFresh) {
       catch(restErr) { console.warn('REST table fallback failed:', restErr); }
     }
     TABLE_PAGE_CACHE.map.set(cacheKey, { data:normalized, ts:Date.now() });
+    writeSessionCache_(sessionPageKey, normalized, cacheKey);
     return normalized;
   }).finally(function() {
     if (_tablePageInFlight.get(cacheKey) === pagePromise) _tablePageInFlight.delete(cacheKey);
@@ -4379,12 +4647,13 @@ async function fetchSupaAll(table, select) {
   return all;
 }
 
-async function fetchSupaByCidChunks_(table, cids) {
+async function fetchSupaByCidChunks_(table, cids, selectCols) {
   if (!cids || cids.length === 0) return [];
+  var cols = selectCols || '*';
   var CHUNK = 250;
   var reqs = [];
   for (var i = 0; i < cids.length; i += CHUNK) {
-    reqs.push(fetchSupaAll(table, '*&cid=in.(' + cids.slice(i, i + CHUNK).join(',') + ')'));
+    reqs.push(fetchSupaAll(table, cols + '&cid=in.(' + cids.slice(i, i + CHUNK).join(',') + ')'));
   }
   var chunks = await Promise.all(reqs);
   var out = [];
@@ -4453,10 +4722,21 @@ async function fetchMiniDashboardData_(kind, forceFresh) {
       userHosp: userHosp
     };
     MINI_DASH_CACHE[kind] = rawEntry;
+    if (kind === 'beh') {
+      MINI_DASH_CACHE.fup = {
+        rows: rawEntry.rows,
+        fupRows: rawEntry.fupRows,
+        ts: rawEntry.ts,
+        ttl: MINI_DASH_CACHE.fup.ttl,
+        userHosp: userHosp
+      };
+    }
     return rawEntry;
   }
 
   var scrCols = 'cid,student_name,pname,fname,lname,hospcode,school_name,school_class,sex,age_years,diagnosis,referral,amphoe,tambon';
+  var behCols = 'cid,q_device,q_purpose,q_symptom,q_dist,q_rest,q_blue,q_time_wk_morn,q_time_wk_noon,q_time_wk_eve,q_time_we_morn,q_time_we_noon,q_time_we_eve,comment';
+  var fupCols = 'cid,tel,duration,f_board,f_book,f_screen,f_sport,f_days,c_status,c_clarity,q_board,q_focus,q_confidence,q_headache,reasons,overall_sat,comment';
   var scrSelect = scrCols + (userHosp ? ('&hospcode=eq.' + encodeURIComponent(userHosp)) : '');
 
   var promise = (async function() {
@@ -4466,24 +4746,24 @@ async function fetchMiniDashboardData_(kind, forceFresh) {
       cids = scrRows.map(function(r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
       if (kind === 'beh') {
         var behParts = await Promise.all([
-          fetchSupaByCidChunks_('behavior_data', cids),
-          fetchSupaByCidChunks_('followup_data', cids)
+          fetchSupaByCidChunks_('behavior_data', cids, behCols),
+          fetchSupaByCidChunks_('followup_data', cids, fupCols)
         ]);
         behRows = behParts[0]; fupRows = behParts[1];
       } else {
-        fupRows = await fetchSupaByCidChunks_('followup_data', cids);
+        fupRows = await fetchSupaByCidChunks_('followup_data', cids, fupCols);
       }
     } else if (kind === 'beh') {
       var allBeh = await Promise.all([
         fetchSupaAll('screening_data', scrSelect),
-        fetchSupaAll('behavior_data'),
-        fetchSupaAll('followup_data')
+        fetchSupaAll('behavior_data', behCols),
+        fetchSupaAll('followup_data', fupCols)
       ]);
       scrRows = allBeh[0]; behRows = allBeh[1]; fupRows = allBeh[2];
     } else {
       var allFup = await Promise.all([
         fetchSupaAll('screening_data', scrSelect),
-        fetchSupaAll('followup_data')
+        fetchSupaAll('followup_data', fupCols)
       ]);
       scrRows = allFup[0]; fupRows = allFup[1];
     }
@@ -4497,6 +4777,15 @@ async function fetchMiniDashboardData_(kind, forceFresh) {
       userHosp: userHosp
     };
     MINI_DASH_CACHE[kind] = entry;
+    if (kind === 'beh') {
+      MINI_DASH_CACHE.fup = {
+        rows: entry.rows,
+        fupRows: entry.fupRows,
+        ts: entry.ts,
+        ttl: MINI_DASH_CACHE.fup.ttl,
+        userHosp: userHosp
+      };
+    }
     return entry;
   })().finally(function() {
     if (MINI_DASH_INFLIGHT[inFlightKey] === promise) delete MINI_DASH_INFLIGHT[inFlightKey];
@@ -4863,7 +5152,7 @@ function renderSummaryTable(data) {
   tb.innerHTML = html;
 }
 
-function openEditHosp(hc) { var targetHc = hc; if (!targetHc && G.session.role === 'admin') targetHc = ''; if (!targetHc && G.session.role !== 'admin') targetHc = G.session.hospcode; var sel = document.getElementById('loc-hc'); sel.value = targetHc; if (G.session.role !== 'admin') sel.disabled = true; else sel.disabled = false; loadHospLocData(); openPanel('loc'); }
+function openEditHosp(hc) { var targetHc = hc; if (!targetHc && G.session.role === 'admin') targetHc = ''; if (!targetHc && G.session.role !== 'admin') targetHc = G.session.hospcode; var sel = document.getElementById('loc-hc'); sel.value = targetHc; if (G.session.role !== 'admin') sel.disabled = true; else sel.disabled = false; syncSearchableSelectInput_(sel); loadHospLocData(); openPanel('loc'); }
 function loadHospLocData() {
   var hc = document.getElementById('loc-hc').value; if (!hc) { document.getElementById('loc-lat').value = ''; document.getElementById('loc-lon').value = ''; document.getElementById('loc-current-pics').innerHTML = '<div style="font-size:11px;color:var(--muted)">เลือกรพ.สต. เพื่อดูภาพปัจจุบัน</div>'; return; }
   var hObj = G.hospList.find(function(x){ return x.hospcode === hc; }); var sumObj = G.hospSummaryData ? G.hospSummaryData.find(function(x){ return x.hospcode === hc; }) : null;
@@ -7181,6 +7470,10 @@ function saveSysSettings() {
       G.settings.marquee_text = d.marquee_text;
       G.settings.enable_img_marquee = d.enable_img_marquee;
       G.settings.marquee_imgs = d.marquee_imgs;
+      if (INIT_DATA_CACHE.data) {
+        INIT_DATA_CACHE.data.settings = G.settings;
+        writeSessionCache_('EYE_INIT_DATA_CACHE', INIT_DATA_CACHE.data);
+      }
       closePanel('sysset');
       
       // เรียกฟังก์ชันเดิมที่มีอยู่แล้ว เพื่อแสดงผลทันทีโดยไม่ต้องรีเฟรชหน้า
@@ -7232,6 +7525,7 @@ async function hardReload() {
 
     applySettings();
     buildDropdowns();
+    installSearchableDropdowns_();
     updateAuthUI();
     renderLinks(G.links || []);
     renderVideoPlaylist(G.videos || []);
