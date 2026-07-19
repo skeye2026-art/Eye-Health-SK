@@ -5,14 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>เด็กไทยสายตาดี</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
+<link rel="preconnect" href="https://hiqbjnlwzjcxbvqgwifi.supabase.co" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script defer src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
 :root {
@@ -67,6 +70,12 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
 .sidebar{width:148px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);padding:10px 8px;overflow-y:auto;display:flex;flex-direction:column}
 .sb-title{font-size:11.5px;font-weight:700;color:var(--accent);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:4px}
 .fl{font-size:10px;color:var(--muted);font-weight:600;margin:5px 0 2px} .fsel{width:100%;border:1px solid var(--border);border-radius:5px;padding:4px 5px;font-size:11px;background:#f8faff;color:var(--text);outline:none;transition:.15s} .fsel:focus{border-color:var(--accent);background:#fff}
+.select-search-wrap{display:flex;flex-direction:column;gap:3px;min-width:0;width:100%}
+.select-search-input{width:100%;border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:11px;background:#fff;color:var(--text);outline:none;transition:.15s}
+.select-search-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,130,246,.1)}
+.select-search-wrap select{width:100%}
+.beh-filter .select-search-input,.op-controls .select-search-input{min-height:30px;font-size:11px;padding:5px 8px}
+.op-controls .select-search-wrap{min-width:130px;flex:0 1 150px}
 .btn-clr{width:100%;margin-top:10px;padding:5px;background:none;color:var(--muted);border:1px solid var(--border);border-radius:5px;font-size:11px;transition:.15s} .btn-clr:hover{background:#f1f5f9}
 .add-sec{margin-top:10px;padding-top:8px;border-top:1px solid var(--border)} .add-sec .sb-title{color:var(--purple)}
 .btn-form{width:100%;margin-top:4px;padding:6px 6px;border:none;border-radius:6px;font-size:11px;font-weight:600;color:#fff;text-align:left;display:flex;align-items:center;gap:5px;transition:.12s;opacity:.92;cursor:pointer;} .btn-form:hover{opacity:1;transform:translateX(1px)}
@@ -524,7 +533,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     .op-charts-row, .op-tables-row { grid-template-columns: 1fr !important; }
     .op-imgs-grid { grid-template-columns: repeat(3, 1fr) !important; }
     .op-controls { flex-direction: column; align-items: stretch; }
-    .op-controls select, .op-controls button, .op-controls .op-clear-btn { width: 100%; margin-bottom: 5px; margin-left: 0 !important; }
+    .op-controls select, .op-controls button, .op-controls .op-clear-btn, .op-controls .select-search-wrap { width: 100%; margin-bottom: 5px; margin-left: 0 !important; }
 
     /* ปรับ Behavior & Followup Dashboard (Mobile) */
     .beh-filter { grid-template-columns: 1fr !important; }
@@ -1256,7 +1265,7 @@ button{cursor:pointer;font-family:inherit} input,select,textarea{font-family:inh
     <div class="beh-filter" style="background:#fdf2f8; border-color:#fbcfe8; grid-template-columns: repeat(5, 1fr);">
   <select id="fdf-amphoe" onchange="onFupAmpChange()" style="border-color:#f9a8d4;"><option value="">อำเภอ ทั้งหมด</option></select>
   <select id="fdf-tambon" onchange="onFupTambonChange()" style="border-color:#f9a8d4;"><option value="">ตำบล ทั้งหมด</option></select>
-  <select id="fdf-hosp" onchange="onFupDashboard()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
+  <select id="fdf-hosp" onchange="onFupHospChange()" style="border-color:#f9a8d4;"><option value="">รพ.สต. ทั้งหมด</option></select>
   <select id="fdf-school" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">โรงเรียนทั้งหมด</option></select>
   <select id="fdf-sex" onchange="loadFupDashboard()" style="border-color:#f9a8d4;"><option value="">เพศทั้งหมด</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
 </div>
@@ -2163,7 +2172,7 @@ function renderExtraDashCharts(extraStats) {
 } // <- ปิดฟังก์ชัน renderExtraDashCharts ตรงนี้ที่เดียวครับ
 
 var G = {
-  session:{loggedIn:false,user:'',role:'',hospcode:''}, settings:{}, hospList:[], schoolList:[], vaList:[], vaMap: {}, natList:[], links:[], videos: [], allRows:[], dispRows:[], fullRowsReady:false, chartData: { amphoe: [], hosp: [], school: [] }, satCharts: {}, kpi: {}, hospSummaryData: [],
+  session:{loggedIn:false,user:'',role:'',hospcode:''}, settings:{}, hospList:[], schoolList:[], vaList:[], vaMap: {}, natList:[], links:[], videos: [], allRows:[], dispRows:[], fullRowsReady:false, lightRowsReady:false, chartData: { amphoe: [], hosp: [], school: [] }, satCharts: {}, kpi: {}, hospSummaryData: [],
   barInst:null, pieInst:null, lineInst:null, hospInst:null, schoolInst:null, satBreakdownInst:null, satTypePieInst:null, delTarget:{cid:'',sheet:''},
   isDeleting:false, isEditingRow:false, isDashboardReloading:false
 };
@@ -2242,12 +2251,12 @@ async function loadInitDataDirect_(forceFresh) {
   if (!forceFresh && _initDataPromise) return _initDataPromise;
 
   _initDataPromise = Promise.all([
-    fetchSupa('settings'),
-    fetchSupa('hosp_data'),
-    fetchSupa('school_data'),
-    fetchSupa('va_mapping'),
-    fetchSupa('links_data', '*&order=ord.asc'),
-    fetchSupa('video_data', '*&order=ord.asc')
+    fetchSupa('settings', 'key,value'),
+    fetchSupa('hosp_data', 'hospcode,name,tambon,amphoe,province,lat,lon'),
+    fetchSupa('school_data', 'code,name,address,aid,lat,lon'),
+    fetchSupa('va_mapping', 'id,label'),
+    fetchSupa('links_data', 'id,label,url,iconurl,ord&order=ord.asc'),
+    fetchSupa('video_data', 'id,label,url,ord&order=ord.asc')
   ]).then(function(results) {
     var setRes = results[0], hospRes = results[1], schRes = results[2], vaRes = results[3], linkRes = results[4], vidRes = results[5];
     var settings = {};
@@ -2302,6 +2311,11 @@ function clearDashboardClientCache_(clearInit) {
   clearTablePageCache_();
   if (typeof DASH_CACHE !== 'undefined') DASH_CACHE = { data:null, ts:0, ttl:DASH_CACHE.ttl || 45000, paramsKey:'' };
   if (typeof RAW_DATA_CACHE !== 'undefined') RAW_DATA_CACHE = { scrRows:null, hospRows:null, satRows:null, preRows:null, postRows:null, behRows:null, fupRows:null, ts:0, ttl:RAW_DATA_CACHE.ttl || 300000, userHosp:null };
+  if (typeof MINI_DASH_CACHE !== 'undefined') MINI_DASH_CACHE = {
+    beh: { rows:null, behRows:null, fupRows:null, ts:0, ttl:(MINI_DASH_CACHE.beh && MINI_DASH_CACHE.beh.ttl) || 180000, userHosp:null },
+    fup: { rows:null, fupRows:null, ts:0, ttl:(MINI_DASH_CACHE.fup && MINI_DASH_CACHE.fup.ttl) || 180000, userHosp:null }
+  };
+  if (typeof MINI_DASH_INFLIGHT !== 'undefined') MINI_DASH_INFLIGHT = {};
   if (typeof DASH_RPC_CACHE !== 'undefined') DASH_RPC_CACHE = { data:null, ts:0, ttl:DASH_RPC_CACHE.ttl || 45000, key:'' };
   if (typeof DASH_INFLIGHT !== 'undefined') DASH_INFLIGHT = {};
   if (typeof DASH_RPC_INFLIGHT !== 'undefined') DASH_RPC_INFLIGHT = {};
@@ -2310,6 +2324,7 @@ function clearDashboardClientCache_(clearInit) {
     G.allRows = [];
     G.dispRows = [];
     G.fullRowsReady = false;
+    G.lightRowsReady = false;
     G.chartData = { amphoe: [], hosp: [], school: [] };
     G.satCharts = {};
     G.kpi = {};
@@ -2455,6 +2470,155 @@ function convertFile() {
 }
 
 function toast(msg, type) { var wrap = document.getElementById('toastWrap'); if (!wrap) return; var t = document.createElement('div'); var icon = type === 'ok' ? '✅ ' : type === 'err' ? '❌ ' : 'ℹ️ '; t.className = 'toast t-' + (type || 'inf'); t.innerHTML = icon + msg; wrap.appendChild(t); setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(100%)'; t.style.transition = 'all 0.3s ease'; setTimeout(function() { t.remove(); }, 300); }, 3000); }
+
+var SEARCHABLE_SELECTS = {
+  fTambon: 'ค้นหาตำบล...',
+  fHosp: 'ค้นหา รพ.สต....',
+  fSch: 'ค้นหาโรงเรียน...',
+  'bf-tambon': 'ค้นหาตำบล...',
+  'bf-hosp': 'ค้นหา รพ.สต....',
+  'bf-school': 'ค้นหาโรงเรียน...',
+  'fdf-tambon': 'ค้นหาตำบล...',
+  'fdf-hosp': 'ค้นหา รพ.สต....',
+  'fdf-school': 'ค้นหาโรงเรียน...',
+  'op-f-tambon': 'ค้นหาตำบล...',
+  'op-f-hospcode': 'ค้นหา รพ.สต....',
+  'op-f-school': 'ค้นหาโรงเรียน...'
+};
+
+function normalizeSelectSearch_(value) {
+  return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function cacheSearchableSelectOptions_(select) {
+  if (!select) return;
+  select.__allSearchOptions = Array.prototype.slice.call(select.options)
+    .filter(function(opt) { return !opt.dataset.searchEmpty; })
+    .map(function(opt) {
+      return { value: opt.value, text: opt.textContent || opt.innerText || '', disabled: opt.disabled };
+    });
+}
+
+function appendSearchOption_(select, opt) {
+  var o = document.createElement('option');
+  o.value = opt.value;
+  o.textContent = opt.text;
+  if (opt.disabled) o.disabled = true;
+  select.appendChild(o);
+}
+
+function filterSearchableSelect_(selectId) {
+  var select = document.getElementById(selectId);
+  if (!select || !select.__searchInput) return;
+  if (!select.__allSearchOptions) cacheSearchableSelectOptions_(select);
+  var q = normalizeSelectSearch_(select.__searchInput.value);
+  var prev = select.value;
+  var options = select.__allSearchOptions || [];
+  var matched = [];
+
+  options.forEach(function(opt, idx) {
+    var haystack = normalizeSelectSearch_(opt.text + ' ' + opt.value);
+    if (idx === 0 || !q || haystack.indexOf(q) > -1) matched.push(opt);
+  });
+
+  if (prev && !matched.some(function(opt) { return opt.value === prev; })) {
+    var current = options.find(function(opt) { return opt.value === prev; });
+    if (current) matched.splice(Math.min(1, matched.length), 0, current);
+  }
+
+  select.__filteringSearch = true;
+  select.innerHTML = '';
+  matched.forEach(function(opt) { appendSearchOption_(select, opt); });
+  if (q && matched.filter(function(opt, idx) { return !(idx === 0 && opt.value === ''); }).length === 0) {
+    var empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = 'ไม่พบรายการที่ค้นหา';
+    empty.disabled = true;
+    empty.dataset.searchEmpty = '1';
+    select.appendChild(empty);
+  }
+  if (prev && matched.some(function(opt) { return opt.value === prev; })) select.value = prev;
+  else if (!prev) select.value = '';
+  select.__filteringSearch = false;
+}
+
+function refreshSearchableSelect_(selectId, clearQuery) {
+  var select = document.getElementById(selectId);
+  if (!select) return;
+  cacheSearchableSelectOptions_(select);
+  if (select.__searchInput) {
+    if (clearQuery) select.__searchInput.value = '';
+    filterSearchableSelect_(selectId);
+  }
+}
+
+function makeSelectSearchable_(selectId, placeholder) {
+  var select = document.getElementById(selectId);
+  if (!select || select.dataset.searchInstalled === '1') return;
+  var parent = select.parentNode;
+  var wrap = document.createElement('div');
+  wrap.className = 'select-search-wrap';
+  parent.insertBefore(wrap, select);
+  wrap.appendChild(select);
+
+  var input = document.createElement('input');
+  input.type = 'search';
+  input.className = 'select-search-input';
+  input.placeholder = placeholder || 'ค้นหา...';
+  input.setAttribute('aria-label', placeholder || 'ค้นหารายการ');
+  wrap.insertBefore(input, select);
+
+  select.__searchInput = input;
+  select.dataset.searchInstalled = '1';
+  input.addEventListener('input', function() { filterSearchableSelect_(selectId); });
+  refreshSearchableSelect_(selectId, false);
+}
+
+function installSearchableDropdowns_() {
+  Object.keys(SEARCHABLE_SELECTS).forEach(function(id) {
+    makeSelectSearchable_(id, SEARCHABLE_SELECTS[id]);
+  });
+}
+
+var ACTION_FEEDBACK_LAST = { msg: '', ts: 0 };
+function cleanButtonLabel_(el) {
+  return String((el && el.textContent) || '').replace(/\s+/g, ' ').trim();
+}
+
+function inferActionMessage_(el, onclick) {
+  onclick = onclick || '';
+  if (/closePanel|closeLogin|closePwdMgr|closeDel|closeFlow|closeImg|closePrintModal/.test(onclick)) return 'กำลังปิดหน้าต่าง...';
+  var label = cleanButtonLabel_(el);
+  var hay = (onclick + ' ' + label).toLowerCase();
+  if (/save|บันทึก/.test(hay)) return 'กำลังบันทึกข้อมูล...';
+  if (/delete|del|ลบ/.test(hay)) return 'กำลังลบข้อมูล...';
+  if (/export|csv|png|ดาวน์โหลด/.test(hay)) return 'กำลังเตรียมไฟล์ส่งออก...';
+  if (/print|พิมพ์/.test(hay)) return 'กำลังเตรียมข้อมูลพิมพ์...';
+  if (/reload|refresh|load|dashboard|โหลด/.test(hay)) return 'กำลังโหลดข้อมูล...';
+  if (/login|เข้าสู่ระบบ/.test(hay)) return 'กำลังเข้าสู่ระบบ...';
+  if (/logout|ออกจากระบบ/.test(hay)) return 'กำลังออกจากระบบ...';
+  if (/clear|ล้าง/.test(hay)) return 'กำลังล้างตัวกรอง...';
+  if (/filter|toggle|กรอง/.test(hay)) return 'กำลังกรองข้อมูล...';
+  if (/changePage|ก่อนหน้า|ถัดไป/.test(onclick + ' ' + label)) return 'กำลังเปลี่ยนหน้า...';
+  if (/geo|พิกัด/.test(hay)) return 'กำลังขอพิกัด...';
+  if (/open|คู่มือ|จัดการ|ตั้งค่า/.test(hay)) return 'กำลังเปิดเมนู...';
+  return label ? ('กำลังดำเนินการ: ' + label.substring(0, 42)) : 'กำลังดำเนินการ...';
+}
+
+function installButtonActionFeedback_() {
+  if (document.__actionFeedbackInstalled) return;
+  document.__actionFeedbackInstalled = true;
+  document.addEventListener('click', function(ev) {
+    var el = ev.target.closest('button, .custom-btn, .kpi, .beh-k');
+    if (!el || el.disabled || el.dataset.noFeedback === '1') return;
+    var msg = el.getAttribute('data-action-msg') || inferActionMessage_(el, el.getAttribute('onclick') || '');
+    if (!msg || typeof toast !== 'function') return;
+    var now = Date.now();
+    if (ACTION_FEEDBACK_LAST.msg === msg && (now - ACTION_FEEDBACK_LAST.ts) < 700) return;
+    ACTION_FEEDBACK_LAST = { msg: msg, ts: now };
+    toast(msg, 'inf');
+  }, true);
+}
 
 function hasActiveDashboardFilter_() {
   var ids = ['fAmp', 'fTambon', 'fHosp', 'fSch', 'fStat', 'fSex', 'srchBox'];
@@ -2737,7 +2901,6 @@ function clearFilters() {
   };
 
   onAmpChange();
-  applyFilters();
 }
 function forceRefresh() { clearDashboardClientCache_(false); clearFilters(); loadDashboard({}, true); toast('กำลังรีเฟรชข้อมูลล่าสุด...', 'inf'); }
 function mapCsvToRowDynamic(headers, cols) {
@@ -3170,14 +3333,13 @@ window.onload = async function () {
         applyInitData_(initData);
 
         // 🎨 ประกอบหน้า UI ขึ้นมาทันที
-        applySettings(); buildDropdowns(); updateAuthUI(); initMap(); 
+        applySettings(); buildDropdowns(); installSearchableDropdowns_(); installButtonActionFeedback_(); updateAuthUI(); initMap(); 
         renderLinks(G.links); renderVideoPlaylist(G.videos);
         if(G.videos.length > 0) renderVideo(G.videos[0].url); else renderVideo('');
         if(G.settings.marquee_imgs) renderImageMarquee(G.settings.marquee_imgs);
 
         // 📊 สั่งให้ดึง Dashboard และตารางรายชื่อพร้อมกัน (ขนาน) — เร็วขึ้นเพราะไม่ต้องรอต่อคิว
         loadDashboard({});
-        loadTablePage(1);
         
     } catch(e) {
         toast('การเชื่อมต่อระบบล้มเหลว: ' + e.message, 'err');
@@ -3597,6 +3759,9 @@ function buildDropdowns() {
   var fSchEl = document.getElementById('fSch'); if (fSchEl) fSchEl.innerHTML = '<option value="">ทั้งหมด</option>';
   var schHtml = ''; G.schoolList.forEach(function(s) { if (fSchEl) fSchEl.innerHTML += '<option value="' + s.name + '">' + s.name + '</option>'; schHtml += '<option value="' + e_(s.name) + '">'; });
   document.getElementById('dl-school').innerHTML = schHtml; document.getElementById('s-dt').value = (new Date()).toLocaleDateString('en-GB');
+  refreshSearchableSelect_('fTambon', true);
+  refreshSearchableSelect_('fHosp', true);
+  refreshSearchableSelect_('fSch', true);
   var natOpts = '';
   if(G.natList && G.natList.length > 0) {
       G.natList.forEach(function(n) { natOpts += '<option value="'+n+'">'+n+'</option>'; });
@@ -3644,12 +3809,14 @@ function rebuildTambonOptions_(amp) {
   tambons.sort();
   var html = '<option value="">ทั้งหมด</option>'; tambons.forEach(function(t){ html += '<option>'+t+'</option>'; });
   document.getElementById('fTambon').innerHTML = html;
+  refreshSearchableSelect_('fTambon', true);
 }
 function rebuildHospOptions_(amp, tam) {
   var html = '<option value="">ทั้งหมด</option>';
   G.hospList.filter(function(h){ return (!amp||h.amphoe===amp) && (!tam||h.tambon===tam); })
     .forEach(function(h){ html += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
   document.getElementById('fHosp').innerHTML = html;
+  refreshSearchableSelect_('fHosp', true);
 }
 function rebuildSchoolOptions_() {
   var hc = document.getElementById('fHosp').value;
@@ -3665,6 +3832,7 @@ function rebuildSchoolOptions_() {
   var html = '<option value="">ทั้งหมด</option>';
   Object.keys(schools).sort().forEach(function(s){ html += '<option>'+s+'</option>'; });
   document.getElementById('fSch').innerHTML = html;
+  refreshSearchableSelect_('fSch', true);
 }
 function updateAuthUI() {
   // [v6.3] Reset admin-only buttons ก่อนเสมอ ป้องกัน state ค้างจาก session เดิม
@@ -3813,6 +3981,11 @@ var DASH_RPC_INFLIGHT = {};
 var DASH_FULL_LOAD_TIMER = null;
 // ---- cache ข้อมูลดิบ 7 ตาราง แยกจากผลลัพธ์ที่คำนวณแล้ว ไม่ผูกกับ filter ----
 var RAW_DATA_CACHE = { scrRows:null, hospRows:null, satRows:null, preRows:null, postRows:null, behRows:null, fupRows:null, ts:0, ttl:300000, userHosp:null };
+var MINI_DASH_CACHE = {
+  beh: { rows:null, behRows:null, fupRows:null, ts:0, ttl:180000, userHosp:null },
+  fup: { rows:null, fupRows:null, ts:0, ttl:180000, userHosp:null }
+};
+var MINI_DASH_INFLIGHT = {};
  
 // ---- แทนที่ฟังก์ชัน loadDashboard(params) เดิมทั้งหมดด้วยอันนี้ ----
 function loadDashboard(params, forceFresh) {
@@ -4220,6 +4393,136 @@ async function fetchSupaByCidChunks_(table, cids) {
   });
   return out;
 }
+
+function getUserHospScope_() {
+  return (G.session.loggedIn && G.session.role !== 'admin' && G.session.hospcode && G.session.hospcode !== 'all')
+    ? G.session.hospcode : '';
+}
+
+function isMiniDashCacheFresh_(entry, userHosp) {
+  return entry && entry.rows && entry.userHosp === userHosp && (Date.now() - entry.ts) < entry.ttl;
+}
+
+function buildLightDashboardRows_(scrRows, fupRows) {
+  var hospMap = {};
+  (G.hospList || []).forEach(function(h) {
+    if (h.hospcode) hospMap[h.hospcode] = h;
+  });
+  var fupSet = {};
+  (fupRows || []).forEach(function(r) {
+    var cid = String(r.cid || '').replace(/\D/g, '');
+    if (cid) fupSet[cid] = true;
+  });
+  return (scrRows || []).map(function(r) {
+    var cid = String(r.cid || '').replace(/\D/g, '');
+    var hc = String(r.hospcode || '').trim();
+    var h = hospMap[hc] || {};
+    return {
+      cid: cid,
+      student_name: String(r.student_name || ((r.pname || '') + (r.fname || '') + ' ' + (r.lname || ''))).trim(),
+      hospcode: hc,
+      hosp_name: h.name || '',
+      school_name: String(r.school_name || '').trim(),
+      school_class: String(r.school_class || '').trim(),
+      sex: String(r.sex || '').trim(),
+      age_years: String(r.age_years || '').trim(),
+      amphoe: String(r.amphoe || h.amphoe || '').trim(),
+      tambon: String(r.tambon || h.tambon || '').trim(),
+      diagnosis: String(r.diagnosis || '').trim(),
+      referral: String(r.referral || '').trim(),
+      status: calcStatusClient_(r, !!fupSet[cid])
+    };
+  }).filter(function(r) { return r.cid; });
+}
+
+async function fetchMiniDashboardData_(kind, forceFresh) {
+  var userHosp = getUserHospScope_();
+  var cache = MINI_DASH_CACHE[kind];
+  if (!forceFresh && isMiniDashCacheFresh_(cache, userHosp)) return cache;
+
+  var inFlightKey = kind + '|' + userHosp;
+  if (!forceFresh && MINI_DASH_INFLIGHT[inFlightKey]) return MINI_DASH_INFLIGHT[inFlightKey];
+
+  if (!forceFresh && RAW_DATA_CACHE.scrRows && RAW_DATA_CACHE.userHosp === userHosp && (Date.now() - RAW_DATA_CACHE.ts) < RAW_DATA_CACHE.ttl) {
+    var rawEntry = {
+      rows: buildLightDashboardRows_(RAW_DATA_CACHE.scrRows, RAW_DATA_CACHE.fupRows),
+      behRows: RAW_DATA_CACHE.behRows,
+      fupRows: RAW_DATA_CACHE.fupRows,
+      ts: Date.now(),
+      ttl: cache.ttl,
+      userHosp: userHosp
+    };
+    MINI_DASH_CACHE[kind] = rawEntry;
+    return rawEntry;
+  }
+
+  var scrCols = 'cid,student_name,pname,fname,lname,hospcode,school_name,school_class,sex,age_years,diagnosis,referral,amphoe,tambon';
+  var scrSelect = scrCols + (userHosp ? ('&hospcode=eq.' + encodeURIComponent(userHosp)) : '');
+
+  var promise = (async function() {
+    var scrRows, behRows = null, fupRows = null, cids = [];
+    if (userHosp) {
+      scrRows = await fetchSupaAll('screening_data', scrSelect);
+      cids = scrRows.map(function(r) { return String(r.cid || '').replace(/\D/g, ''); }).filter(Boolean);
+      if (kind === 'beh') {
+        var behParts = await Promise.all([
+          fetchSupaByCidChunks_('behavior_data', cids),
+          fetchSupaByCidChunks_('followup_data', cids)
+        ]);
+        behRows = behParts[0]; fupRows = behParts[1];
+      } else {
+        fupRows = await fetchSupaByCidChunks_('followup_data', cids);
+      }
+    } else if (kind === 'beh') {
+      var allBeh = await Promise.all([
+        fetchSupaAll('screening_data', scrSelect),
+        fetchSupaAll('behavior_data'),
+        fetchSupaAll('followup_data')
+      ]);
+      scrRows = allBeh[0]; behRows = allBeh[1]; fupRows = allBeh[2];
+    } else {
+      var allFup = await Promise.all([
+        fetchSupaAll('screening_data', scrSelect),
+        fetchSupaAll('followup_data')
+      ]);
+      scrRows = allFup[0]; fupRows = allFup[1];
+    }
+
+    var entry = {
+      rows: buildLightDashboardRows_(scrRows, fupRows),
+      behRows: behRows,
+      fupRows: fupRows,
+      ts: Date.now(),
+      ttl: cache.ttl,
+      userHosp: userHosp
+    };
+    MINI_DASH_CACHE[kind] = entry;
+    return entry;
+  })().finally(function() {
+    if (MINI_DASH_INFLIGHT[inFlightKey] === promise) delete MINI_DASH_INFLIGHT[inFlightKey];
+  });
+
+  MINI_DASH_INFLIGHT[inFlightKey] = promise;
+  return promise;
+}
+
+function applyMiniDashboardData_(entry) {
+  if (!entry) return;
+  if (!G.fullRowsReady) {
+    G.allRows = entry.rows || [];
+    G.dispRows = entry.rows || [];
+    G.lightRowsReady = true;
+  }
+  if (entry.behRows) G.behRows = entry.behRows;
+  if (entry.fupRows) G.fupRows = entry.fupRows;
+}
+
+function setDashboardTableLoading_(kind, msg) {
+  var bodyId = kind === 'beh' ? 'behTblBody' : 'fupTblBody';
+  var colSpan = kind === 'beh' ? 12 : 13;
+  var body = document.getElementById(bodyId);
+  if (body) body.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center;padding:20px;color:var(--accent);font-weight:600;">' + e_(msg || 'กำลังโหลดข้อมูล...') + '</td></tr>';
+}
  
 // ---- เกณฑ์คำนวณสถานะ / คะแนน / ความเสี่ยง (พอร์ตมาจาก Code.gs ทุกตัวอักษร) ----
 var ANS_KEY_CLIENT = ['ข', 'ก', 'ง', 'ข', 'ค', 'ข', 'ค', 'ค', 'ค', 'ค'];
@@ -4425,6 +4728,7 @@ function applyDashboardResult_(result) {
   G.chartData = result.chartData; G.kpi = result.kpi; G.hospSummaryData = result.hospSummaryData; G.satCharts = result.satCharts;
   G.allRows = result.allRows; G.dispRows = result.allRows;
   G.fullRowsReady = true;
+  G.lightRowsReady = true;
  
   (function () {
     var sc = 0, pc = 0, poc = 0, glC = 0;
@@ -4597,7 +4901,7 @@ function saveLoc() {
   });
 }
 
-function toggleHospFilter(hospcode) { var el = document.getElementById('fHosp'); if (el.value === hospcode) { el.value = ''; } else { el.value = hospcode; } try { rebuildSchoolOptions_(); } catch(e) {} applyFilters(); }
+function toggleHospFilter(hospcode) { var el = document.getElementById('fHosp'); refreshSearchableSelect_('fHosp', true); if (el.value === hospcode) { el.value = ''; } else { el.value = hospcode; } try { rebuildSchoolOptions_(); } catch(e) {} applyFilters(); }
 function toggleStatFilter(stat) { var el = document.getElementById('fStat'); if (el.value === stat) { el.value = ''; } else { el.value = stat; } applyFilters(); }
 function updateKPIs(k) { 
   function sv(id, v) { var e = document.getElementById(id); if (e) e.textContent = (v !== null && v !== undefined) ? v : '—'; } 
@@ -4879,6 +5183,7 @@ function renderBarChart() {
       var item = hData[elements[0].index];
       if (!item) return;
       var el = document.getElementById('fHosp');
+      refreshSearchableSelect_('fHosp', true);
       el.value = (el.value === item.hospcode) ? '' : item.hospcode;
       onHospFilterChange();
     }, 9), plugins:[ChartDataLabels]
@@ -4898,6 +5203,7 @@ function renderBarChart() {
       var item = sDataArr[elements[0].index];
       if (!item) return;
       var el = document.getElementById('fSch');
+      refreshSearchableSelect_('fSch', true);
       el.value = (el.value === item.label) ? '' : item.label;
       applyFilters();
     }, 10), plugins:[ChartDataLabels]
@@ -5907,6 +6213,7 @@ function openBehDashboard() {
   var hcHtml = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.forEach(function(h){ hcHtml += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
   document.getElementById('bf-hosp').innerHTML = hcHtml;
+  refreshSearchableSelect_('bf-hosp', true);
  
   var classes = ['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'];
   var clsHtml = '<option value="">ชั้นทั้งหมด</option>';
@@ -5966,12 +6273,14 @@ function rebuildTambonSel_(id, amp) {
   var html = '<option value="">ตำบล ทั้งหมด</option>';
   tambons.forEach(function (t) { html += '<option>' + t + '</option>'; });
   document.getElementById(id).innerHTML = html;
+  refreshSearchableSelect_(id, true);
 }
 function rebuildHospSel_(id, amp, tam) {
   var html = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.filter(function(h){ return (!amp||h.amphoe===amp)&&(!tam||h.tambon===tam); })
     .forEach(function(h){ html += '<option value="'+h.hospcode+'">'+h.hospcode+' '+h.name+'</option>'; });
   document.getElementById(id).innerHTML = html;
+  refreshSearchableSelect_(id, true);
 }
 function rebuildSchoolSel_(id, amp, tam, hc) {
   var validHcs = {};
@@ -5982,11 +6291,16 @@ function rebuildSchoolSel_(id, amp, tam, hc) {
     validHcs[h.hospcode] = true;
   });
   var schoolSet = {};
-  (G.allRows || []).forEach(function (r) { if (validHcs[r.hospcode] && r.school_name) schoolSet[r.school_name] = true; });
+  if (G.allRows && G.allRows.length) {
+    G.allRows.forEach(function (r) { if (validHcs[r.hospcode] && r.school_name) schoolSet[r.school_name] = true; });
+  } else {
+    (G.schoolList || []).forEach(function (s) { if (s.name) schoolSet[s.name] = true; });
+  }
   var schools = Object.keys(schoolSet).sort();
   var html = '<option value="">โรงเรียนทั้งหมด</option>';
   schools.forEach(function (s) { html += '<option value="' + e_(s) + '">' + e_(s) + '</option>'; });
   document.getElementById(id).innerHTML = html;
+  refreshSearchableSelect_(id, true);
 }
 
 function clearBehFilters() {
@@ -6017,9 +6331,19 @@ function loadBehDashboard() {
     risk: GB.riskFilter
   };
  
-  // ข้อมูลยังโหลดไม่เสร็จ (เพิ่งเข้าเว็บใหม่ๆ) → ใช้ทาง GAS สำรองไปก่อน
-  if (!G.behRows || !G.allRows || !G.allRows.length) {
-    ensureFullRowsReady_(loadBehDashboard, function(){ loadBehDashboardViaGAS_(params); });
+  // ข้อมูลเต็มยังไม่เสร็จ → ดึงเฉพาะชุดที่ Dashboard นี้ต้องใช้ก่อน
+  if (!G.behRows || (!G.fullRowsReady && !G.lightRowsReady)) {
+    setDashboardTableLoading_('beh', 'กำลังโหลดข้อมูลพฤติกรรมแบบเร็ว...');
+    fetchMiniDashboardData_('beh', false)
+      .then(function(entry) {
+        applyMiniDashboardData_(entry);
+        rebuildSchoolSel_('bf-school', document.getElementById('bf-amphoe').value, document.getElementById('bf-tambon').value, document.getElementById('bf-hosp').value);
+        loadBehDashboard();
+      })
+      .catch(function(e) {
+        console.warn('mini behavior dashboard load failed:', e);
+        loadBehDashboardViaGAS_(params);
+      });
     return;
   }
  
@@ -6295,6 +6619,7 @@ function openFupDashboard() {
   var hcHtml = '<option value="">รพ.สต. ทั้งหมด</option>';
   G.hospList.forEach(function(h){ hcHtml += '<option value="' + h.hospcode + '">' + h.hospcode + ' ' + h.name + '</option>'; });
   document.getElementById('fdf-hosp').innerHTML = hcHtml;
+  refreshSearchableSelect_('fdf-hosp', true);
  
   var classes = ['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'];
   var clsHtml = '<option value="">ชั้นทั้งหมด</option>';
@@ -6367,8 +6692,18 @@ function loadFupDashboard() {
     school_class: document.getElementById('fdf-class').value
   };
  
-  if (!G.fupRows || !G.allRows || !G.allRows.length) {
-    ensureFullRowsReady_(loadFupDashboard, function(){ loadFupDashboardViaGAS_(params); });
+  if (!G.fupRows || (!G.fullRowsReady && !G.lightRowsReady)) {
+    setDashboardTableLoading_('fup', 'กำลังโหลดข้อมูลติดตามแว่นแบบเร็ว...');
+    fetchMiniDashboardData_('fup', false)
+      .then(function(entry) {
+        applyMiniDashboardData_(entry);
+        rebuildSchoolSel_('fdf-school', document.getElementById('fdf-amphoe').value, document.getElementById('fdf-tambon').value, document.getElementById('fdf-hosp').value);
+        loadFupDashboard();
+      })
+      .catch(function(e) {
+        console.warn('mini followup dashboard load failed:', e);
+        loadFupDashboardViaGAS_(params);
+      });
     return;
   }
  
@@ -7163,6 +7498,7 @@ function rebuildTambonOptions() {
   var html = '<option value="">ตำบล ทั้งหมด</option>';
   tambons.forEach(function(t){ html += '<option value="'+e_(t)+'">'+e_(t)+'</option>'; });
   document.getElementById('op-f-tambon').innerHTML = html;
+  refreshSearchableSelect_('op-f-tambon', true);
   rebuildHcOptions();
 }
 
@@ -7176,6 +7512,7 @@ function rebuildHcOptions() {
     html += '<option value="'+h.hospcode+'">'+h.hospcode+' '+e_(h.name)+'</option>';
   });
   document.getElementById('op-f-hospcode').innerHTML = html;
+  refreshSearchableSelect_('op-f-hospcode', true);
   if (G.session.role === 'user' && G.session.hospcode !== 'all') {
     document.getElementById('op-f-hospcode').value = G.session.hospcode;
     document.getElementById('op-f-hospcode').disabled = true;
@@ -7197,11 +7534,16 @@ function rebuildSchoolOptions() {
     validHcs[h.hospcode] = true;
   });
   var schoolSet = {};
-  G.allRows.forEach(function(r){ if (validHcs[r.hospcode] && r.school_name) schoolSet[r.school_name] = true; });
+  if (G.allRows && G.allRows.length) {
+    G.allRows.forEach(function(r){ if (validHcs[r.hospcode] && r.school_name) schoolSet[r.school_name] = true; });
+  } else {
+    (G.schoolList || []).forEach(function(s){ if (s.name) schoolSet[s.name] = true; });
+  }
   var schools = Object.keys(schoolSet).sort();
   var html = '<option value="">โรงเรียน ทั้งหมด</option>';
   schools.forEach(function(s){ html += '<option value="'+e_(s)+'">'+e_(s)+'</option>'; });
   document.getElementById('op-f-school').innerHTML = html;
+  refreshSearchableSelect_('op-f-school', true);
 }
 
 function onOPAmpChange()    { OP.filters.amphoe   = document.getElementById('op-f-amphoe').value;   OP.filters.tambon=''; OP.filters.hospcode=''; OP.filters.school=''; rebuildTambonOptions(); loadOnePageData(); }
@@ -7916,6 +8258,7 @@ function applyRowDataOnly_(result, paramsKey, forceFresh) {
   var needsFullRender = !G.kpi || !G.kpi.total || !G.hospSummaryData || !G.hospSummaryData.length;
   G.allRows = result.allRows || []; G.dispRows = result.allRows || [];
   G.fullRowsReady = true;
+  G.lightRowsReady = true;
   refreshOnePageIfOpen_();
   if (hasActiveDashboardFilter_()) {
     try { applyFilters(); } catch(e) { console.error('applyFilters after full load error:', e); }
