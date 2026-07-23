@@ -1910,6 +1910,10 @@ window.google.script = window.google.script || {};
 // ทำให้ไม่ต้องรอ Apps Script cold start และไม่ต้องอ่าน screening_data ทั้งตาราง
 const _screeningRecordCache = new Map();
 const _screeningRecordInFlight = new Map();
+const _behaviorRecordCache = new Map();
+const _behaviorRecordInFlight = new Map();
+const _followupRecordCache = new Map();
+const _followupRecordInFlight = new Map();
 const SCREENING_RECORD_CACHE_MS = 5 * 60 * 1000;
 
 function _formatScreeningDate_(value) {
@@ -1959,6 +1963,64 @@ function prefetchScreeningRecord_(cid) {
   fetchScreeningRecordFast_(cid).catch(function() {});
 }
 
+function _normalizeRecordCid_(cid) {
+  return String(cid || '').replace(/\D/g, '').trim();
+}
+
+async function fetchSingleRecordByCidFast_(table, cid, cache, inFlight, selectCols) {
+  cid = _normalizeRecordCid_(cid);
+  if (!/^\d{13}$/.test(cid)) return { ok:false, data:null, msg:'เลขบัตรประชาชนไม่ถูกต้อง' };
+
+  var cached = cache.get(cid);
+  if (cached && Date.now() - cached.ts < SCREENING_RECORD_CACHE_MS) return cached.result;
+  if (inFlight.has(cid)) return inFlight.get(cid);
+
+  var request = fetch(
+    SUPABASE_URL + '/' + table + '?select=' + (selectCols || '*') + '&cid=eq.' + encodeURIComponent(cid) + '&limit=1',
+    { headers:{ 'apikey':SUPABASE_KEY, 'Authorization':'Bearer ' + SUPABASE_KEY } }
+  ).then(async function(res) {
+    if (!res.ok) throw new Error('REST ' + table + ' error (' + res.status + ')');
+    var rows = await res.json();
+    if (!rows.length) return { ok:false, data:null, msg:'ไม่พบข้อมูล' };
+    var result = { ok:true, data:rows[0], msg:'พบข้อมูล' };
+    cache.set(cid, { result:result, ts:Date.now() });
+    return result;
+  }).finally(function() {
+    inFlight.delete(cid);
+  });
+  inFlight.set(cid, request);
+  return request;
+}
+
+function fetchBehaviorRecordFast_(cid) {
+  return fetchSingleRecordByCidFast_('behavior_data', cid, _behaviorRecordCache, _behaviorRecordInFlight);
+}
+
+function fetchFollowupRecordFast_(cid) {
+  return fetchSingleRecordByCidFast_('followup_data', cid, _followupRecordCache, _followupRecordInFlight);
+}
+
+function clearRecordCachesForCid_(cid) {
+  cid = _normalizeRecordCid_(cid);
+  if (!cid) return;
+  _screeningRecordCache.delete(cid);
+  _behaviorRecordCache.delete(cid);
+  _followupRecordCache.delete(cid);
+}
+
+function clearClientDataAfterWrite_(action, payloadData, result) {
+  if (!result || result.ok === false) return;
+  payloadData = payloadData || {};
+  clearRecordCachesForCid_(payloadData.cid);
+  var affectsDash = [
+    'saveScreeningData', 'updateScreeningData', 'deleteRecord',
+    'saveSatisfactionData', 'savePreTest', 'savePostTest',
+    'saveBehaviorData', 'saveFollowupData',
+    'deleteBehaviorRecord', 'deleteFollowupRecord'
+  ].indexOf(action) > -1;
+  if (affectsDash && typeof clearTablePageCache_ === 'function') clearTablePageCache_();
+}
+
 window.google.script.run = (function() {
   function createRunner(successHandler, failureHandler) {
     const handler = {
@@ -2005,11 +2067,20 @@ window.google.script.run = (function() {
             ? fetchScreeningRecordFast_(payloadData.cid).catch(function() {
                 return _callApiWithRetry(prop, payloadData);
               })
-            : _callApiWithRetry(prop, payloadData);
+            : (prop === 'getBehaviorRecord'
+              ? fetchBehaviorRecordFast_(payloadData.cid).catch(function() {
+                  return _callApiWithRetry(prop, payloadData);
+                })
+              : (prop === 'getFollowupRecord'
+                ? fetchFollowupRecordFast_(payloadData.cid).catch(function() {
+                    return _callApiWithRetry(prop, payloadData);
+                  })
+                : _callApiWithRetry(prop, payloadData)));
           if (inFlightKey) _inFlight.set(inFlightKey, apiPromise);
           
           try {
             const result = await apiPromise;
+            clearClientDataAfterWrite_(prop, payloadData, result);
             if (successHandler) {
               const stringifiedResult = typeof result === 'object' ? JSON.stringify(result) : result;
               successHandler(stringifiedResult);
@@ -2271,6 +2342,8 @@ var INIT_DATA_CACHE = { data:null, ts:0, ttl:600000 };
 var _initDataPromise = null;
 var TABLE_PAGE_CACHE = { map:new Map(), ttl:30000 };
 var _tablePageInFlight = new Map();
+var TABLE_ENRICH_CACHE = { map:new Map(), ttl:30000 };
+var _tableEnrichInFlight = new Map();
 
 function readSessionCache_(key, ttl, scopeKey) {
   try {
@@ -2446,6 +2519,8 @@ function applyInitData_(data) {
 function clearTablePageCache_() {
   TABLE_PAGE_CACHE.map.clear();
   _tablePageInFlight.clear();
+  TABLE_ENRICH_CACHE.map.clear();
+  _tableEnrichInFlight.clear();
   removeSessionCachePrefix_('EYE_TABLE_PAGE_CACHE_');
 }
 
@@ -2907,6 +2982,11 @@ function hasActiveDashboardFilter_() {
     var el = document.getElementById(ids[i]);
     if (el && String(el.value || '').trim()) return true;
   }
+  var cf = G_chartFilter || {};
+  return !!(cf.metric || cf.diag || cf.treat || cf.behRisk || cf.fupWear || cf.nat || cf.satBreakdown || cf.satType);
+}
+
+function hasClientOnlyDashboardFilter_() {
   var cf = G_chartFilter || {};
   return !!(cf.metric || cf.diag || cf.treat || cf.behRisk || cf.fupWear || cf.nat || cf.satBreakdown || cf.satType);
 }
@@ -4779,7 +4859,7 @@ async function fetchScreeningTablePage_(page, forceFresh) {
   var cacheKey = stableKey_(payload);
   var cached = TABLE_PAGE_CACHE.map.get(cacheKey);
   if (!forceFresh && cached && (Date.now() - cached.ts) < TABLE_PAGE_CACHE.ttl) return cached.data;
-  var sessionPageKey = makeSessionCacheKey_('EYE_TABLE_PAGE_CACHE', cacheKey);
+  var sessionPageKey = makeSessionCacheKey_('EYE_TABLE_PAGE_CACHE_V2', cacheKey);
   if (!forceFresh) {
     var storedPage = readSessionCache_(sessionPageKey, TABLE_PAGE_CACHE.ttl, cacheKey);
     if (storedPage) {
@@ -4794,16 +4874,19 @@ async function fetchScreeningTablePage_(page, forceFresh) {
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   }).then(async function(res) {
+    var normalized;
     if (!res.ok) {
       console.warn('RPC get_screening_table_page ไม่พร้อม (' + res.status + ') ใช้ REST fallback แทน');
-      return await fetchScreeningTablePageRest_(payload);
+      normalized = await fetchScreeningTablePageRest_(payload);
+    } else {
+      var data = await res.json();
+      normalized = normalizeScreeningPageResult_(data, payload);
+      if (!normalized.rows.length && (G.kpi && Number(G.kpi.total || 0) > 0)) {
+        try { normalized = await fetchScreeningTablePageRest_(payload); }
+        catch(restErr) { console.warn('REST table fallback failed:', restErr); }
+      }
     }
-    var data = await res.json();
-    var normalized = normalizeScreeningPageResult_(data, payload);
-    if (!normalized.rows.length && (G.kpi && Number(G.kpi.total || 0) > 0)) {
-      try { normalized = await fetchScreeningTablePageRest_(payload); }
-      catch(restErr) { console.warn('REST table fallback failed:', restErr); }
-    }
+    normalized.rows = await enrichScreeningRowsForPage_(normalized.rows, !!forceFresh);
     TABLE_PAGE_CACHE.map.set(cacheKey, { data:normalized, ts:Date.now() });
     writeSessionCache_(sessionPageKey, normalized, cacheKey);
     return normalized;
@@ -5150,6 +5233,152 @@ function calcSatAvgClient_(row) {
     if (v >= 1 && v <= 5) { sum += v; count++; }
   }
   return count > 0 ? Math.round((sum / count) * 100) / 100 : null;
+}
+
+function calcBehaviorRiskLevelClient_(r) {
+  r = r || {};
+  var timeMap = { 'ไม่ใช้': 0, 'ไม่ถึง 1 ชม.': 0.5, '1-2 ชม.': 1.5, '2-3 ชม.': 2.5, '3-4 ชม.': 3.5, 'มากกว่า 4 ชม.': 5 };
+  var hWk = 0, hWe = 0;
+  ['q_time_wk_morn', 'q_time_wk_noon', 'q_time_wk_eve'].forEach(function(k) {
+    var v = String(r[k] || '').trim();
+    if (timeMap[v] !== undefined) hWk += timeMap[v];
+  });
+  ['q_time_we_morn', 'q_time_we_noon', 'q_time_we_eve'].forEach(function(k) {
+    var v = String(r[k] || '').trim();
+    if (timeMap[v] !== undefined) hWe += timeMap[v];
+  });
+
+  var risk = 0;
+  if (hWk > 8) risk += 3; else if (hWk > 4) risk += 2; else if (hWk > 2) risk += 1;
+  if (hWe > 8) risk += 3; else if (hWe > 4) risk += 2; else if (hWe > 2) risk += 1;
+  var distVal = String(r.q_dist || '').trim();
+  var restVal = String(r.q_rest || '').trim();
+  if (distVal === 'ใกล้กว่า 1 ฟุต') risk += 2; else if (distVal === 'ประมาณ 1 ฟุต') risk += 1;
+  if (restVal === 'ไม่ค่อยพัก') risk += 2; else if (restVal === 'พักบ้างบางครั้ง') risk += 1;
+  String(r.q_symptom || '').split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s && s !== 'ไม่มีอาการ'; }).forEach(function() { risk++; });
+  return (risk >= 8) ? 'high' : (risk >= 4) ? 'medium' : 'low';
+}
+
+function buildScreeningExtraMaps_(satRows, preRows, postRows, behRows, fupRows) {
+  var maps = { sat:{}, satType:{}, pre:{}, post:{}, beh:{}, fup:{} };
+
+  (satRows || []).forEach(function(r) {
+    var cid = _normalizeRecordCid_(r.cid);
+    if (!cid) return;
+    var avg = calcSatAvgClient_(r);
+    if (avg !== null) {
+      maps.sat[cid] = avg;
+      maps.satType[cid] = String(r.eval_type || '').trim() || null;
+    }
+  });
+  (preRows || []).forEach(function(r) {
+    var cid = _normalizeRecordCid_(r.cid);
+    if (!cid) return;
+    var saved = Number(r.total);
+    maps.pre[cid] = (isNaN(saved) || saved === 0) ? calcTestScoreClient_(r) : saved;
+  });
+  (postRows || []).forEach(function(r) {
+    var cid = _normalizeRecordCid_(r.cid);
+    if (!cid) return;
+    var saved = Number(r.total);
+    maps.post[cid] = (isNaN(saved) || saved === 0) ? calcTestScoreClient_(r) : saved;
+  });
+  (behRows || []).forEach(function(r) {
+    var cid = _normalizeRecordCid_(r.cid);
+    if (cid) maps.beh[cid] = calcBehaviorRiskLevelClient_(r);
+  });
+  (fupRows || []).forEach(function(r) {
+    var cid = _normalizeRecordCid_(r.cid);
+    if (cid) maps.fup[cid] = String(r.f_days || '').trim() || 'มีข้อมูล';
+  });
+  return maps;
+}
+
+function mergeScreeningExtras_(rows, maps) {
+  maps = maps || { sat:{}, satType:{}, pre:{}, post:{}, beh:{}, fup:{} };
+  return (rows || []).map(function(row) {
+    var out = Object.assign({}, row);
+    var cid = _normalizeRecordCid_(out.cid);
+    if (!cid) return out;
+
+    if ((out.sat === null || out.sat === undefined || out.sat === '') && maps.sat[cid] !== undefined) out.sat = maps.sat[cid];
+    if (!out.sat_type && maps.satType[cid]) out.sat_type = maps.satType[cid];
+    if ((out.pre === null || out.pre === undefined || out.pre === '') && maps.pre[cid] !== undefined) out.pre = maps.pre[cid];
+    if ((out.post === null || out.post === undefined || out.post === '') && maps.post[cid] !== undefined) out.post = maps.post[cid];
+    if ((out.gain === null || out.gain === undefined || out.gain === '') && out.pre !== null && out.pre !== undefined && out.post !== null && out.post !== undefined) out.gain = calcGainClient_(out.pre, out.post);
+    if (!out.beh_risk && maps.beh[cid]) out.beh_risk = maps.beh[cid];
+    if (!out.fup_status && maps.fup[cid]) {
+      out.fup_status = maps.fup[cid];
+      out.status = calcStatusClient_(out, true);
+    }
+    return out;
+  });
+}
+
+function mergeFullRowExtras_(rows) {
+  if (!G.allRows || !G.allRows.length) return rows || [];
+  var fullMap = {};
+  G.allRows.forEach(function(r) {
+    var cid = _normalizeRecordCid_(r.cid);
+    if (cid) fullMap[cid] = r;
+  });
+  return (rows || []).map(function(row) {
+    var cid = _normalizeRecordCid_(row.cid);
+    var full = fullMap[cid];
+    if (!full) return row;
+    var out = Object.assign({}, row);
+    ['sat', 'sat_type', 'pre', 'post', 'gain', 'beh_risk', 'fup_status', 'treatment', 'nationality'].forEach(function(k) {
+      if ((out[k] === null || out[k] === undefined || out[k] === '') && full[k] !== null && full[k] !== undefined && full[k] !== '') out[k] = full[k];
+    });
+    if (full.status && (!out.status || (full.fup_status && !row.fup_status))) out.status = full.status;
+    return out;
+  });
+}
+
+async function enrichScreeningRowsForPage_(rows, forceFresh) {
+  rows = (rows || []).map(normalizeScreeningTableRow_);
+  if (!rows.length) return rows;
+
+  rows = mergeFullRowExtras_(rows);
+  if (G.fullRowsReady) return rows;
+
+  var cids = [];
+  var seen = {};
+  rows.forEach(function(r) {
+    var cid = _normalizeRecordCid_(r.cid);
+    if (cid && !seen[cid]) { seen[cid] = true; cids.push(cid); }
+  });
+  if (!cids.length) return rows;
+
+  var enrichKey = cids.join(',');
+  var cached = TABLE_ENRICH_CACHE.map.get(enrichKey);
+  if (!forceFresh && cached && (Date.now() - cached.ts) < TABLE_ENRICH_CACHE.ttl) {
+    return mergeScreeningExtras_(rows, cached.maps);
+  }
+  if (!forceFresh && _tableEnrichInFlight.has(enrichKey)) {
+    return _tableEnrichInFlight.get(enrichKey).then(function(maps) { return mergeScreeningExtras_(rows, maps); });
+  }
+
+  var enrichPromise = Promise.all([
+    fetchSupaByCidChunks_('satisfaction_data', cids, 'cid,q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,eval_type'),
+    fetchSupaByCidChunks_('pre_test', cids, 'cid,q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,total'),
+    fetchSupaByCidChunks_('post_test', cids, 'cid,q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,total'),
+    fetchSupaByCidChunks_('behavior_data', cids, 'cid,q_time_wk_morn,q_time_wk_noon,q_time_wk_eve,q_time_we_morn,q_time_we_noon,q_time_we_eve,q_dist,q_rest,q_symptom'),
+    fetchSupaByCidChunks_('followup_data', cids, 'cid,f_days')
+  ]).then(function(results) {
+    var maps = buildScreeningExtraMaps_(results[0], results[1], results[2], results[3], results[4]);
+    TABLE_ENRICH_CACHE.map.set(enrichKey, { maps:maps, ts:Date.now() });
+    return maps;
+  }).catch(function(err) {
+    console.warn('table enrichment failed:', err);
+    return { sat:{}, satType:{}, pre:{}, post:{}, beh:{}, fup:{} };
+  }).finally(function() {
+    _tableEnrichInFlight.delete(enrichKey);
+  });
+
+  _tableEnrichInFlight.set(enrichKey, enrichPromise);
+  var maps = await enrichPromise;
+  return mergeScreeningExtras_(rows, maps);
 }
  
 function formatDateClient_(d) {
@@ -7696,84 +7925,193 @@ function determineFlowAfterStep(cid, currentStep) {
   return null;
 }
 
+function findPersonDemoByCid_(cid) {
+  cid = _normalizeRecordCid_(cid);
+  var sources = [
+    G.allRows || [],
+    (GB.data && GB.data.rows) || [],
+    (GF.data && GF.data.rows) || []
+  ];
+  for (var s = 0; s < sources.length; s++) {
+    for (var i = 0; i < sources[s].length; i++) {
+      if (_normalizeRecordCid_(sources[s][i].cid) === cid) return sources[s][i];
+    }
+  }
+  return null;
+}
+
+function findAuxRecordByCid_(rows, cid) {
+  cid = _normalizeRecordCid_(cid);
+  rows = rows || [];
+  for (var i = 0; i < rows.length; i++) {
+    if (_normalizeRecordCid_(rows[i].cid) === cid) return rows[i];
+  }
+  return null;
+}
+
+function enableBehaviorFormForEdit_(cid) {
+  var demo = findPersonDemoByCid_(cid) || {};
+  document.getElementById('beh-name').value = demo.student_name || demo.name || '';
+  document.getElementById('beh-age').value = demo.age_years || demo.age || '';
+  document.getElementById('beh-cls').value = demo.school_class || '';
+  document.getElementById('beh-sch').value = demo.school_name || demo.school || '';
+  document.getElementById('beh-err').style.color = 'var(--green)';
+  document.getElementById('beh-err').textContent = '✅ โหลดข้อมูลเดิมแล้ว สามารถแก้ไขได้';
+  document.getElementById('beh-form-sec').style.opacity = '1';
+  document.getElementById('beh-form-sec').style.pointerEvents = 'all';
+  document.getElementById('btnSBeh').disabled = false;
+}
+
+function enableFollowupFormForEdit_(cid) {
+  var demo = findPersonDemoByCid_(cid) || {};
+  document.getElementById('fup-name').value = demo.student_name || demo.name || '';
+  document.getElementById('fup-age').value = demo.age_years || demo.age || '';
+  document.getElementById('fup-cls').value = demo.school_class || '';
+  document.getElementById('fup-sch').value = demo.school_name || demo.school || '';
+  document.getElementById('fup-err').style.color = 'var(--green)';
+  document.getElementById('fup-err').textContent = '✅ โหลดข้อมูลเดิมแล้ว สามารถแก้ไขได้';
+  document.getElementById('fup-form-sec').style.opacity = '1';
+  document.getElementById('fup-form-sec').style.pointerEvents = 'all';
+  document.getElementById('btnSFup').disabled = false;
+}
+
+function pruneAuxRowsByCid_(rows, cid) {
+  cid = _normalizeRecordCid_(cid);
+  return (rows || []).filter(function(r) { return _normalizeRecordCid_(r.cid) !== cid; });
+}
+
+function updateRowsAfterAuxDelete_(kind, cid) {
+  cid = _normalizeRecordCid_(cid);
+  clearRecordCachesForCid_(cid);
+  clearTablePageCache_();
+
+  if (kind === 'beh') {
+    G.behRows = pruneAuxRowsByCid_(G.behRows, cid);
+    if (RAW_DATA_CACHE && RAW_DATA_CACHE.behRows) RAW_DATA_CACHE.behRows = pruneAuxRowsByCid_(RAW_DATA_CACHE.behRows, cid);
+    if (MINI_DASH_CACHE && MINI_DASH_CACHE.beh) MINI_DASH_CACHE.beh.behRows = pruneAuxRowsByCid_(MINI_DASH_CACHE.beh.behRows, cid);
+    (G.allRows || []).forEach(function(r) { if (_normalizeRecordCid_(r.cid) === cid) r.beh_risk = null; });
+    (G.dispRows || []).forEach(function(r) { if (_normalizeRecordCid_(r.cid) === cid) r.beh_risk = null; });
+  } else if (kind === 'fup') {
+    G.fupRows = pruneAuxRowsByCid_(G.fupRows, cid);
+    if (RAW_DATA_CACHE && RAW_DATA_CACHE.fupRows) RAW_DATA_CACHE.fupRows = pruneAuxRowsByCid_(RAW_DATA_CACHE.fupRows, cid);
+    if (MINI_DASH_CACHE && MINI_DASH_CACHE.beh) MINI_DASH_CACHE.beh.fupRows = pruneAuxRowsByCid_(MINI_DASH_CACHE.beh.fupRows, cid);
+    if (MINI_DASH_CACHE && MINI_DASH_CACHE.fup) MINI_DASH_CACHE.fup.fupRows = pruneAuxRowsByCid_(MINI_DASH_CACHE.fup.fupRows, cid);
+    (G.allRows || []).forEach(function(r) {
+      if (_normalizeRecordCid_(r.cid) === cid) {
+        r.fup_status = null;
+        r.status = calcStatusClient_(r, false);
+      }
+    });
+    (G.dispRows || []).forEach(function(r) {
+      if (_normalizeRecordCid_(r.cid) === cid) {
+        r.fup_status = null;
+        r.status = calcStatusClient_(r, false);
+      }
+    });
+  }
+}
+
+function refreshVisibleTableAfterAuxChange_() {
+  try {
+    if (typeof loadTablePage === 'function') loadTablePage(currentPage || 1, true);
+  } catch(e) {
+    console.warn('refresh table after aux change failed:', e);
+  }
+}
+
+function openBehaviorEditPanelWithData_(d) {
+  closePanel('behdash');
+  openPanel('beh');
+  document.getElementById('beh-cid').value = d.cid;
+  enableBehaviorFormForEdit_(d.cid);
+
+  var devices = String(d.q_device || '').split(',').map(function(s){return s.trim();});
+  document.querySelectorAll('#beh-device input').forEach(function(el){ el.checked = devices.indexOf(el.value) > -1; });
+  var purposes = String(d.q_purpose || '').split(',').map(function(s){return s.trim();});
+  document.querySelectorAll('#beh-purpose input').forEach(function(el){ el.checked = purposes.indexOf(el.value) > -1; });
+  var syms = String(d.q_symptom || '').split(',').map(function(s){return s.trim();});
+  document.querySelectorAll('#beh-symptom input').forEach(function(el){ el.checked = syms.indexOf(el.value) > -1; });
+  document.getElementById('beh-t-wk-m').value = d.q_time_wk_morn || 'ไม่ใช้';
+  document.getElementById('beh-t-wk-n').value = d.q_time_wk_noon || 'ไม่ใช้';
+  document.getElementById('beh-t-wk-e').value = d.q_time_wk_eve || 'ไม่ใช้';
+  document.getElementById('beh-t-we-m').value = d.q_time_we_morn || 'ไม่ใช้';
+  document.getElementById('beh-t-we-n').value = d.q_time_we_noon || 'ไม่ใช้';
+  document.getElementById('beh-t-we-e').value = d.q_time_we_eve || 'ไม่ใช้';
+  document.getElementById('beh-dist').value = d.q_dist || 'ใกล้กว่า 1 ฟุต';
+  document.getElementById('beh-rest').value = d.q_rest || 'พักทุก 20 นาที';
+  document.getElementById('beh-blue').value = d.q_blue || 'ไม่มีการใช้';
+  document.getElementById('beh-comment').value = d.comment || '';
+  toast('โหลดข้อมูลเดิมเรียบร้อย — แก้ไขแล้วกดบันทึก','ok');
+}
+
+function openFollowupEditPanelWithData_(d) {
+  closePanel('fupdash');
+  openPanel('fup');
+  document.getElementById('fup-cid').value = d.cid;
+  enableFollowupFormForEdit_(d.cid);
+
+  document.getElementById('fup-tel').value = d.tel || '';
+  document.getElementById('fup-dur').value = d.duration || 'น้อยกว่า 1 เดือน';
+  setRad('f1', d.f_board); setRad('f2', d.f_book); setRad('f3', d.f_screen); setRad('f4', d.f_sport);
+  setRad('f_days', d.f_days); setRad('c_status', d.c_status); setRad('c_clarity', d.c_clarity);
+  setRad('q_board', d.q_board); setRad('q_focus', d.q_focus); setRad('q_confidence', d.q_confidence); setRad('q_headache', d.q_headache);
+  setRad('overall_sat', d.overall_sat);
+  var reasons = String(d.reasons || '').split(',').map(function(s){return s.trim();});
+  document.querySelectorAll('#fup-reasons input').forEach(function(el){ el.checked = reasons.indexOf(el.value) > -1; });
+  document.getElementById('fup-comment').value = d.comment || '';
+  toast('โหลดข้อมูลเดิมเรียบร้อย — แก้ไขแล้วกดบันทึก','ok');
+}
+
 // แก้ไขข้อมูลพฤติกรรม
 function editBehRecord(cid) {
+  cid = _normalizeRecordCid_(cid);
+  var local = findAuxRecordByCid_(G.behRows, cid);
+  if (local) {
+    openBehaviorEditPanelWithData_(local);
+    return;
+  }
+
   toast('กำลังดึงข้อมูล...', 'inf');
   google.script.run.withSuccessHandler(function(r){
     var res = JSON.parse(r);
     if(!res.ok) { toast(res.msg, 'err'); return; }
-    var d = res.data;
-    closePanel('behdash');
-    setTimeout(function(){
-      openPanel('beh');
-      document.getElementById('beh-cid').value = d.cid;
-      checkBehEligible(d.cid);
-      setTimeout(function(){
-        // เติมข้อมูลเดิม
-        var devices = String(d.q_device||'').split(',').map(function(s){return s.trim();});
-        document.querySelectorAll('#beh-device input').forEach(function(el){ el.checked = devices.indexOf(el.value) > -1; });
-        var purposes = String(d.q_purpose||'').split(',').map(function(s){return s.trim();});
-        document.querySelectorAll('#beh-purpose input').forEach(function(el){ el.checked = purposes.indexOf(el.value) > -1; });
-        var syms = String(d.q_symptom||'').split(',').map(function(s){return s.trim();});
-        document.querySelectorAll('#beh-symptom input').forEach(function(el){ el.checked = syms.indexOf(el.value) > -1; });
-        document.getElementById('beh-t-wk-m').value = d.q_time_wk_morn || 'ไม่ใช้';
-        document.getElementById('beh-t-wk-n').value = d.q_time_wk_noon || 'ไม่ใช้';
-        document.getElementById('beh-t-wk-e').value = d.q_time_wk_eve || 'ไม่ใช้';
-        document.getElementById('beh-t-we-m').value = d.q_time_we_morn || 'ไม่ใช้';
-        document.getElementById('beh-t-we-n').value = d.q_time_we_noon || 'ไม่ใช้';
-        document.getElementById('beh-t-we-e').value = d.q_time_we_eve || 'ไม่ใช้';
-        document.getElementById('beh-dist').value = d.q_dist || 'ใกล้กว่า 1 ฟุต';
-        document.getElementById('beh-rest').value = d.q_rest || 'พักทุก 20 นาที';
-        document.getElementById('beh-blue').value = d.q_blue || 'ไม่มีการใช้';
-        document.getElementById('beh-comment').value = d.comment || '';
-        toast('โหลดข้อมูลเดิมเรียบร้อย — แก้ไขแล้วกดบันทึก','ok');
-      }, 600);
-    }, 350);
+    openBehaviorEditPanelWithData_(res.data);
   }).getBehaviorRecord(cid);
 }
 
 function delBehRecord(cid, name) {
+  cid = _normalizeRecordCid_(cid);
   if(!confirm('ยืนยันการลบข้อมูลพฤติกรรมของ\n' + name + ' (CID: ' + cid + ') ?\n\n⚠ ข้อมูลที่ลบจะกู้คืนไม่ได้')) return;
   google.script.run.withSuccessHandler(function(r){
     var res = JSON.parse(r);
-    if(res.ok) { toast(res.msg,'ok'); loadBehDashboard(); forceRefresh(); }
+    if(res.ok) { updateRowsAfterAuxDelete_('beh', cid); toast(res.msg,'ok'); loadBehDashboard(); refreshVisibleTableAfterAuxChange_(); }
     else toast(res.msg,'err');
   }).deleteBehaviorRecord(cid);
 }
 
 // แก้ไขข้อมูลติดตามแว่นตา
 function editFupRecord(cid) {
+  cid = _normalizeRecordCid_(cid);
+  var local = findAuxRecordByCid_(G.fupRows, cid);
+  if (local) {
+    openFollowupEditPanelWithData_(local);
+    return;
+  }
+
   toast('กำลังดึงข้อมูล...', 'inf');
   google.script.run.withSuccessHandler(function(r){
     var res = JSON.parse(r);
     if(!res.ok) { toast(res.msg, 'err'); return; }
-    var d = res.data;
-    closePanel('fupdash');
-    setTimeout(function(){
-      openPanel('fup');
-      document.getElementById('fup-cid').value = d.cid;
-      checkFupEligible(d.cid);
-      setTimeout(function(){
-        document.getElementById('fup-tel').value = d.tel || '';
-        document.getElementById('fup-dur').value = d.duration || 'น้อยกว่า 1 เดือน';
-        setRad('f1', d.f_board); setRad('f2', d.f_book); setRad('f3', d.f_screen); setRad('f4', d.f_sport);
-        setRad('f_days', d.f_days); setRad('c_status', d.c_status); setRad('c_clarity', d.c_clarity);
-        setRad('q_board', d.q_board); setRad('q_focus', d.q_focus); setRad('q_confidence', d.q_confidence); setRad('q_headache', d.q_headache);
-        setRad('overall_sat', d.overall_sat);
-        var reasons = String(d.reasons||'').split(',').map(function(s){return s.trim();});
-        document.querySelectorAll('#fup-reasons input').forEach(function(el){ el.checked = reasons.indexOf(el.value) > -1; });
-        document.getElementById('fup-comment').value = d.comment || '';
-        toast('โหลดข้อมูลเดิมเรียบร้อย — แก้ไขแล้วกดบันทึก','ok');
-      }, 600);
-    }, 350);
+    openFollowupEditPanelWithData_(res.data);
   }).getFollowupRecord(cid);
 }
 
 function delFupRecord(cid, name) {
+  cid = _normalizeRecordCid_(cid);
   if(!confirm('ยืนยันการลบข้อมูลติดตามแว่นตาของ\n' + name + ' (CID: ' + cid + ') ?\n\n⚠ ข้อมูลที่ลบจะกู้คืนไม่ได้')) return;
   google.script.run.withSuccessHandler(function(r){
     var res = JSON.parse(r);
-    if(res.ok) { toast(res.msg,'ok'); loadFupDashboard(); forceRefresh(); }
+    if(res.ok) { updateRowsAfterAuxDelete_('fup', cid); toast(res.msg,'ok'); loadFupDashboard(); refreshVisibleTableAfterAuxChange_(); }
     else toast(res.msg,'err');
   }).deleteFollowupRecord(cid);
 }
@@ -8876,6 +9214,21 @@ function debounceSearch() {
 async function loadTablePage(page, forceFresh) {
   let tBody = document.getElementById('tBody');
   if (!tBody) return;
+
+  if (G.fullRowsReady && hasClientOnlyDashboardFilter_()) {
+    var localRows = G.dispRows || [];
+    var localLimit = 50;
+    totalPages = Math.max(1, Math.ceil(localRows.length / localLimit));
+    currentPage = Math.min(Math.max(page || 1, 1), totalPages);
+    var localFrom = (currentPage - 1) * localLimit;
+    document.getElementById('pageInfo').textContent = 'หน้า ' + currentPage + ' / ' + totalPages;
+    document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
+    document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
+    renderTable(localRows.slice(localFrom, localFrom + localLimit));
+    document.getElementById('tInfo').textContent = 'พบทั้งหมด ' + localRows.length + ' รายการ';
+    return;
+  }
+
   try {
     var res = await fetchScreeningTablePage_(page, forceFresh);
     totalPages = res.totalPages || 1;
