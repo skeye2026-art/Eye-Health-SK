@@ -1930,7 +1930,7 @@ function _formatScreeningDate_(value) {
 
 async function fetchScreeningRecordFast_(cid) {
   cid = String(cid || '').trim();
-  if (!/^\d{13}$/.test(cid)) return { ok:false, data:null, msg:'เลขบัตรประชาชนไม่ถูกต้อง' };
+  if (!cid) return { ok:false, data:null, msg:'ไม่พบเลขบัตรประชาชนสำหรับดึงข้อมูล' };
 
   var cached = _screeningRecordCache.get(cid);
   if (cached && Date.now() - cached.ts < SCREENING_RECORD_CACHE_MS) return cached.result;
@@ -1949,6 +1949,7 @@ async function fetchScreeningRecordFast_(cid) {
     data.birthday = _formatScreeningDate_(data.birthday);
     data.screen_date = _formatScreeningDate_(data.screen_date);
     data.nationality = data.nationality || 'ไทย';
+    data.originalCid = cid;
     var result = { ok:true, data:data, msg:'พบข้อมูล' };
     _screeningRecordCache.set(cid, { result:result, ts:Date.now() });
     return result;
@@ -2001,17 +2002,22 @@ function fetchFollowupRecordFast_(cid) {
 }
 
 function clearRecordCachesForCid_(cid) {
-  cid = _normalizeRecordCid_(cid);
-  if (!cid) return;
-  _screeningRecordCache.delete(cid);
-  _behaviorRecordCache.delete(cid);
-  _followupRecordCache.delete(cid);
+  var rawCid = String(cid || '').trim();
+  var normCid = _normalizeRecordCid_(rawCid);
+  if (!rawCid && !normCid) return;
+  [rawCid, normCid].forEach(function(key) {
+    if (!key) return;
+    _screeningRecordCache.delete(key);
+    _behaviorRecordCache.delete(key);
+    _followupRecordCache.delete(key);
+  });
 }
 
 function clearClientDataAfterWrite_(action, payloadData, result) {
   if (!result || result.ok === false) return;
   payloadData = payloadData || {};
   clearRecordCachesForCid_(payloadData.cid);
+  clearRecordCachesForCid_(payloadData.originalCid);
   var affectsDash = [
     'saveScreeningData', 'updateScreeningData', 'deleteRecord',
     'saveSatisfactionData', 'savePreTest', 'savePostTest',
@@ -2555,7 +2561,7 @@ function clearDashboardClientCache_(clearInit) {
     removeSessionCache_('EYE_INIT_DATA_CACHE');
   }
 }
-var myMap = null; var hospLayer = null; var schoolLayer = null; var _satClickIdx = null; var _editMode = false;
+var myMap = null; var hospLayer = null; var schoolLayer = null; var _satClickIdx = null; var _editMode = false; var _editingOriginalCid = '';
 
 // ฟังก์ชันสำหรับปิดบังเลขบัตรประชาชนตามหลัก PDPA
 function maskCid(cid) {
@@ -4737,7 +4743,9 @@ function normalizeNullableNumber_(v) {
 function normalizeScreeningTableRow_(r) {
   r = r || {};
   var row = Object.assign({}, r);
-  var cid = String(row.cid || '').replace(/\D/g, '');
+  var rawCid = String(row.cid || '').trim();
+  var cid = rawCid.replace(/\D/g, '');
+  row.cid_raw = row.cid_raw || rawCid;
   row.cid = cid;
   row.student_name = row.student_name || row.full_name || String(((row.pname || '') + (row.fname || '') + ' ' + (row.lname || ''))).trim();
   row.school_class = row.school_class || row.level_class || row.level_edu || '';
@@ -5066,11 +5074,13 @@ function buildLightDashboardRows_(scrRows, fupRows) {
     if (cid) fupSet[cid] = true;
   });
   return (scrRows || []).map(function(r) {
-    var cid = String(r.cid || '').replace(/\D/g, '');
+    var rawCid = String(r.cid || '').trim();
+    var cid = rawCid.replace(/\D/g, '');
     var hc = String(r.hospcode || '').trim();
     var h = hospMap[hc] || {};
     return {
       cid: cid,
+      cid_raw: rawCid,
       student_name: String(r.student_name || ((r.pname || '') + (r.fname || '') + ' ' + (r.lname || ''))).trim(),
       hospcode: hc,
       hosp_name: h.name || '',
@@ -5462,7 +5472,8 @@ function computeDashboardStats_(scrRows, hospRows, satRows, preRows, postRows, b
   var amphoeTally = {}, schoolTally = {}, preSumTotal = 0, postSumTotal = 0, gainSumTotal = 0, testCount = 0, tableRows = [];
  
   scrRows.forEach(function (r) {
-    var cid = String(r.cid || '').replace(/\D/g, ''); var hc = String(r.hospcode || '').trim();
+    var rawCid = String(r.cid || '').trim();
+    var cid = rawCid.replace(/\D/g, ''); var hc = String(r.hospcode || '').trim();
     if (fHosp && hc !== fHosp) return;
     var hInfo = hospMap[hc] || { name: hc, amphoe: 'ไม่ระบุ', tambon: '', pics: '' };
     if (fAmphoe && hInfo.amphoe !== fAmphoe) return;
@@ -5490,7 +5501,7 @@ function computeDashboardStats_(scrRows, hospRows, satRows, preRows, postRows, b
     var fWear = fupMap[cid] || null;
  
     tableRows.push({
-      cid: cid, student_name: String(r.student_name || ((r.pname || '') + (r.fname || '') + ' ' + (r.lname || ''))).trim(),
+      cid: cid, cid_raw: rawCid, student_name: String(r.student_name || ((r.pname || '') + (r.fname || '') + ' ' + (r.lname || ''))).trim(),
       age_years: String(r.age_years || '').trim(), school_class: String(r.school_class || '').trim(),
       school_name: sName, school_code: String(r.school_code || '').trim(), hospcode: hc, hosp_name: hInfo.name, amphoe: hInfo.amphoe, sex: sex,
       diagnosis: String(r.diagnosis || '').trim(), referral: String(r.referral || '').trim(),
@@ -6148,11 +6159,12 @@ function renderTable(rows) {
     var gain = r.gain !== null ? (r.gain > 0 ? '+'+r.gain : r.gain)+'%' : '—'; 
     var gc = r.gain > 0 ? 'color:var(--green)' : r.gain < 0 ? 'color:var(--red)' : ''; 
     var actBtns = '—';
+    var rowKey = e_(r.cid_raw || r.cid);
     
     if (G.session.role === 'admin' || (loggedIn && G.session.hospcode === r.hospcode)) { 
         actBtns = '<div style="display:flex;gap:4px;justify-content:center;">' +
-                  '<button class="btn-act" style="color:#3B82F6;border-color:#bfdbfe;" onmouseenter="prefetchScreeningRecord_(\'' + e_(r.cid) + '\')" onfocus="prefetchScreeningRecord_(\'' + e_(r.cid) + '\')" onclick="editRow(\'' + e_(r.cid) + '\'); event.stopPropagation();" title="แก้ไขข้อมูล">✏️</button>' +
-                  '<button class="btn-act" style="color:var(--red);border-color:#fecaca;" onclick="openDel(\'' + e_(r.cid) + '\'); event.stopPropagation();" title="ลบข้อมูล">🗑</button></div>'; 
+                  '<button class="btn-act" style="color:#3B82F6;border-color:#bfdbfe;" onmouseenter="prefetchScreeningRecord_(\'' + rowKey + '\')" onfocus="prefetchScreeningRecord_(\'' + rowKey + '\')" onclick="editRow(\'' + rowKey + '\'); event.stopPropagation();" title="แก้ไขข้อมูล">✏️</button>' +
+                  '<button class="btn-act" style="color:var(--red);border-color:#fecaca;" onclick="openDel(\'' + rowKey + '\'); event.stopPropagation();" title="ลบข้อมูล">🗑</button></div>'; 
     }
     
     // แปลง CID ถ้าไม่ได้ Login ให้ Mask ข้อมูล
@@ -6263,6 +6275,7 @@ window.viewScreeningFullDetails = function(cid) {
 function openPanel(id) { 
   if(id === 'scr') { 
       _editMode = false; 
+      _editingOriginalCid = '';
       document.getElementById('scrPanelTitle').innerHTML = '📋 แบบตรวจ/ประเมินสายตา — Vision Screening'; 
       document.getElementById('btnSScr').innerHTML = '💾 บันทึก'; 
       document.getElementById('s-cid').removeAttribute('readonly'); 
@@ -6313,10 +6326,18 @@ function saveScr() {
   if (!/^\d{13}$/.test(cid)) { toast('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก', 'err'); return; } 
   // ... ส่วนที่เหลือของโค้ดคงเดิม ... 
   if (!_editMode && G.allRows.find(function(r){ return r.cid === cid; })) { toast('⚠ เลขบัตรประชาชนนี้มีในระบบแล้ว ไม่สามารถบันทึกซ้ำได้', 'err'); return; } // เช็คข้อมูลซ้ำ
+  if (_editMode) {
+    var originalCidNorm = _normalizeRecordCid_(_editingOriginalCid || cid);
+    var duplicateAfterEdit = G.allRows.find(function(r) {
+      return _normalizeRecordCid_(r.cid_raw || r.cid) === cid && _normalizeRecordCid_(r.cid_raw || r.cid) !== originalCidNorm;
+    });
+    if (duplicateAfterEdit) { toast('⚠ เลขบัตรประชาชนนี้มีในระบบแล้ว ไม่สามารถแก้เป็นเลขซ้ำได้', 'err'); return; }
+  }
   var hcVal = document.getElementById('s-hc').value; if (!hcVal) { toast('กรุณาเลือก รพ.สต.', 'err'); return; }
   // เพิ่มการบันทึก treatment
   var d = { cid: cid, pname: document.getElementById('s-pname').value, fname: document.getElementById('s-fname').value.trim(), lname: document.getElementById('s-lname').value.trim(), birthday: document.getElementById('s-bd').value, age_years: document.getElementById('s-age').value, sex: document.getElementById('s-sex').value, level_edu: document.getElementById('s-lev').value, room: document.getElementById('s-cls').value, school_name: document.getElementById('s-sch').value, hospcode: hcVal, screen_date: document.getElementById('s-dt').value, examiner: document.getElementById('s-exam').value, position: document.getElementById('s-pos').value, address: document.getElementById('s-addr').value, moo: document.getElementById('s-moo').value, aid: document.getElementById('s-aid').value, unit: document.getElementById('s-unit').value, lat_s: document.getElementById('s-schl-lat').value, lon_s: document.getElementById('s-schl-lon').value, tambon: document.getElementById('s-tambon').value, amphoe: document.getElementById('s-amphoe').value, province: document.getElementById('s-prov').value, remarks: document.getElementById('s-remark').value, hx_glasses: document.getElementById('hx-g').checked, hx_injury: document.getElementById('hx-i').checked, hx_red_eye: document.getElementById('hx-r').checked, hx_headache: document.getElementById('hx-h').checked, hx_amblyopia: document.getElementById('hx-a').checked, hx_family: document.getElementById('hx-f').checked, va_r_naked: document.getElementById('vr-n').value, va_l_naked: document.getElementById('vl-n').value, va_r_glasses: document.getElementById('vr-g').value, va_l_glasses: document.getElementById('vl-g').value, ph_r: document.getElementById('vr-p').value, ph_l: document.getElementById('vl-p').value, va_naked_OU: document.getElementById('vou-naked').value, va_glasses_OU: document.getElementById('vou-glasses').value, cover_test: getRad('ex-cov'), hirschberg: getRad('ex-hir'), color_vision: getRad('ex-col'), stereopsis: getRad('ex-ste'), diagnosis: document.getElementById('s-diag').value, referral: document.getElementById('s-ref').value, treatment: document.getElementById('s-treat').value,
   nationality: document.getElementById('s-nat') ? document.getElementById('s-nat').value : 'ไทย'};
+  if (_editMode) d.originalCid = _editingOriginalCid || cid;
   btn.disabled = true; btn.innerHTML = '<span class="sp"></span> กำลังประมวลผล...';
   
   if (_editMode) { 
@@ -6324,7 +6345,7 @@ function saveScr() {
           restoreScrButton_(); 
           var res = JSON.parse(r); 
           if (res.ok) { 
-              _screeningRecordCache.delete(d.cid);
+              clearRecordCachesForCid_(d.originalCid || d.cid); clearRecordCachesForCid_(d.cid);
               toast(res.msg, 'ok'); closePanel('scr'); forceRefresh(); 
               
               // --- ส่วนที่เพิ่มเข้ามาเพื่อให้แจ้งเตือน Flow ตอนแก้ไข ---
@@ -6348,7 +6369,7 @@ function saveScr() {
           restoreScrButton_(); 
           var res = JSON.parse(r); 
           if (res.ok) { 
-              _screeningRecordCache.delete(d.cid);
+              clearRecordCachesForCid_(d.cid);
               toast(res.msg, 'ok'); closePanel('scr'); forceRefresh();
               activeFlow = { active: true, cid: d.cid, status: res.data.status };
               triggerFlow('beh', 'บันทึกสำเร็จ! ลำดับต่อไปกรุณาทำ <b>แบบสอบถามพฤติกรรมการใช้หน้าจออิเล็กทรอนิกส์</b>', function() {
@@ -6372,8 +6393,8 @@ function editRow(cid) {
         G.isEditingRow = false;
         var res = JSON.parse(r);
         if (res.ok) {
-            _editMode = true; var d = res.data; document.getElementById('scrPanelTitle').innerHTML = '✏️ แก้ไขข้อมูลคัดกรองสายตา'; document.getElementById('btnSScr').innerHTML = '💾 อัปเดตข้อมูล';
-            document.getElementById('s-cid').value = d.cid; document.getElementById('s-cid').setAttribute('readonly', 'true'); document.getElementById('s-pname').value = d.pname; document.getElementById('s-fname').value = d.fname; document.getElementById('s-lname').value = d.lname; document.getElementById('s-bd').value = d.birthday; document.getElementById('s-age').value = d.age_years; document.getElementById('s-sex').value = d.sex; document.getElementById('s-lev').value = d.level_edu; document.getElementById('s-cls').value = d.room; document.getElementById('s-sch').value = d.school_name; document.getElementById('s-hc').value = d.hospcode; document.getElementById('s-dt').value = d.screen_date; document.getElementById('s-addr').value = d.address; document.getElementById('s-moo').value = d.moo; document.getElementById('s-aid').value = d.aid; document.getElementById('s-tambon').value = d.tambon; document.getElementById('s-amphoe').value = d.amphoe; document.getElementById('s-prov').value = d.province; document.getElementById('s-exam').value = d.examiner; document.getElementById('s-pos').value = d.position || ''; document.getElementById('s-remark').value = d.remarks; document.getElementById('s-unit').value = d.unit || 'F';
+            _editMode = true; var d = res.data; _editingOriginalCid = String(d.originalCid || d.cid || cid || '').trim(); document.getElementById('scrPanelTitle').innerHTML = '✏️ แก้ไขข้อมูลคัดกรองสายตา'; document.getElementById('btnSScr').innerHTML = '💾 อัปเดตข้อมูล';
+            document.getElementById('s-cid').value = d.cid; document.getElementById('s-cid').removeAttribute('readonly'); document.getElementById('s-pname').value = d.pname; document.getElementById('s-fname').value = d.fname; document.getElementById('s-lname').value = d.lname; document.getElementById('s-bd').value = d.birthday; document.getElementById('s-age').value = d.age_years; document.getElementById('s-sex').value = d.sex; document.getElementById('s-lev').value = d.level_edu; document.getElementById('s-cls').value = d.room; document.getElementById('s-sch').value = d.school_name; document.getElementById('s-hc').value = d.hospcode; document.getElementById('s-dt').value = d.screen_date; document.getElementById('s-addr').value = d.address; document.getElementById('s-moo').value = d.moo; document.getElementById('s-aid').value = d.aid; document.getElementById('s-tambon').value = d.tambon; document.getElementById('s-amphoe').value = d.amphoe; document.getElementById('s-prov').value = d.province; document.getElementById('s-exam').value = d.examiner; document.getElementById('s-pos').value = d.position || ''; document.getElementById('s-remark').value = d.remarks; document.getElementById('s-unit').value = d.unit || 'F';
             updateVaDropdowns();
             
             // เพิ่มการดึงค่าสิทธิการรักษา
